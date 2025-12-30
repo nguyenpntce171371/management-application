@@ -1,0 +1,12 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(#f8fafc);
+    color: var(#0f172a);
+    font-family: "Roboto", system-ui, sans-serif;
+}

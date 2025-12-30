@@ -1,0 +1,223 @@
+.propertyCard {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.propertyCard:hover {
+    border-color: #d4af37;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+    transform: translateY(-8px);
+}
+
+.propertyCardList {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    transition: all 0.3s ease;
+    animation: fadeIn 0.5s ease;
+}
+
+.propertyCardList:hover {
+    border-color: #d4af37;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+    transform: translateX(4px);
+}
+
+.propertyCardList .propertyImage {
+    height: 200px;
+}
+
+.propertyImage {
+    position: relative;
+    height: 240px;
+    overflow: hidden;
+    background: #f1f5f9;
+}
+
+.propertyImage img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+}
+
+
+
+.propertyCard:hover .propertyImage {
+    transform: scale(1.1);
+}
+
+.propertyStatus {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    padding: 0.375rem 0.875rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(5, 150, 105, 0.9);
+    color: white;
+}
+
+.propertyContent {
+    padding: 1.5rem;
+}
+
+.propertyHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.propertyType {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #D4AF37;
+    background: rgba(212, 175, 55, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.propertyId {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.propertyName {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 0.75rem 0;
+    line-height: 1.3;
+    overflow: hidden;
+}
+
+.propertyLocation {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #64748b;
+    margin-bottom: 1.25rem;
+}
+
+.locationIcon {
+    width: 1rem;
+    height: 1rem;
+    min-width: 1rem;
+    min-height: 1rem;
+    color: #D4AF37;
+}
+
+.propertyFooter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 1.25rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.propertyPrice {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.priceLabel {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+.priceValue {
+    font-size: 1.375rem;
+    font-weight: 800;
+    color: #D4AF37;
+    line-height: 1;
+}
+
+.propertyActions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.actionBtn {
+    padding: 0.625rem;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.actionBtn:hover {
+    background: #0f172a;
+    border-color: #0f172a;
+}
+
+.actionBtn:hover .actionBtnIcon {
+    color: white;
+}
+
+.actionBtnIcon {
+    width: 1rem;
+    height: 1rem;
+    color: #64748b;
+    transition: color 0.2s ease;
+}
+
+.actionBtnDanger:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+}
+
+.actionBtnDanger:hover .actionBtnIcon {
+    color: white;
+}
+
+.propertyCardHover {
+    border-color: #d4af37;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+    background-color: lightgray;
+}
+
+@media (max-width: 1024px) {
+    .propertyCardList {
+        grid-template-columns: 1fr;
+    }
+
+    .propertyCardList .propertyImage {
+        height: 240px;
+        min-height: auto;
+    }
+}

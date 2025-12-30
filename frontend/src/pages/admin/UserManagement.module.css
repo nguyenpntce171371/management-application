@@ -1,0 +1,391 @@
+.container {
+    display: flex;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.main {
+    flex: 1;
+    min-height: 100vh;
+}
+
+.content {
+    padding: 2rem;
+}
+
+.sectionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 0.25rem 0;
+}
+
+.sectionSubtitle {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.filterTabs {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    width: fit-content;
+}
+
+.filterTab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filterTab:hover {
+    color: #0f172a;
+    background: #f8fafc;
+}
+
+.filterTabActive {
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+    color: #0f172a;
+}
+
+.filterTabActive:hover {
+    background: linear-gradient(135deg, #C19B2E 0%, #DAB72F 100%);
+}
+
+.tableContainer {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.usersTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tableHead {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.tableHeader {
+    padding: 1rem 1.5rem;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #0f172a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tableBody {
+    background: white;
+}
+
+.tableRow {
+    border-bottom: 1px solid #f1f5f9;
+    transition: all 0.2s;
+}
+
+.tableRow:hover {
+    background: #fafbfc;
+}
+
+.tableRow:last-child {
+    border-bottom: none;
+}
+
+.tableCell {
+    padding: 1.25rem 1.5rem;
+    font-size: 0.875rem;
+    color: #475569;
+    vertical-align: middle;
+}
+
+.userName {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.contactItem {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.contactIcon {
+    width: 1rem;
+    height: 1rem;
+    color: #D4AF37;
+    flex-shrink: 0;
+}
+
+.roleBadge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.375rem 0.75rem;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.roleAdmin {
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+    color: #0f172a;
+}
+
+.roleStaff {
+    background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
+    color: white;
+}
+
+.roleUser {
+    background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%);
+    color: white;
+}
+
+.userActions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.actionBtn {
+    padding: 0.625rem;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.actionBtn:hover {
+    background: #0f172a;
+    border-color: #0f172a;
+}
+
+.actionBtn:hover svg {
+    color: white;
+}
+
+.actionBtn svg {
+    width: 1rem;
+    height: 1rem;
+    color: #64748b;
+    transition: color 0.2s ease;
+}
+
+.actionBtnDanger:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+}
+
+.actionBtnDanger:hover svg {
+    color: white;
+}
+
+.loadingContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    gap: 1rem;
+}
+
+.spinner {
+    width: 3rem;
+    height: 3rem;
+    border: 4px solid #f1f5f9;
+    border-top-color: #D4AF37;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.searchWrapper {
+    position: relative;
+    flex: 1;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #94a3b8;
+}
+
+.searchInput {
+    width: 100%;
+    padding: 0.875rem 3rem 0.875rem 3rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 0.9375rem;
+    outline: none;
+    transition: all 0.3s ease;
+    background: #f8fafc;
+}
+
+.searchInput:focus {
+    border-color: #D4AF37;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
+}
+
+.paginationContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 2rem 0;
+    padding: 1rem;
+}
+
+.pageNumbers {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.pageButton {
+    min-width: 40px;
+    height: 40px;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    background: white;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.pageButton:hover {
+    background: #f5f5f5;
+    border-color: #999;
+}
+
+.pageButtonActive {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.pageButtonActive:hover {
+    background: #0056b3;
+    border-color: #0056b3;
+}
+
+.pageNavButton {
+    padding: 0.5rem 1rem;
+    border: 1px solid #ddd;
+    background: white;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.pageNavButton:hover:not(:disabled) {
+    background: #f5f5f5;
+    border-color: #999;
+}
+
+.pageNavButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pageDots {
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem;
+    color: #666;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loadingText {
+    font-size: 0.9375rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.observerTarget {
+    height: 10px;
+}
+
+@media (max-width: 1024px) {
+    .tableContainer {
+        overflow-x: auto;
+    }
+
+    .usersTable {
+        min-width: 800px;
+    }
+}
+
+@media (max-width: 768px) {
+    .main {
+        margin-left: 4.5rem;
+    }
+
+    .content {
+        padding: 1rem;
+    }
+
+    .sectionHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .filterTabs {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .tableContainer {
+        border-radius: 12px;
+    }
+
+    .tableHeader,
+    .tableCell {
+        padding: 0.875rem 1rem;
+        font-size: 0.8125rem;
+    }
+}

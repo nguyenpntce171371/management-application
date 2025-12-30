@@ -1,0 +1,1034 @@
+.container {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+    padding: 2rem;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.card {
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(212, 175, 55, 0.1);
+    overflow: hidden;
+    position: relative;
+}
+
+.loginPage .card {
+    flex: 0 0 500px;
+}
+
+.forgotPasswordPage .card {
+    flex: 0 0 650px;
+}
+
+.registerPage .card {
+    flex: 0 0 700px;
+}
+
+.cardHeader {
+    padding: 3rem 3rem 2rem;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.05) 0%, rgba(244, 208, 63, 0.05) 100%);
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.loginPage .logoSection {
+    text-align: center;
+}
+
+.registerPage .logoSection,
+.forgotPasswordPage .logoSection {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.logo {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 1.5rem;
+    position: relative;
+}
+
+.logoInner {
+    width: 100%;
+    height: 100%;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pulse 3s infinite;
+    position: relative;
+    overflow: hidden;
+}
+
+.logoInner::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shine 3s infinite;
+}
+
+.loginPage .logoInner {
+    --pulse-color: rgba(212, 175, 55, 0.4);
+    --pulse-color-strong: rgba(212, 175, 55, 0.6);
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+}
+
+.registerPage .logoInner {
+    --pulse-color: rgba(31, 170, 89, 0.4);
+    --pulse-color-strong: rgba(31, 170, 89, 0.6);
+    background: linear-gradient(135deg, #1FAA59 0%, #A3FF75 100%);
+}
+
+.forgotPasswordPage .logoInner {
+    --pulse-color: rgba(215, 38, 61, 0.4);
+    --pulse-color-strong: rgba(215, 38, 61, 0.6);
+    background: linear-gradient(135deg, #D7263D 0%, #FF6B6B 100%);
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 12px 40px var(--pulse-color, rgba(212, 175, 55, 0.4));
+        transform: scale(1);
+    }
+
+    50% {
+        box-shadow: 0 16px 48px var(--pulse-color-strong, rgba(212, 175, 55, 0.6));
+        transform: scale(1.02);
+    }
+}
+
+@keyframes shine {
+    0% {
+        transform: translateX(-100%) translateY(-100%) rotate(45deg);
+    }
+
+    100% {
+        transform: translateX(100%) translateY(100%) rotate(45deg);
+    }
+}
+
+.logoIcon {
+    font-size: 3rem;
+    font-weight: 700;
+    color: white;
+    position: relative;
+    z-index: 1;
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 0.5rem 0;
+    background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+    font-size: 0.9375rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.cardBody {
+    padding: 2.5rem 3rem;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: #0f172a;
+    font-size: 0.9375rem;
+}
+
+.labelIcon {
+    width: 18px;
+    height: 18px;
+    color: #D4AF37;
+}
+
+.inputWrapper {
+    position: relative;
+}
+
+.input {
+    width: 100%;
+    padding: 1rem 1.25rem 1rem 3.25rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 0.9375rem;
+    color: #0f172a;
+    transition: all 0.3s ease;
+    background: white;
+    font-family: inherit;
+}
+
+.input:focus {
+    outline: none;
+    border-color: #D4AF37;
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
+}
+
+.input:disabled {
+    background: #f8fafc;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.inputError {
+    border-color: #DC2626;
+}
+
+.inputError:focus {
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
+}
+
+.inputIcon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    color: #94a3b8;
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.input:focus+.inputIcon {
+    color: #D4AF37;
+}
+
+.togglePassword {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: #94a3b8;
+    transition: all 0.3s ease;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.togglePassword:hover {
+    color: #64748b;
+    background: #f8fafc;
+}
+
+.eyeIcon {
+    width: 20px;
+    height: 20px;
+}
+
+.formOptions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.25rem;
+}
+
+.checkboxLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.checkboxCustom {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.checkbox:checked+.checkboxCustom {
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+    border-color: #D4AF37;
+}
+
+.checkboxIcon {
+    width: 12px;
+    height: 12px;
+    fill: none;
+    stroke: white;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.checkboxText {
+    color: #64748b;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.forgotPassword {
+    text-decoration: none;
+    background: none;
+    border: none;
+    color: #D4AF37;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+    font-family: inherit;
+}
+
+.forgotPassword:hover {
+    color: #B8941F;
+    text-decoration: underline;
+}
+
+.loginButton {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1.125rem 2rem;
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 24px rgba(212, 175, 55, 0.3);
+    font-family: inherit;
+    margin-top: 0.5rem;
+}
+
+.loginButton:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(212, 175, 55, 0.4);
+}
+
+.loginButton:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.loginButton:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.buttonIcon {
+    width: 20px;
+    height: 20px;
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 0.5rem 0;
+}
+
+.dividerLine {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, #e5e7eb 50%, transparent 100%);
+}
+
+.dividerText {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.socialButton {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    color: #475569;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.socialButton:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.socialButton:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.socialIcon {
+    width: 24px;
+    height: 24px;
+}
+
+.cardFooter {
+    padding: 1.5rem 3rem 2.5rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-top: 1px solid #f1f5f9;
+    text-align: center;
+}
+
+.footerText {
+    color: #64748b;
+    font-size: 0.9375rem;
+    margin: 0 0 1rem 0;
+}
+
+.signUpButton {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.875rem 2rem;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.2);
+    font-family: inherit;
+}
+
+.signUpButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.3);
+}
+
+.footerIcon {
+    width: 18px;
+    height: 18px;
+}
+
+.otpContainer {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+}
+
+.otpInput {
+    width: 56px;
+    height: 56px;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    color: #0f172a;
+    transition: all 0.3s ease;
+    background: white;
+    font-family: inherit;
+}
+
+.otpInput:focus {
+    outline: none;
+    border-color: #D4AF37;
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
+    transform: scale(1.05);
+}
+
+.otpInput:disabled {
+    background: #f8fafc;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.infoBox {
+    display: flex;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+    border: 1px solid rgba(30, 64, 175, 0.1);
+    border-radius: 12px;
+}
+
+.infoIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.infoIcon svg {
+    width: 20px;
+    height: 20px;
+    color: white;
+}
+
+.infoText {
+    color: #475569;
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+.infoText strong {
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.resendSection {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 12px;
+}
+
+.resendText {
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.resendButton {
+    background: none;
+    border: none;
+    color: #D4AF37;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+    font-family: inherit;
+}
+
+.resendButton:hover {
+    color: #B8941F;
+    text-decoration: underline;
+}
+
+.primaryButton {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1.125rem 2rem;
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-weight: 700;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 24px rgba(212, 175, 55, 0.3);
+    font-family: inherit;
+}
+
+.primaryButton:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(212, 175, 55, 0.4);
+}
+
+.primaryButton:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.primaryButton:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.secondaryButton {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1.125rem 2rem;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.secondaryButton:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    transform: translateY(-2px);
+}
+
+.secondaryButton:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.buttonGroup {
+    display: flex;
+    gap: 1rem;
+}
+
+.buttonGroup .primaryButton {
+    flex: 1;
+}
+
+.successCard {
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(212, 175, 55, 0.1);
+    padding: 4rem 3rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.successCard::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, #D4AF37 0%, #F4D03F 50%, #D4AF37 100%);
+    background-size: 200% 100%;
+    animation: shimmer 3s infinite;
+}
+
+.successIconWrapper {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 2rem;
+}
+
+.successIconCircle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 12px 40px rgba(5, 150, 105, 0.4);
+    animation: successPulse 2s infinite;
+}
+
+@keyframes successPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.successIcon {
+    width: 60px;
+    height: 60px;
+    color: white;
+}
+
+.successRipple {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 3px solid #059669;
+    animation: ripple 2s infinite;
+    z-index: 1;
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1.8);
+        opacity: 0;
+    }
+}
+
+.successTitle {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 1rem 0;
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.successDescription {
+    font-size: 0.9375rem;
+    color: #64748b;
+    line-height: 1.6;
+    margin: 0 0 2.5rem 0;
+}
+
+.successButton {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1.25rem 2rem;
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 24px rgba(212, 175, 55, 0.3);
+    font-family: inherit;
+}
+
+.successButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(212, 175, 55, 0.4);
+}
+
+.successButton:active {
+    transform: translateY(0);
+}
+
+
+
+.stepIndicator {
+    display: flex;
+    gap: 0;
+}
+
+.forgotPasswordPage .stepIndicator {
+    flex-direction: column;
+}
+
+.stepWrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.forgotPasswordPage .stepWrapper {
+    flex-direction: column;
+    align-items: normal;
+}
+
+.stepItem {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.stepActive {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(244, 208, 63, 0.1) 100%);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.15);
+}
+
+.stepCompleted {
+    opacity: 0.6;
+}
+
+.stepIconWrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    border: 2px solid #e5e7eb;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.stepActive .stepIconWrapper {
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+    border-color: #D4AF37;
+    box-shadow: 0 6px 16px rgba(212, 175, 55, 0.4);
+    transform: scale(1.05);
+}
+
+.stepCompleted .stepIconWrapper {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    border-color: #059669;
+}
+
+.stepIcon {
+    width: 22px;
+    height: 22px;
+    color: #64748b;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stepActive .stepIcon {
+    color: white;
+}
+
+.stepCompleted .stepIcon {
+    color: white;
+}
+
+.stepInfo {
+    flex: 1;
+}
+
+.stepTitle {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.25rem;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stepActive .stepTitle {
+    color: #D4AF37;
+}
+
+.stepDescription {
+    font-size: 0.8125rem;
+    color: #64748b;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stepActive .stepDescription {
+    color: #475569;
+}
+
+.stepLine {
+    width: 40px;
+    height: 3px;
+    background: linear-gradient(90deg, #e5e7eb 0%, #e5e7eb 100%);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.forgotPasswordPage .stepLine {
+    width: 3px;
+    height: 24px;
+    margin-left: 2.3rem;
+}
+
+.stepLineCompleted {
+    background: linear-gradient(90deg, #059669 0%, #10b981 100%);
+}
+
+.formRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.passwordRequirements {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.05) 0%, rgba(244, 208, 63, 0.05) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.requirementTitle {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 0.75rem;
+}
+
+.requirementList {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.requirement {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: #64748b;
+    transition: all 0.3s ease;
+}
+
+.requirementMet {
+    color: #059669;
+}
+
+.requirementIcon {
+    width: 16px;
+    height: 16px;
+    color: #cbd5e1;
+    transition: all 0.3s ease;
+}
+
+.requirementMet .requirementIcon {
+    color: #059669;
+}
+
+.backToLoginButton {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    font-family: inherit;
+}
+
+.backToLoginButton:hover {
+    color: #0f172a;
+    background: white;
+}
+
+@media (max-width: 1024px) {
+    .card {
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: 500px;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+
+    .cardHeader {
+        padding: 2rem 1.5rem 1.5rem;
+    }
+
+    .cardBody {
+        padding: 1.5rem;
+    }
+
+    .cardFooter {
+        padding: 1rem 1.5rem 1.5rem;
+    }
+
+    .title {
+        font-size: 1.5rem;
+    }
+
+    .subtitle {
+        font-size: 0.875rem;
+    }
+
+    .logo {
+        width: 80px;
+        height: 80px;
+    }
+
+    .logoIcon {
+        font-size: 2.5rem;
+    }
+
+    .formOptions {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .signUpButton {
+        width: 100%;
+    }
+}

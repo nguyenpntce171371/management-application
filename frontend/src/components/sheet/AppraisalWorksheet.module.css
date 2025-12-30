@@ -1,0 +1,822 @@
+:root {
+    --color-text-primary: #1a1a1a;
+    --color-text-secondary: #6b6b6b;
+    --color-text-muted: #9ca3af;
+    --color-border: #e5e7eb;
+    --color-border-light: #f3f4f6;
+    --color-bg-white: #ffffff;
+    --color-bg-gray: #fafbfc;
+    --color-bg-hover: #f8f9fa;
+    --color-primary: #3b82f6;
+    --color-primary-light: #eff6ff;
+    --color-danger: #dc2626;
+    --color-danger-light: #fee2e2;
+    --color-success: #16a34a;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+}
+
+.container {
+    background: var(--color-bg-gray);
+    min-height: 100vh;
+}
+
+.header {
+    margin-bottom: 24px;
+    padding: 20px 28px;
+    background: var(--color-bg-white);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+}
+
+.headerFirstLine {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.title {
+    margin: 0;
+    color: var(--color-text-primary);
+    letter-spacing: -0.01em;
+}
+
+.subTitle {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+.headerActions {
+    display: flex;
+    gap: 12px;
+}
+
+.bothSide {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.button{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    background: var(--color-bg-white);
+    color: var(--color-text-primary);
+    font-weight: 500;
+    font-size: 14px;
+    
+    /* Tối ưu hover */
+    will-change: transform;
+    transition: transform 0.15s ease-out, border-color 0.15s ease-out;
+}
+
+.button:hover{
+    background: var(--color-bg-hover);
+    border-color: var(--color-text-muted);
+    transform: translateY(-1px);
+}
+
+.button:active{
+    transform: translateY(0);
+}
+
+.propertiesInfo {
+    background: white;
+    padding: 20px 28px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.propertiesList {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    margin-bottom: 16px;
+}
+
+.propertyChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--color-bg-gray);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    position: relative;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--color-text-primary);
+    
+    /* Tối ưu */
+    will-change: transform, border-color;
+    contain: layout style paint;
+    transition: border-color 0.15s ease-out, transform 0.15s ease-out;
+}
+
+.propertyChip.selected {
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+}
+
+.propertyChip:hover {
+    border-color: var(--color-text-muted);
+    transform: translateY(-1px);
+}
+
+.selectionBadge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: linear-gradient(135deg, var(--color-primary) 0%, #2563eb 100%);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--color-bg-white);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    z-index: 1;
+    pointer-events: none;
+}
+
+.deletePropertyButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: var(--color-text-muted);
+    display: inline-flex;
+    align-items: center;
+    border-radius: 4px;
+    transition: background-color 0.15s ease-out, color 0.15s ease-out;
+}
+
+.deletePropertyButton:hover {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.editInput {
+    border: 1px solid var(--color-primary);
+    border-radius: 4px;
+    padding: 4px 8px;
+    outline: none;
+    background: var(--color-bg-white);
+    color: var(--color-text-primary);
+    font-size: 14px;
+}
+
+.tabsWrapper {
+    background: var(--color-bg-white);
+    border: 1px solid var(--color-border);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.tabsList {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+    overflow-x: auto;
+}
+
+.tabButton {
+    padding: 14px 24px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    color: #6b7280;
+    font-weight: 500;
+    transition: background-color 0.15s ease-out, color 0.15s ease-out, border-bottom-color 0.15s ease-out;
+}
+
+.tabButton:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.tabButton.active {
+    border-bottom-color: #3b82f6;
+    color: #3b82f6;
+    background: white;
+}
+
+.sheetContent {
+    padding: 28px;
+}
+
+.tableContainer {
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.comparisonTable {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px;
+    background: white;
+}
+
+.comparisonTable th {
+    padding: 14px 18px;
+    text-align: center;
+    background: linear-gradient(180deg, #fafafa 0%, #f5f5f5 100%);
+    border: 1px solid #e5e7eb;
+    color: #1f2937;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.comparisonTable td {
+    padding: 12px 18px;
+    text-align: center;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+}
+
+.comparisonTable tbody tr {
+    transition: background-color 0.12s ease-out;
+}
+
+.comparisonTable tbody tr:hover {
+    background: #f9fafb;
+}
+
+.cellWithButtons {
+    position: relative;
+    text-align: center;
+    overflow: visible !important;
+}
+
+.addButtonsContainer {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    gap: 6px;
+}
+
+.deleteButtonsContainer {
+    position: absolute;
+    right: 0px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    gap: 6px;
+    z-index: 9999;
+}
+
+.addConstructionButton {
+    padding: 6px 10px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+    
+    will-change: transform;
+    transition: transform 0.15s ease-out;
+}
+
+.addConstructionButton:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+}
+
+.addConstructionButton:active {
+    transform: translateY(0);
+}
+
+.deleteConstructionButton {
+    padding: 6px 10px;
+    background: var(--color-bg-white);
+    color: var(--color-danger);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md);
+    
+    will-change: transform;
+    transition: background-color 0.15s ease-out, color 0.15s ease-out, transform 0.15s ease-out;
+}
+
+.deleteConstructionButton:hover {
+    background: var(--color-danger-light);
+    color: #b91c1c;
+    transform: translateY(-1px);
+}
+
+.cellInput {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 5px;
+    background: white;
+    white-space: pre-wrap;
+    color: #374151;
+    resize: none;
+    
+    transition: border-color 0.15s ease-out;
+}
+
+.cellInput:hover {
+    border-color: #d1d5db;
+}
+
+.cellInput:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.dimensionInput {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.dimensionInput .cellInput {
+    flex: 1;
+    min-width: 0;
+}
+
+.dimensionInput span {
+    padding: 0 4px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+textarea.cellInput {
+    word-wrap: break-word;
+    font-family: inherit;
+    min-height: 42px;
+    overflow-y: auto;
+}
+
+/* Tối ưu select dropdown - loại bỏ lag */
+.cellSelect,
+.formSelect {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 5px;
+    background: white;
+    color: #374151;
+    cursor: pointer;
+    
+    /* Tối ưu quan trọng cho select */
+    will-change: border-color;
+    contain: layout style;
+    
+    /* Chỉ transition border-color */
+    transition: border-color 0.12s ease-out;
+}
+
+.cellSelect:hover,
+.formSelect:hover:not(:disabled) {
+    border-color: #d1d5db;
+}
+
+.cellSelect:focus,
+.formSelect:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.formSelect:disabled {
+    background: var(--color-bg-gray);
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+    border-color: #e5e7eb;
+}
+
+/* Tối ưu rendering của options */
+.cellSelect option,
+.formSelect option {
+    padding: 8px;
+    background: white;
+    color: #374151;
+}
+
+.TSSS {
+    all: unset;
+    cursor: pointer;
+}
+
+.emptyState {
+    text-align: center;
+    padding: 80px 24px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.emptyState p {
+    color: #6b7280;
+    margin-top: 12px;
+}
+
+.loadingState {
+    text-align: center;
+    padding: 80px 24px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto;
+}
+
+.searchBox {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 460px;
+    max-width: 480px;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 1rem;
+    color: #94a3b8;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.searchInput {
+    width: 100%;
+    height: 2.75rem;
+    padding: 0 2.75rem 0 2.75rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0.625rem;
+    font-size: 0.9375rem;
+    background: #f8fafc;
+    color: #0f172a;
+    font-weight: 400;
+    
+    transition: border-color 0.15s ease-out, background-color 0.15s ease-out;
+}
+
+.searchInput:hover {
+    border-color: #cbd5e1;
+    background: #ffffff;
+}
+
+.searchInput:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+}
+
+.searchInput::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+.dialogOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.15s ease;
+}
+
+.dialogContent {
+    background: var(--color-bg-white);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 540px;
+    max-height: 90vh;
+    overflow: hidden;
+    animation: slideUp 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
+.dialogHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.dialogTitle {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    letter-spacing: -0.02em;
+}
+
+.dialogCloseButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    color: var(--color-text-muted);
+    display: inline-flex;
+    align-items: center;
+    border-radius: var(--radius-sm);
+    
+    transition: background-color 0.15s ease-out, color 0.15s ease-out;
+}
+
+.dialogCloseButton:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+.dialogBody {
+    padding: 28px;
+    overflow-y: auto;
+    max-height: calc(90vh - 180px);
+    
+    /* Smooth scrolling */
+    -webkit-overflow-scrolling: touch;
+}
+
+.formGroup {
+    margin-bottom: 20px;
+}
+
+.formGroup:last-child {
+    margin-bottom: 0;
+}
+
+.formLabel {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    letter-spacing: -0.01em;
+}
+
+.formInput {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    color: var(--color-text-primary);
+    background: var(--color-bg-white);
+    
+    transition: border-color 0.15s ease-out;
+}
+
+.formInput:hover {
+    border-color: var(--color-text-muted);
+}
+
+.formInput:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.formInput::placeholder {
+    color: var(--color-text-muted);
+}
+
+.dialogFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 28px;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg-gray);
+}
+
+.cancelButton,
+.confirmButton {
+    padding: 10px 24px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    
+    will-change: transform;
+    transition: transform 0.15s ease-out, background-color 0.15s ease-out;
+}
+
+.cancelButton {
+    background: var(--color-bg-white);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+}
+
+.cancelButton:hover {
+    background: var(--color-bg-hover);
+    border-color: var(--color-text-muted);
+}
+
+.confirmButton {
+    background: linear-gradient(135deg, var(--color-primary) 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.confirmButton:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+}
+
+.confirmButton:active {
+    transform: translateY(0);
+}
+
+/* Tối ưu cho mobile */
+@media (hover: none) and (pointer: coarse) {
+    .formSelect,
+    .cellSelect {
+        will-change: auto;
+    }
+    
+    .button,
+    .propertyChip {
+        will-change: auto;
+    }
+}
+
+/* Tối ưu cho reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+    }
+
+    .header {
+        padding: 16px 20px;
+    }
+
+    .headerFirstLine {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+
+    .headerActions {
+        flex-direction: column;
+    }
+
+    .propertiesInfo {
+        padding: 16px 20px;
+    }
+
+    .sheetContent {
+        padding: 20px;
+    }
+
+    .comparisonTable {
+        font-size: 14px;
+    }
+
+    .comparisonTable th,
+    .comparisonTable td {
+        padding: 10px 12px;
+    }
+
+    .addConstructionButton,
+    .deleteConstructionButton {
+        padding: 4px 7px;
+    }
+
+    .addButtonsContainer,
+    .deleteButtonsContainer {
+        right: 8px;
+        gap: 4px;
+    }
+
+    .dialogContent {
+        width: 95%;
+        max-width: none;
+    }
+
+    .dialogHeader,
+    .dialogBody,
+    .dialogFooter {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 12px;
+    }
+
+    .header,
+    .propertiesInfo {
+        padding: 12px 16px;
+    }
+
+    .sheetContent {
+        padding: 16px;
+    }
+
+    .dialogHeader,
+    .dialogBody,
+    .dialogFooter {
+        padding: 16px;
+    }
+
+    .dialogFooter {
+        flex-direction: column;
+    }
+
+    .cancelButton,
+    .confirmButton {
+        width: 100%;
+    }
+}

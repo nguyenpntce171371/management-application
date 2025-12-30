@@ -1,0 +1,262 @@
+:root {
+    --color-text-primary: #1a1a1a;
+    --color-text-secondary: #6b6b6b;
+    --color-text-muted: #9ca3af;
+    --color-border: #e5e7eb;
+    --color-border-light: #f3f4f6;
+    --color-bg-white: #ffffff;
+    --color-bg-gray: #fafbfc;
+    --color-bg-hover: #f8f9fa;
+    --color-primary: #3b82f6;
+    --color-primary-light: #eff6ff;
+    --color-danger: #dc2626;
+    --color-danger-light: #fee2e2;
+    --color-success: #16a34a;
+    --color-gold: #d4af37;
+    --color-gold-light: #fef3c7;
+    --color-gold-dark: #b8941f;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+    --shadow-gold: 0 0 0 3px rgba(212, 175, 55, 0.15);
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.container {
+    margin-bottom: 24px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    gap: 16px;
+}
+
+.title {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+.searchBox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 8px 12px;
+    flex: 0 0 300px;
+    position: relative;
+}
+
+.searchIcon {
+    color: #9ca3af;
+}
+
+.searchInput {
+    border: none;
+    outline: none;
+    flex: 1;
+    font-size: 14px;
+}
+
+.clearButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+}
+
+.clearButton:hover {
+    color: #6b7280;
+}
+
+.loadingIndicator {
+    text-align: center;
+    padding: 12px;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.emptyState {
+    width: 100%;
+    text-align: center;
+    padding: 24px;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+.propertiesInfo {
+    background: white;
+    padding: 20px 28px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.propertiesList {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    margin-bottom: 16px;
+}
+
+.propertyChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--color-bg-gray);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    position: relative;
+    transition: var(--transition);
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--color-text-primary);
+}
+
+.propertyChip.realProperty {
+    border: 2px solid var(--color-gold);
+    background: linear-gradient(135deg, var(--color-gold-light) 0%, #fffbeb 100%);
+    box-shadow: var(--shadow-gold);
+}
+
+.propertyChip.realProperty:hover {
+    border-color: var(--color-gold-dark);
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.2), var(--shadow-sm);
+    transform: translateY(-1px);
+}
+
+.propertyChip.realProperty.selected {
+    background: linear-gradient(135deg, var(--color-gold-light) 0%, var(--color-primary-light) 100%);
+    border: 2px solid var(--color-gold);
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.25);
+}
+
+.propertyChip.realProperty.selected:hover {
+    box-shadow: 0 0 0 5px rgba(212, 175, 55, 0.3), var(--shadow-sm);
+}
+
+.propertyChip.selected {
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+}
+
+.propertyChip:hover {
+    border-color: var(--color-text-muted);
+    box-shadow: var(--shadow-sm);
+}
+
+.selectionBadge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: linear-gradient(135deg, var(--color-primary) 0%, #2563eb 100%);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--color-bg-white);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    z-index: 1;
+}
+
+.propertyChip.realProperty.selected .selectionBadge {
+    background: linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-dark) 100%);
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.4);
+}
+
+.propertyName {
+    font-size: 14px;
+}
+
+.tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 8px;
+    background: #1f2937;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    pointer-events: none;
+}
+
+.tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #1f2937;
+}
+
+.tooltipRow {
+    margin-bottom: 4px;
+    display: flex;
+    gap: 8px;
+}
+
+.tooltipRow:last-child {
+    margin-bottom: 0;
+}
+
+.tooltipRow strong {
+    min-width: 80px;
+}
+
+.tooltipCenter {
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.tooltipCenter::after {
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.tooltipLeft {
+    left: 0;
+    transform: translateX(0);
+}
+
+.tooltipLeft::after {
+    left: 20px;
+}
+
+.tooltipRight {
+    left: auto;
+    right: 0;
+    transform: translateX(0);
+}
+
+.tooltipRight::after {
+    right: 20px;
+    left: auto;
+}

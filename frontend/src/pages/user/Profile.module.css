@@ -1,0 +1,748 @@
+.container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.header {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.headerBackground {
+    height: 200px;
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.headerContent {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    position: relative;
+    margin-top: -80px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.avatarSection {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-end;
+}
+
+.avatarWrapper {
+    position: relative;
+}
+
+.avatar {
+    width: 160px;
+    height: 160px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #d1d5db 0%, #6b7280 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 6px solid white;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.avatarText {
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+.avatarEditButton {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: white;
+    border: 2px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.avatarEditButton:hover {
+    background: #f8fafc;
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.cameraIcon {
+    width: 20px;
+    height: 20px;
+    color: #0f172a;
+}
+
+.userInfo {
+    padding-bottom: 1rem;
+}
+
+.logout {
+    padding-bottom: 1rem;
+    display: flex;
+    justify-content: center;
+    margin: 0 auto;
+    width: fit-content;
+}
+
+.userName {
+    font-size: 2rem;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 1.5rem 0;
+}
+
+.userRole {
+    display: inline-flex;
+    padding: 0.5rem 1.25rem;
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+    color: white;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+.logoutText {
+    display: inline-flex;
+    padding: 0.5rem 1.25rem;
+    background: linear-gradient(180deg, #f3f4f6 0%, #eceff1 100%);
+    color: #0f172a;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+    box-shadow: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.logoutText:hover {
+    color: #ef4444;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+    transform: translateY(-1px);
+}
+
+.headerActions {
+    padding-bottom: 1rem;
+}
+
+.editButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 2rem;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.2);
+}
+
+.editButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.3);
+}
+
+.editActions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.saveButton,
+.cancelButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.75rem;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.saveButton {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    color: white;
+}
+
+.saveButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(5, 150, 105, 0.3);
+}
+
+.cancelButton {
+    background: white;
+    color: #64748b;
+    border: 2px solid #e5e7eb;
+}
+
+.cancelButton:hover {
+    background: #f8fafc;
+    transform: translateY(-2px);
+}
+
+.buttonIcon {
+    width: 18px;
+    height: 18px;
+}
+
+.content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem 2rem;
+}
+
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.statCard {
+    background: white;
+    border-radius: 16px;
+    padding: 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.statCard:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+
+.statCardGold {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.05) 0%, rgba(244, 208, 63, 0.05) 100%);
+    border-color: rgba(212, 175, 55, 0.2);
+}
+
+.statCardBlue {
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+    border-color: rgba(30, 64, 175, 0.2);
+}
+
+.statCardGreen {
+    background: linear-gradient(135deg, rgba(5, 150, 105, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+    border-color: rgba(5, 150, 105, 0.2);
+}
+
+.statIcon {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.statIconGold {
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+    color: white;
+    box-shadow: 0 8px 16px rgba(212, 175, 55, 0.3);
+}
+
+.statIconBlue {
+    background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%);
+    color: white;
+    box-shadow: 0 8px 16px rgba(30, 64, 175, 0.3);
+}
+
+.statIconGreen {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    color: white;
+    box-shadow: 0 8px 16px rgba(5, 150, 105, 0.3);
+}
+
+.statIcon svg {
+    width: 28px;
+    height: 28px;
+}
+
+.statContent {
+    flex: 1;
+}
+
+.statValue {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.25rem;
+}
+
+.statLabel {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.mainContent {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.leftColumn,
+.rightColumn {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.infoCard {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.infoCard:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+}
+
+.cardHeader {
+    padding: 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.cardHeaderRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.cardTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+}
+
+.cardContent {
+    padding: 1.5rem;
+}
+
+.infoRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.infoRow:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.infoRow:first-child {
+    padding-top: 0;
+}
+
+.infoLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+    font-size: 0.9375rem;
+}
+
+.infoIcon {
+    width: 20px;
+    height: 20px;
+    color: #94a3b8;
+}
+
+.infoValue {
+    color: #0f172a;
+    font-weight: 500;
+    font-size: 0.9375rem;
+}
+
+.infoInput {
+    padding: 0.625rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    color: #0f172a;
+    transition: all 0.3s ease;
+    background: white;
+    font-family: inherit;
+}
+
+.infoInput:focus {
+    outline: none;
+    border-color: #D4AF37;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+
+.bioText {
+    color: #475569;
+    line-height: 1.8;
+    margin: 0;
+    font-size: 0.9375rem;
+}
+
+.bioTextarea {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 0.9375rem;
+    color: #0f172a;
+    line-height: 1.8;
+    resize: vertical;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.bioTextarea:focus {
+    outline: none;
+    border-color: #D4AF37;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+
+.activityList {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.activityItem {
+    display: flex;
+    gap: 1rem;
+    position: relative;
+}
+
+.activityItem:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: 28px;
+    width: 2px;
+    height: calc(100% + 0.5rem);
+    background: linear-gradient(180deg, #e5e7eb 0%, transparent 100%);
+}
+
+.activityDot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+    flex-shrink: 0;
+    margin-top: 4px;
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
+}
+
+.activityContent {
+    flex: 1;
+}
+
+.activityText {
+    color: #475569;
+    font-size: 0.9375rem;
+    margin-bottom: 0.25rem;
+}
+
+.activityHighlight {
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.activityTime {
+    color: #94a3b8;
+    font-size: 0.8125rem;
+}
+
+.sessionsList {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.sessionItem {
+    display: flex;
+    gap: 1rem;
+}
+
+.sessionCurrent {
+    border-color: #D4AF37;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.03) 0%, rgba(244, 208, 63, 0.03) 100%);
+}
+
+.sessionSuspicious {
+    border-color: #f59e0b;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(251, 191, 36, 0.05) 100%);
+}
+
+.sessionIcon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.deviceIcon {
+    width: 24px;
+    height: 24px;
+    color: #64748b;
+}
+
+.sessionInfo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.sessionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.sessionName {
+    font-weight: 600;
+    color: #0f172a;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.currentBadge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    color: #059669;
+}
+
+.suspiciousBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+    color: white;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badgeIcon {
+    width: 14px;
+    height: 14px;
+}
+
+.sessionDetails {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.sessionDetail {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.sessionDetailLabel {
+    font-weight: 600;
+}
+
+.sessionDetailValue {
+    color: #475569;
+}
+
+.clockIcon {
+    width: 16px;
+    height: 16px;
+    color: #94a3b8;
+}
+
+.sessionLogoutButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: #0f172a;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    box-shadow: none;
+}
+
+.sessionLogoutButton:hover {
+    background: linear-gradient(180deg, #f3f4f6 0%, #eceff1 100%);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+    transform: translateY(-1px);
+    color: #ef4444;
+}
+
+.logoutAllButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: transparent;
+    color: #0f172a;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    box-shadow: none;
+}
+
+.logoutAllButton:hover {
+    background: linear-gradient(180deg, #f3f4f6 0%, #eceff1 100%);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+    transform: translateY(-1px);
+    color: #ef4444;
+}
+
+.loadingState,
+.emptyState {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b;
+    font-size: 0.9375rem;
+}
+
+@media (max-width: 1024px) {
+    .mainContent {
+        grid-template-columns: 1fr;
+    }
+
+    .cardHeaderRow {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .logoutAllButton {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .headerContent {
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 0 1rem;
+    }
+
+    .avatarSection {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 1rem;
+    }
+
+    .headerActions {
+        width: 100%;
+        padding-bottom: 0;
+    }
+
+    .editButton {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .editActions {
+        width: 100%;
+    }
+
+    .saveButton,
+    .cancelButton {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .content {
+        padding: 0 1rem 1rem;
+    }
+
+    .statsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .avatar {
+        width: 120px;
+        height: 120px;
+    }
+
+    .avatarText {
+        font-size: 2.5rem;
+    }
+
+    .userName {
+        font-size: 1.5rem;
+    }
+
+    .infoRow {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .infoInput {
+        width: 100%;
+    }
+
+    .sessionItem {
+        flex-direction: column;
+    }
+
+    .sessionHeader {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .sessionLogoutButton {
+        width: 100%;
+        justify-content: center;
+    }
+}

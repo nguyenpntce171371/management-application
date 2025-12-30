@@ -1,0 +1,149 @@
+.chartCard {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.chartCard:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+}
+
+.content {
+    padding: 2rem;
+}
+
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.chartsGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.chartHeader {
+    padding: 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.chartTitle {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 0.25rem 0;
+}
+
+.chartSubtitle {
+    font-size: 0.8125rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.propertiesSection {
+    margin-top: 2rem;
+}
+
+.sectionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 0.25rem 0;
+}
+
+.sectionSubtitle {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.viewAllButton {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    font-size: 0.875rem;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+}
+
+.viewAllButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.3);
+}
+
+.viewAllIcon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.propertiesGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+
+@media (max-width: 1280px) {
+    .chartsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .chartCard {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 1024px) {
+    .propertiesGrid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+}
+
+
+@media (max-width: 768px) {
+    .statsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .content {
+        padding: 1rem;
+    }
+
+    .propertiesGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .sectionHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .viewAllButton {
+        width: 100%;
+        justify-content: center;
+    }
+}

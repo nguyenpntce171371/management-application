@@ -1,0 +1,306 @@
+.searchFilterBar {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e5e7eb;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.searchSection {
+    display: flex;
+    gap: 1rem;
+    flex: 1;
+    min-width: 300px;
+}
+
+.searchWrapper {
+    position: relative;
+    flex: 1;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #94a3b8;
+}
+
+.searchInput {
+    width: 100%;
+    padding: 0.875rem 3rem 0.875rem 3rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 0.9375rem;
+    outline: none;
+    transition: all 0.3s ease;
+    background: #f8fafc;
+}
+
+.searchInput:focus {
+    border-color: #D4AF37;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
+}
+
+.clearSearch {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 0.25rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #94a3b8;
+    transition: all 0.2s;
+    border-radius: 6px;
+}
+
+.clearSearch:hover {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.clearSearch svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.filterToggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.5rem;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.filterToggle:hover {
+    border-color: #D4AF37;
+    color: #D4AF37;
+}
+
+.filterToggleActive {
+    border-color: #D4AF37;
+    color: #D4AF37;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(244, 208, 63, 0.05) 100%);
+}
+
+.filterToggle svg {
+    width: 1.125rem;
+    height: 1.125rem;
+}
+
+.filterBadge {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+    color: #0f172a;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 0 0.375rem;
+    border: 2px solid white;
+}
+
+.viewControls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.viewModeButtons {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.25rem;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+}
+
+.viewModeBtn {
+    padding: 0.625rem;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #64748b;
+}
+
+.viewModeBtn:hover {
+    color: #0f172a;
+}
+
+.viewModeBtn svg {
+    width: 1.125rem;
+    height: 1.125rem;
+}
+
+.viewModeBtnActive {
+    background: white;
+    color: #D4AF37;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.addButton {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.5rem;
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+    border: none;
+    border-radius: 12px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #0f172a;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+.addButton:hover {
+    background: linear-gradient(135deg, #C19B2E 0%, #DAB72F 100%);
+    box-shadow: 0 8px 20px rgba(212, 175, 55, 0.4);
+    transform: translateY(-2px);
+}
+
+.addButton svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* ===== ADVANCED FILTERS ===== */
+.advancedFilters {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.05) 0%, rgba(244, 208, 63, 0.02) 100%);
+    padding: 1.5rem;
+    border-radius: 16px;
+    border: 2px dashed #D4AF37;
+    margin-bottom: 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.filterGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filterLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.filterIcon {
+    width: 1rem;
+    height: 1rem;
+    color: #D4AF37;
+}
+
+.filterSelect {
+    padding: 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    outline: none;
+    transition: all 0.2s;
+    background: white;
+    cursor: pointer;
+}
+
+.filterSelect:focus {
+    border-color: #D4AF37;
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
+}
+
+.clearFiltersBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+    align-self: flex-end;
+}
+
+.clearFiltersBtn:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+    background: #fef2f2;
+}
+
+.clearFiltersBtn svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+@media (max-width: 768px) {
+    .searchFilterBar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .searchSection {
+        flex-direction: column;
+        width: 100%;
+        min-width: auto;
+    }
+
+    .viewControls {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .advancedFilters {
+        grid-template-columns: 1fr;
+    }
+}
