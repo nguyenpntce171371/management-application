@@ -1,0 +1,73 @@
+{
+    admin off
+}
+
+{$DOMAIN} {
+    request_body {
+        max_size 50MB
+    }
+
+    header {
+        Cache-Control "no-store"
+        ETag ""
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https: http: blob:; connect-src 'self' https://yourdomain.com wss://yourdomain.com; worker-src 'self' blob:; frame-ancestors 'self';"
+        Access-Control-Allow-Credentials "true"
+        Access-Control-Allow-Origin "https://yourdomain.com"
+        Access-Control-Max-Age "86400"
+    }
+
+    @options method OPTIONS
+    handle @options {
+        header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        header Access-Control-Allow-Headers "Content-Type, Authorization"
+        respond 204
+    }
+
+    handle /socket.io/* {
+        reverse_proxy backend:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            trusted_proxies {$TRUSTED_PROXY_RANGE}
+            transport http {
+                read_timeout 86400s
+                write_timeout 86400s
+            }
+        }
+    }
+
+    handle /api/* {
+        reverse_proxy backend:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            trusted_proxies {$TRUSTED_PROXY_RANGE}
+            transport http {
+                read_timeout 300s
+                dial_timeout 300s
+                write_timeout 300s
+            }
+        }
+    }
+
+    handle {
+        reverse_proxy frontend:5173 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            trusted_proxies {$TRUSTED_PROXY_RANGE}
+        }
+    }
+
+    log {
+        output stdout
+        format console
+    }
+}

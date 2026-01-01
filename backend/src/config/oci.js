@@ -6,11 +6,10 @@ const provider = new common.SimpleAuthenticationDetailsProvider(
   process.env.OCI_TENANCY_OCID,
   process.env.OCI_USER_OCID,
   process.env.OCI_FINGERPRINT,
-  fs.readFileSync(Buffer.from(process.env.OCI_PRIVATE_KEY, "base64").toString("utf-8"), "utf8"),
+  Buffer.from(process.env.OCI_PRIVATE_KEY, "base64").toString("utf-8"),
   null,
   common.Region.fromRegionId(process.env.OCI_REGION)
 );
-console.log(Buffer.from(process.env.OCI_PRIVATE_KEY, "base64").toString("utf-8"));
 export const ociClient = new objectstorage.ObjectStorageClient({
   authenticationDetailsProvider: provider,
 });

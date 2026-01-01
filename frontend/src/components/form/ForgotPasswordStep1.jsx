@@ -1,18 +1,26 @@
 import { useState } from "react";
 import styles from "../../pages/auth/AuthForm.module.css";
 import { Mail, ArrowRight } from "lucide-react";
+import axiosInstance from "../../services/axiosInstance";
 
 function ForgotPasswordStep1({ email, setEmail, setCurrentStep }) {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleEmailSubmit = async (e) => {
         e.preventDefault();
+        if (!email) {
+            notify({
+                type: "error",
+                title: "Thiếu thông tin",
+                message: "Vui lòng điền đầy đủ thông tin.",
+            });
+            return;
+        }
 
         setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
-            setCurrentStep(2);
-        }, 1500);
+        axiosInstance.post("/api/password/send-otp-forgot", { email: email })
+            .then(() => { setCurrentStep(2) })
+            .finally(() => { setIsLoading(false) });
     };
 
     return (
@@ -33,7 +41,7 @@ function ForgotPasswordStep1({ email, setEmail, setCurrentStep }) {
                     <Mail />
                 </div>
                 <div className={styles.infoText}>
-                    Chúng tôi sẽ gửi mã OTP gồm 6 chữ số đến email của bạn. Vui lòng kiểm tra hộp thư đến hoặc thư spam.
+                    Chúng tôi sẽ gửi mã OTP đến email của bạn. Vui lòng kiểm tra hộp thư đến hoặc thư spam.
                 </div>
             </div>
 

@@ -11,7 +11,7 @@
     pointer-events: none;
 }
 
-.container>* {
+.container > * {
     pointer-events: auto;
 }
 
@@ -30,7 +30,7 @@
     align-items: flex-start;
     gap: 1rem;
     padding: 1.25rem 1.5rem;
-    background: white;
+    background: #ffffff;
     border-radius: 16px;
     border: 1px solid #e5e7eb;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
@@ -41,12 +41,17 @@
     animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.notification:hover {
+    background: #f9fafb;
+    transform: translateY(-2px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+}
+
 @keyframes slideIn {
     from {
         transform: translateX(-120%);
         opacity: 0;
     }
-
     to {
         transform: translateX(0);
         opacity: 1;
@@ -62,100 +67,35 @@
         transform: translateX(0);
         opacity: 1;
     }
-
     to {
         transform: translateX(-120%);
         opacity: 0;
     }
 }
 
-.notification:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
-}
-
-/* Success Style */
-.notification.success {
-    background: linear-gradient(135deg,
-            rgba(46, 204, 113, 0.05) 0%,
-            rgba(39, 174, 96, 0.05) 100%);
-    border-color: rgba(46, 204, 113, 0.3);
+.notification::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
 }
 
 .notification.success::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
     background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
 }
 
-.notification.success:hover {
-    background: linear-gradient(135deg,
-            rgba(46, 204, 113, 0.08) 0%,
-            rgba(39, 174, 96, 0.08) 100%);
-}
-
-/* Error Style */
-.notification.error {
-    background: linear-gradient(135deg, rgba(220, 38, 38, 0.05) 0%, rgba(239, 68, 68, 0.05) 100%);
-    border-color: rgba(220, 38, 38, 0.3);
-}
-
 .notification.error::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
     background: linear-gradient(135deg, #DC2626 0%, #EF4444 100%);
 }
 
-.notification.error:hover {
-    background: linear-gradient(135deg, rgba(220, 38, 38, 0.08) 0%, rgba(239, 68, 68, 0.08) 100%);
-}
-
-/* Warning Style */
-.notification.warning {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(251, 191, 36, 0.05) 100%);
-    border-color: rgba(245, 158, 11, 0.3);
-}
-
 .notification.warning::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
     background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
 }
 
-.notification.warning:hover {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(251, 191, 36, 0.08) 100%);
-}
-
-/* Info Style */
-.notification.info {
-    background: linear-gradient(135deg, rgba(30, 64, 175, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
-    border-color: rgba(30, 64, 175, 0.3);
-}
-
 .notification.info::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
     background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%);
-}
-
-.notification.info:hover {
-    background: linear-gradient(135deg, rgba(30, 64, 175, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
 }
 
 .iconWrapper {
@@ -166,7 +106,6 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    position: relative;
 }
 
 .notification.success .iconWrapper {
@@ -193,8 +132,6 @@
     width: 24px;
     height: 24px;
     color: white;
-    position: relative;
-    z-index: 1;
 }
 
 .content {
@@ -208,7 +145,6 @@
     font-weight: 700;
     color: #0f172a;
     margin-bottom: 0.25rem;
-    line-height: 1.4;
 }
 
 .message {
@@ -228,7 +164,6 @@
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s ease;
-    flex-shrink: 0;
     color: #94a3b8;
 }
 
@@ -249,7 +184,6 @@
     right: 0;
     height: 3px;
     background: rgba(212, 175, 55, 0.2);
-    overflow: hidden;
 }
 
 .progressFill {

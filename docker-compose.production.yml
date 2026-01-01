@@ -27,12 +27,12 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       args:
-        - NODE_ENV=${NODE_ENV:-development}
+        - NODE_ENV=${NODE_ENV:-production}
         - CACHEBUST=${CACHEBUST:-1}
     container_name: backend
     restart: unless-stopped
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
+      - NODE_ENV=${NODE_ENV:-production}
       - DOMAIN=${DOMAIN}
       - TRUSTED_PROXY_RANGE=${TRUSTED_PROXY_RANGE}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -63,35 +63,38 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - NODE_ENV=${NODE_ENV:-development}
+        - NODE_ENV=${NODE_ENV:-production}
         - CACHEBUST=${CACHEBUST:-1}
     container_name: frontend
     restart: unless-stopped
     ports:
       - "127.0.0.1:5173:5173"
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
+      - NODE_ENV=${NODE_ENV:-production}
     depends_on:
       - backend
 
-  nginx:
-    image: nginx:latest
-    container_name: nginx
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
+      - "443:443/udp"
     environment:
       - TRUSTED_PROXY_RANGE=${TRUSTED_PROXY_RANGE}
-      - NODE_ENV=${NODE_ENV:-development}
+      - DOMAIN=${DOMAIN}
     volumes:
-      - ./nginx/nginx.${NODE_ENV:-development}.conf.template:/etc/nginx/nginx.conf.template:ro
-      - ./nginx/entrypoint.sh:/entrypoint.sh:ro
+      - ./caddy/Caddyfile.production:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
       - frontend
       - backend
-    entrypoint: ["/entrypoint.sh"]
 
 volumes:
   mongo_production_data:
   redis_production_data:
+  caddy_data:
+  caddy_config:

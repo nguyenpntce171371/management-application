@@ -48,11 +48,7 @@ function NotificationItem({ notification, onClose }) {
     };
 
     return (
-        <div
-            className={`${styles.notification} ${styles[notification.type]} ${isExiting ? styles.exiting : ""
-                }`}
-            onClick={handleClose}
-        >
+        <div className={`${styles.notification} ${styles[notification.type]} ${isExiting ? styles.exiting : ""}`} onClick={handleClose}>
             <div className={styles.iconWrapper}>{getIcon()}</div>
 
             <div className={styles.content}>

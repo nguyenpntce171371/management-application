@@ -1,82 +1,7 @@
-import mongoose from "mongoose";
 import RealEstate from "../models/RealEstate.js";
 import Appraisal from "../models/Appraisal.js";
 import { io } from "../index.js";
 import convert from "../services/address.service.js";
-
-export const modifyRealEstateById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const currentUser = req.user;
-        const updateData = req.body;
-
-        if (!id) {
-            return res.status(400).json({
-                success: false,
-                code: "MISSING_ID",
-                message: "Real estate ID is required",
-            });
-        }
-
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({
-                success: false,
-                code: "INVALID_OBJECT_ID",
-                message: "Provided ID is not a valid ObjectId",
-            });
-        }
-
-        const item = await RealEstate.findById(id);
-
-        if (!item) {
-            return res.status(404).json({
-                success: false,
-                code: "REAL_ESTATE_NOT_FOUND",
-                message: "Real estate not found",
-            });
-        }
-
-        if (currentUser.role === "User" && String(item.postedBy) !== String(currentUser.userId)) {
-            return res.status(403).json({
-                success: false,
-                code: "FORBIDDEN_IDOR",
-                message: "You are not allowed to modify real estate you do not own",
-            });
-        }
-
-        const allowedFields = ["propertyType", "length", "width", "area", "usableArea", "floors", "bedrooms", "bathrooms", "direction", "price", "legalStatus", "address", "description", "images", "contacts", "location", "status"];
-
-        const sanitizedData = {};
-        for (const key of allowedFields) {
-            if (updateData[key] !== undefined) {
-                sanitizedData[key] = updateData[key];
-            }
-        }
-
-        const updated = await RealEstate.findByIdAndUpdate(
-            id,
-            { $set: sanitizedData },
-            { new: true }
-        );
-
-        io.emit("real_estate:updated", JSON.parse(JSON.stringify(updated)));
-
-        return res.status(200).json({
-            success: true,
-            code: "REAL_ESTATE_UPDATED",
-            message: "Real estate updated successfully",
-            data: updated,
-        });
-
-    } catch (error) {
-        console.error("Database Error:", error);
-        return res.status(500).json({
-            success: false,
-            code: "DATABASE_ERROR",
-            message: "Failed to update real estate",
-        });
-    }
-};
 
 export const getRealEstateStats = async (req, res) => {
     try {
@@ -348,7 +273,7 @@ export const updateAppraisalAssets = async (req, res) => {
             if (asset.land) {
                 if (!Array.isArray(asset.land)) {
                     missingFields.push(`assets[${i}].land (phải là array)`);
-                } 
+                }
             }
 
             if (asset.location) {
@@ -454,8 +379,7 @@ export const updateAppraisalAssets = async (req, res) => {
             qualityRemaining: construction.qualityRemaining,
             unitPrice: construction.unitPrice,
             updatedAt: new Date()
-        }))
-            : [];
+        })) : [];
 
         const appraisal = await Appraisal.findByIdAndUpdate(
             id,

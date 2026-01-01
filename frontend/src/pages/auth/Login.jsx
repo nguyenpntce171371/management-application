@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import styles from "./AuthForm.module.css";
 import { useNavigate, Link } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance";
+import { notify } from "../../context/NotificationContext";
 
 function Login() {
     const navigate = useNavigate();
@@ -16,9 +17,12 @@ function Login() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         if (!email.trim() || !password.trim()) {
-            alert("Vui lòng điền đầy đủ thông tin.");
+            notify({
+                type: "error",
+                title: "Thông tin không đầy đủ",
+                message: "Vui lòng điền đầy đủ thông tin.",
+            });
             return;
         }
 

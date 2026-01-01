@@ -8,11 +8,7 @@ function NotificationContainer() {
     return (
         <div className={styles.container}>
             {notifications.map((notification) => (
-                <NotificationItem
-                    key={notification.id}
-                    notification={notification}
-                    onClose={() => removeNotification(notification.id)}
-                />
+                <NotificationItem key={notification.id} notification={notification} onClose={() => removeNotification(notification.id)} />
             ))}
         </div>
     );

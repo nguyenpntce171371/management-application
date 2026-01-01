@@ -1,7 +1,6 @@
 import express from "express";
 import { changePassword, verifyOTP, resetPassword, sendOtpForgot } from "../controllers/password.controller.js"
 import { rateLimitRedis } from "../middlewares/rateLimitRedis.js";
-import { singleFlightLock } from "../middlewares/singleFlightLock.js";
 
 const router = express.Router();
 

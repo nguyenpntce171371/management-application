@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, Shield } from "lucide-react";
 import styles from "../../pages/auth/AuthForm.module.css";
+import axiosInstance from "../../services/axiosInstance";
 
 function ForgotPasswordStep2({ email, otp, setOtp, currentStep, setCurrentStep }) {
     const [isLoading, setIsLoading] = useState(false);
@@ -41,18 +42,20 @@ function ForgotPasswordStep2({ email, otp, setOtp, currentStep, setCurrentStep }
 
     const handleOtpSubmit = async (e) => {
         e.preventDefault();
-
-        const otpValue = otp.join("");
-        if (otpValue.length !== 6) {
+        if (otp.some((digit) => digit === "")) {
+            notify({
+                type: "error",
+                title: "Thiếu OTP",
+                message: "Vui lòng điền đầy đủ thông tin OTP.",
+            });
             return;
         }
-
         setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
-            setCurrentStep(3);
-        }, 1500);
+        axiosInstance.post("/api/password/verify-otp-forgot", { email: email, otp: otp.join("") })
+            .then(() => setCurrentStep(3))
+            .finally(() => setIsLoading(false));
     };
+
 
     const handleBack = () => {
         if (currentStep > 1) {

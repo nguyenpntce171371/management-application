@@ -80,26 +80,27 @@ services:
     depends_on:
       - backend
 
-  nginx:
-    image: nginx:latest
-    container_name: nginx
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     environment:
-      - TRUSTED_PROXY_RANGE=${TRUSTED_PROXY_RANGE}
-      - NODE_ENV=${NODE_ENV:-development}
+      - TRUSTED_PROXY_RANGE=${TRUSTED_PROXY_RANGE:-0.0.0.0/0}
     volumes:
-      - ./nginx/nginx.${NODE_ENV:-development}.conf.template:/etc/nginx/nginx.conf.template:ro
-      - ./nginx/entrypoint.sh:/entrypoint.sh:ro
+      - ./caddy/Caddyfile.development:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
       - frontend
       - backend
-    entrypoint: ["/entrypoint.sh"]
 
 volumes:
   mongo_development_data:
   redis_development_data:
   backend_node_modules:
   frontend_node_modules:
+  caddy_data:
+  caddy_config:

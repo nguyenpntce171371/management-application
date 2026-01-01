@@ -12,17 +12,25 @@ function RegisterStep1({ formData, setFormData, setCurrentStep }) {
         e.preventDefault();
 
         if (!formData.fullName.trim() || !formData.email.trim() || !formData.password.trim() || !formData.confirmPassword.trim()) {
-            alert("Vui lòng điền đầy đủ thông tin.");
+            notify({
+                type: "error",
+                title: "Thiếu thông tin",
+                message: "Vui lòng điền đầy đủ thông tin.",
+            });
             return;
         }
 
         if (formData.password !== formData.confirmPassword) {
-            alert("Mật khẩu xác nhận không khớp.");
+            notify({
+                type: "error",
+                title: "Sai thông tin",
+                message: "Mật khẩu xác nhận không khớp.",
+            });
             return;
         }
 
         setIsLoading(true);
-        axiosInstance.post("/api/auth/send-otp-register", { email: formData.email })
+        axiosInstance.post("/api/password/send-otp-register", { email: formData.email })
             .then(() => { setCurrentStep(2) })
             .finally(() => { setIsLoading(false) });
     };

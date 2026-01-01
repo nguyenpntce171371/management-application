@@ -14,7 +14,7 @@ import { sanitizeInputMiddleware } from "./middlewares/sanitizeInput.js";
 
 const { MONGO_INITDB_ROOT_USERNAME, MONGO_INITDB_ROOT_PASSWORD, MONGO_DB_NAME, PORT = 3000, NODE_ENV = "development", TRUSTED_PROXY_RANGE } = process.env;
 const app = express();
-app.set("trust proxy", NODE_ENV === "production" ? TRUSTED_PROXY_RANGE.split(",").map(ip => ip.trim()) : true);
+app.set("trust proxy", TRUSTED_PROXY_RANGE.split(",").map(ip => ip.trim()));
 const server = http.createServer(app);
 const io = initializeSocket(server);
 app.set("io", io);

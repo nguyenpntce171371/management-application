@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import { sendEmail } from "../services/email.service.js";
+import crypto from "crypto";
 
 export const changePassword = async (req, res) => {
     try {
@@ -162,7 +163,6 @@ export const verifyOTP = async (req, res) => {
 export const resetPassword = async (req, res) => {
     try {
         let { email, otp, newPassword, confirm } = req.body;
-
         if (!email || !otp || !newPassword || !confirm) {
             return res.status(400).json({
                 success: false,
@@ -187,7 +187,6 @@ export const resetPassword = async (req, res) => {
                 message: "User not found",
             });
         }
-
         const hashedInput = crypto.createHash("sha256").update(otp).digest("hex");
         if (user.otp !== hashedInput) {
             return res.status(400).json({
@@ -205,7 +204,7 @@ export const resetPassword = async (req, res) => {
             });
         }
 
-        user.password = newPassword;
+        await user.setPassword(newPassword);
         user.otp = undefined;
         user.otpExpiry = undefined;
         await user.save();

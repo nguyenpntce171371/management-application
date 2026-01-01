@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Lock, ArrowLeft, Check, KeyRound, EyeOff, Eye } from "lucide-react";
 import styles from "../../pages/auth/AuthForm.module.css";
 import { useNavigate } from "react-router-dom";
+import axiosInstance from "../../services/axiosInstance";
+import { notify } from "../../context/NotificationContext";
 
-function ForgotPasswordStep3({ currentStep, setCurrentStep }) {
+function ForgotPasswordStep3({ email, otp, currentStep, setCurrentStep }) {
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -19,24 +21,37 @@ function ForgotPasswordStep3({ currentStep, setCurrentStep }) {
 
     const handlePasswordSubmit = async (e) => {
         e.preventDefault();
-        if (!newPassword) {
-            return;
-        }
-
-        if (!confirmPassword) {
+        if (!newPassword || !confirmPassword) {
+            notify({
+                type: "error",
+                title: "Thiếu thông tin",
+                message: "Vui lòng điền đầy đủ thông tin.",
+            });
             return;
         }
 
         if (newPassword !== confirmPassword) {
+            notify({
+                type: "error",
+                title: "Sai thông tin",
+                message: "Mật khẩu xác nhận không khớp.",
+            });
             return;
         }
 
         setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
-            alert("Đặt lại mật khẩu thành công!");
-            navigate("/login");
-        }, 1500);
+        axiosInstance.post("/api/password/reset-password", { email: email, otp: otp.join(""), newPassword: newPassword, confirm: confirmPassword })
+            .then(() => {
+                notify({
+                    type: "success",
+                    title: "Đặt lại mật khẩu thành công",
+                    message: "Mật khẩu đã được đặt lại thành công.",
+                });
+                navigate("/login");
+            })
+            .finally(() => {
+                setIsLoading(false);
+            });
     };
 
     return (

@@ -96,24 +96,21 @@ export const googleCallback = async (req, res) => {
             httpOnly: true,
             sameSite: "Lax",
             expires: new Date("9999-12-31"),
-            // secure: process.env.NODE_ENV === "production",
-            secure: false,
+            secure: process.env.NODE_ENV === "production",
         });
 
         res.cookie("accessToken", accessToken, {
             httpOnly: true,
             sameSite: "Lax",
             maxAge: process.env.NODE_ENV === "production" ? 15 * 60 * 1000 : 10 * 365 * 24 * 60 * 60 * 1000,
-            // secure: process.env.NODE_ENV === "production",
-            secure: false,
+            secure: process.env.NODE_ENV === "production",
         });
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
             sameSite: "Lax",
             maxAge: remember ? 7 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000,
-            // secure: process.env.NODE_ENV === "production",
-            secure: false,
+            secure: process.env.NODE_ENV === "production",
         });
 
         return res.redirect(`${process.env.DOMAIN}/`);
@@ -128,9 +125,7 @@ export const googleCallback = async (req, res) => {
 export const googleLogin = (req, res) => {
     const redirectUri = encodeURIComponent(`${process.env.DOMAIN}/api/auth/google/callback`);
     const scope = encodeURIComponent("openid email profile");
-
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
-
     return res.redirect(url);
 };
 
@@ -252,7 +247,8 @@ export const register = async (req, res) => {
 
         const count = await User.countDocuments();
         const role = (count === 0) ? "Admin" : "User";
-        const user = new User({ fullName, email, password, role });
+        const user = new User({ fullName, email, role });
+        await user.setPassword(password);
         await user.save();
         await redis.del(`otp_verified:${email}`);
 
@@ -383,14 +379,12 @@ export const login = async (req, res) => {
 
         const user = await User.findOne({ email });
         if (!user) {
-            console.warn(`[Login Warning] Unknown email: ${email}`);
             return res.status(401).json({
                 success: false,
                 code: "INVALID_CREDENTIALS",
                 message: "Invalid credentials",
             });
         }
-
         const validPassword = await user.comparePassword(password);
         if (!validPassword) {
             return res.status(401).json({
@@ -429,24 +423,21 @@ export const login = async (req, res) => {
             httpOnly: true,
             sameSite: "Lax",
             expires: new Date("9999-12-31"),
-            // secure: process.env.NODE_ENV === "production",
-            secure: false,
+            secure: process.env.NODE_ENV === "production",
         });
 
         res.cookie("accessToken", accessToken, {
             httpOnly: true,
             sameSite: "Lax",
             maxAge: process.env.NODE_ENV === "production" ? 15 * 60 * 1000 : 10 * 365 * 24 * 60 * 60 * 1000,
-            // secure: process.env.NODE_ENV === "production",
-            secure: false,
+            secure: process.env.NODE_ENV === "production",
         });
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
             sameSite: "Lax",
             maxAge: remember ? 7 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000,
-            // secure: process.env.NODE_ENV === "production",
-            secure: false,
+            secure: process.env.NODE_ENV === "production",
         });
 
         return res.status(200).json({

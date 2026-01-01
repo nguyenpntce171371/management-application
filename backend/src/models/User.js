@@ -19,36 +19,26 @@ const userSchema = new mongoose.Schema({
     avatar: { type: String, default: "" },
 });
 
-userSchema.index({ fullNameSearch: "text", email: "text"});
+userSchema.index({ fullNameSearch: "text", email: "text" });
 
 function normalize(str) {
     if (!str) return "";
-    const cleaned = removePrefix(str);
-    return cleaned
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/đ/g, "d")
-        .replace(/Đ/g, "D")
-        .toLowerCase()
-        .trim();
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
 }
 
 userSchema.pre("save", async function (next) {
     if (this.isModified("fullName") || this.isNew) {
         this.fullNameSearch = normalize(this.fullName || "");
     }
-
-    if (this.provider === "local" || !this.provider) {
-        if (this.isModified("password")) {
-            this.password = bcrypt.hash(this.password, 10);
-        }
-    }
-
     next();
 });
 
 userSchema.methods.comparePassword = async function (password) {
     return await bcrypt.compare(password, this.password);
+};
+
+userSchema.methods.setPassword = async function(password) {
+    this.password = await bcrypt.hash(password, 10);
 };
 
 export default mongoose.model("User", userSchema);
