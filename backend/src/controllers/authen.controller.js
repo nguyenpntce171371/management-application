@@ -139,8 +139,8 @@ export const logout = async (req, res) => {
 
         if (rt && deviceId) {
             const hashedDeviceId = crypto.createHash("sha256").update(deviceId).digest("hex");
-            await Token.deleteOne({ userId: req.user.userId, deviceId: hashedDeviceId });
-            io.to(req.user.userId).emit("loggedOut", {});
+            const session = await Token.deleteOne({ userId: req.user.userId, deviceId: hashedDeviceId });
+            io.to(req.user.userId).emit("loggedOut", { _id: session._id });
         }
 
         res.clearCookie("accessToken", { path: "/" });
@@ -163,9 +163,11 @@ export const logout = async (req, res) => {
 
 export const logoutAll = async (req, res) => {
     try {
+        const sessions = await Token.find({ userId: req.user.userId });
+        const sessionIds = sessions.map(s => s._id);
         await Token.deleteMany({ userId: req.user.userId });
 
-        io.to(req.user.userId).emit("loggedOut", {});
+        io.to(req.user.userId).emit("loggedOut", { sessionIds });
 
         res.clearCookie("accessToken", { path: "/" });
         res.clearCookie("refreshToken", { path: "/" });
@@ -413,7 +415,7 @@ export const login = async (req, res) => {
         const rawDeviceId = req.cookies.deviceId || crypto.randomUUID();
         const deviceName = req.headers["user-agent"] || "Unknown device";
 
-        await Token.create({
+        const session = await Token.create({
             userId: user._id,
             refreshToken,
             accessTokenExpiresAt: accessExp,
@@ -424,7 +426,7 @@ export const login = async (req, res) => {
             remember: remember ? true : false,
         });
 
-        io.to(user._id).emit("loggedInElsewhere", {});
+        io.to(user._id).emit("loggedInElsewhere", { _id: session._id });
 
         res.cookie("deviceId", rawDeviceId, {
             httpOnly: true,

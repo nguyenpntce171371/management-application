@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import { sendEmail } from "../services/email.service.js";
 import crypto from "crypto";
 import { io } from "../index.js";
+import Token from "../models/Token.js";
 
 export const changePassword = async (req, res) => {
     try {
@@ -43,8 +44,14 @@ export const changePassword = async (req, res) => {
 
         await user.setPassword(newPassword);
         await user.save();
+        const deviceId = req.cookies.deviceId;
+        const hashedDeviceId = crypto.createHash("sha256").update(deviceId).digest("hex");
+        const currentSession = await Token.findOne({ userId: user._id, deviceId: hashedDeviceId });
+        const sessions = await Token.find({ userId: user._id });
+        const sessionIdsToDelete = sessions.filter(s => !s._id.equals(currentSession._id)).map(s => s._id);
+        await Token.deleteMany({ _id: { $in: sessionIdsToDelete } });
 
-        io.to(user._id).emit("passwordChanged", {});
+        io.to(user._id).emit("loggedOut", { sessionIds: sessionIdsToDelete });
 
         return res.status(200).json({
             success: true,
@@ -207,8 +214,11 @@ export const resetPassword = async (req, res) => {
         user.otp = undefined;
         user.otpExpiry = undefined;
         await user.save();
+        const sessions = await Token.find({ userId: user._id });
+        const sessionIds = sessions.map(s => s._id);
+        await Token.deleteMany({ userId: user._id });
 
-        io.to(user._id).emit("passwordChanged", {});
+        io.to(user._id).emit("loggedOut", { sessionIds });
 
         return res.status(200).json({
             success: true,

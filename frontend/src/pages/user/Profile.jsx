@@ -4,8 +4,10 @@ import styles from "./Profile.module.css";
 import axiosInstance from "../../services/axiosInstance";
 import { notify } from "../../context/NotificationContext";
 import { useAuth } from "../../context/AuthContext";
+import { useSocket } from "../../context/SocketContext";
 
 export default function Profile() {
+    const socket = useSocket();
     const [activeTab, setActiveTab] = useState("info");
     const [deleteConfirm, setDeleteConfirm] = useState("");
     const [isEditingInfo, setIsEditingInfo] = useState(false);
@@ -40,6 +42,43 @@ export default function Profile() {
     useEffect(() => {
         axiosInstance.get("/api/auth/sessions").then(res => setSessions(res.data.data));
     }, []);
+
+    useEffect(() => {
+        if (!socket || !user) return;
+        const handleLoggedInElsewhere = (data) => {
+            if (data._id) {
+                axiosInstance.get("/api/auth/sessions").then(res => {
+                    setSessions(res.data.data);
+                });
+            }
+        };
+
+        const handleSessionLoggedOut = (data) => {
+            if (data.sessionId) {
+                setSessions(prev => prev.filter(s => s.id !== data.sessionId));
+            }
+        };
+
+        const handleProfileUpdated = (data) => {
+            setUser(data);
+            setFormData(prev => ({
+                ...prev,
+                fullName: data.fullName || "",
+                email: data.email || "",
+                address: data.address || "",
+            }));
+        };
+
+        socket.on("loggedInElsewhere", handleLoggedInElsewhere);
+        socket.on("sessionLoggedOut", handleSessionLoggedOut);
+        socket.on("profileUpdated", handleProfileUpdated);
+
+        return () => {
+            socket.off("loggedInElsewhere", handleLoggedInElsewhere);
+            socket.off("sessionLoggedOut", handleSessionLoggedOut);
+            socket.off("profileUpdated", handleProfileUpdated);
+        };
+    }, [socket, user, sessions, setUser]);
 
     useEffect(() => {
         const activeTabElement = tabRefs.current[activeTab];

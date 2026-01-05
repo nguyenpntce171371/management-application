@@ -147,9 +147,6 @@ function UserManagement() {
                             ))}
                         </div>
                     </div>
-
-
-
                     <div className={styles.tableContainer}>
                         <table className={styles.usersTable}>
                             <thead className={styles.tableHead}>

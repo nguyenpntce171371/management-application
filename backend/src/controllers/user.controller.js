@@ -132,14 +132,28 @@ export const updateUserProfile = async (req, res) => {
         Object.assign(user, updateData);
         await user.save();
 
-        io.to(user._id).emit("profileUpdated", user);
-        io.to("Admin").emit("userUpdated", user);
-
         let avatarUrl = user.avatar;
 
         if (user.avatar && !user.avatar.startsWith("http")) {
             avatarUrl = await getCachedImageUrl(user.avatar);
         }
+
+        io.to(user._id).emit("profileUpdated", {
+            id: user.userId,
+            email: user.email,
+            role: user.role,
+            fullName: user.fullName,
+            address: user.address,
+            avatar: avatarUrl
+        });
+        io.to("Admin").emit("userUpdated", {
+            id: user.userId,
+            email: user.email,
+            role: user.role,
+            fullName: user.fullName,
+            address: user.address,
+            avatar: avatarUrl
+        });
 
         return res.status(200).json({
             success: true,
@@ -194,7 +208,14 @@ export const deleteUserAvatar = async (req, res) => {
         user.avatar = null;
         await user.save();
 
-        io.to(user._id).emit("profileUpdated", user);
+        io.to(user._id).emit("profileUpdated", {
+            id: user.userId,
+            email: user.email,
+            role: user.role,
+            fullName: user.fullName,
+            address: user.address,
+            avatar: null
+        });
 
         return res.status(200).json({
             success: true,

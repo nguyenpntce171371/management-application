@@ -37,9 +37,11 @@ export const updateUserRole = async (req, res) => {
             });
         }
 
+        const sessions = await Token.find({ userId: updatedUser._id });
+        const sessionIds = sessions.map(s => s._id);
         await Token.deleteMany({ userId: updatedUser._id });
 
-        io.to(updatedUser._id).emit("roleUpdated", { role });
+        io.to(updatedUser._id).emit("roleUpdated", { sessionIds });
         io.to("Admin").emit("userRoleChanged", {
             userId: updatedUser._id,
             email: updatedUser.email,
