@@ -138,6 +138,13 @@ export const deleteUser = async (req, res) => {
             });
         }
 
+        if (req.user.email === email) {
+            return res.status(403).json({
+                success: false,
+                code: "CANNOT_DELETE_SELF",
+                message: "Bạn không thể xóa chính mình.",
+            });
+        }
 
         const deletedUser = await User.findOneAndDelete({ email }).lean();
 

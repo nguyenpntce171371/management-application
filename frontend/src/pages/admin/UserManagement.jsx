@@ -124,8 +124,8 @@ function UserManagement() {
         }
     };
 
-    const handleDeleteUser = async (userId) => {
-        await axiosInstance.delete(`/api/user/delete/${userId}`);
+    const handleDeleteUser = async (email) => {
+        await axiosInstance.delete(`/api/admin/delete-user`, { data: { email } });
     };
 
     return (
@@ -175,7 +175,7 @@ function UserManagement() {
                                         </td>
                                         <td className={styles.tableCell}>
                                             <div className={styles.userActions}>
-                                                <button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} title="Xóa" onClick={() => handleDeleteUser(user._id)}>
+                                                <button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} title="Xóa" onClick={() => handleDeleteUser(user.email)}>
                                                     <Trash2 />
                                                 </button>
                                             </div>
