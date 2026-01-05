@@ -58,7 +58,7 @@ export const setupAppraisalSocketHandlers = (io, socket) => {
                 });
             }
 
-            io.to("Staff").emit("appraisal:updated", JSON.parse(JSON.stringify(appraisal)));
+            io.to("Staff").emit("appraisalUpdated", JSON.parse(JSON.stringify(appraisal)));
         } catch (error) {
             console.error("Socket update error:", error);
             socket.emit("appraisal:error", { message: error.message });

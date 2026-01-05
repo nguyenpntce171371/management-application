@@ -314,7 +314,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
 }
 
 .logHeaderLeft {
@@ -354,6 +354,10 @@
     letter-spacing: 0.5px;
 }
 
+.logAction {
+    margin: 0.5rem 0;
+}
+
 .logTypeSuccess {
     background: rgba(16, 185, 129, 0.1);
     color: #059669;
@@ -383,8 +387,7 @@
 .logDescription {
     font-size: 0.9375rem;
     color: #64748b;
-    margin: 0 0 1rem 0;
-    line-height: 1.6;
+    margin: 0;
 }
 
 .logMeta {
@@ -420,7 +423,6 @@
     color: #D4AF37;
 }
 
-/* No Results */
 .noResults {
     display: flex;
     flex-direction: column;

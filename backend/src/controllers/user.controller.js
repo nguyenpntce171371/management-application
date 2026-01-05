@@ -133,6 +133,7 @@ export const updateUserProfile = async (req, res) => {
         await user.save();
 
         io.to(user._id).emit("profileUpdated", user);
+        io.to("Admin").emit("userUpdated", user);
 
         let avatarUrl = user.avatar;
 

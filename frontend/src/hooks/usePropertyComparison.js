@@ -306,16 +306,19 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
                 finalUpdated = updated.map(comp => {
                     const hasLandType = comp.land?.some(l => l.landType === landType);
                     if (hasLandType) {
-                        const newComp = { ...comp };
-                        newComp.land = updateLandByType(comp.land, landType, "ontLandPrice", value);
-                        return newComp;
+                        const existingLand = comp.land?.find(l => l.landType === landType);
+                        if (existingLand && !existingLand.ontLandPrice) {
+                            const newComp = { ...comp };
+                            newComp.land = updateLandByType(comp.land, landType, "ontLandPrice", value);
+                            return newComp;
+                        }
                     }
                     return comp;
                 });
             } else if (field === "convertibleAreaLimit") {
                 finalUpdated = updated.map(comp => ({
                     ...comp,
-                    convertibleAreaLimit: value
+                    convertibleAreaLimit: comp.convertibleAreaLimit ? comp.convertibleAreaLimit : value
                 }));
             }
 
@@ -331,12 +334,15 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
                     if (field.endsWith(".ontLandPrice")) {
                         const hasLandType = ap.land?.some(l => l.landType === landType);
                         if (hasLandType) {
-                            const newAp = { ...ap };
-                            newAp.land = updateLandByType(ap.land, landType, "ontLandPrice", value);
-                            return newAp;
+                            const existingLand = ap.land?.find(l => l.landType === landType);
+                            if (existingLand && !existingLand.ontLandPrice) {
+                                const newAp = { ...ap };
+                                newAp.land = updateLandByType(ap.land, landType, "ontLandPrice", value);
+                                return newAp;
+                            }
                         }
                     } else if (field === "convertibleAreaLimit") {
-                        return { ...ap, convertibleAreaLimit: value };
+                        return { ...ap, convertibleAreaLimit: ap.convertibleAreaLimit ? ap.convertibleAreaLimit : value };
                     }
                     return ap;
                 });
@@ -399,10 +405,13 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
                     if (field.endsWith(".ontLandPrice")) {
                         const hasLandType = comp.land?.some(l => l.landType === landType);
                         if (hasLandType) {
-                            newComp.land = updateLandByType(comp.land, landType, "ontLandPrice", value);
+                            const existingLand = comp.land?.find(l => l.landType === landType);
+                            if (existingLand && !existingLand.ontLandPrice) {
+                                newComp.land = updateLandByType(comp.land, landType, "ontLandPrice", value);
+                            }
                         }
                     } else if (field === "convertibleAreaLimit") {
-                        newComp.convertibleAreaLimit = value;
+                        newComp.convertibleAreaLimit = comp.convertibleAreaLimit ? comp.convertibleAreaLimit : value;
                     }
 
                     return newComp;

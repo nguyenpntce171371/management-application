@@ -1,54 +1,48 @@
 import { useEffect, useRef, useState } from "react";
-import { io } from "socket.io-client";
 import { User, Search, Clock, CheckCircle, XCircle, Info, Shield, Download, Calendar, AlertTriangle, Code } from "lucide-react";
 import styles from "./LogPage.module.css";
 import PageHeader from "../../components/layout/PageHeader";
 import axiosInstance from "../../services/axiosInstance";
-
-const filter = [
-    { id: "all", label: "Tất cả" },
-    { id: "success", label: "Success" },
-    { id: "error", label: "Error" }
-];
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSocket } from "../../context/SocketContext";
 
 function LogPage() {
-    const [logs, setLogs] = useState([]);
-    const [selectedFilter, setSelectedFilter] = useState("all");
-    const [searchTerm, setSearchTerm] = useState("");
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const searchFromUrl = searchParams.get("search") || "";
     const [page, setPage] = useState(1);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
+    const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(false);
     const [hasMore, setHasMore] = useState(true);
     const loadingRef = useRef(loading);
     const hasMoreRef = useRef(hasMore);
     const observerTarget = useRef(null);
-    const socketRef = useRef(null);
+    const socket = useSocket();
+    const [limit] = useState(20);
+
+    useEffect(() => {
+        setSearchTerm(searchFromUrl);
+        setDebouncedSearch(searchFromUrl);
+    }, [searchFromUrl]);
 
     useEffect(() => { loadingRef.current = loading }, [loading]);
     useEffect(() => { hasMoreRef.current = hasMore }, [hasMore]);
 
-    useEffect(() => {
-        socketRef.current = io("http://192.168.136.142", {
-            path: "/socket.io/",
-            transports: ["websocket"],
-        });
-
-        return () => {
-            socketRef.current.disconnect();
-        };
-    }, []);
-
     const fetchData = async (reset = false) => {
-        if (loading) return;
+        if (loadingRef.current) return;
 
         setLoading(true);
 
+        const currentPage = reset ? 1 : page;
+
         const res = await axiosInstance.get("/api/admin/log", {
             params: {
-                page: reset ? 1 : page,
-                limit: 20,
-                search: searchTerm,
-                type: selectedFilter === "all" ? undefined : selectedFilter,
-                sortBy: "timestamp",
+                page: currentPage,
+                limit,
+                search: debouncedSearch,
+                sortBy: "createdAt",
                 sortOrder: "desc",
             },
         });
@@ -56,15 +50,18 @@ function LogPage() {
         const newData = res.data?.data ?? [];
         const pagination = res.data?.pagination;
 
-        if (reset) {
-            setLogs(newData);
-            setHasMore(pagination?.hasMore);
-        } else {
-            setLogs(prev => [...prev, ...newData]);
-            setHasMore(pagination?.hasMore);
-        }
+        setLogs(prev =>
+            reset ? newData : [...prev, ...newData]
+        );
+
+        setHasMore(pagination?.hasMore);
         setLoading(false);
     };
+
+    useEffect(() => {
+        setPage(1);
+        fetchData(true);
+    }, [debouncedSearch]);
 
     useEffect(() => {
         if (page === 1) return;
@@ -72,9 +69,42 @@ function LogPage() {
     }, [page]);
 
     useEffect(() => {
-        setPage(1);
-        fetchData(true);
-    }, [searchTerm, selectedFilter]);
+        if (!socket) return;
+
+        const onLogCreated = (log) => {
+            if (page !== 1) return;
+            if (loadingRef.current) return;
+            if (debouncedSearch) return;
+
+            setLogs(prev => {
+                if (prev.some(l => l._id === log._id)) return prev;
+                return [log, ...prev].slice(0, limit);
+            });
+        };
+
+        socket.on("logCreated", onLogCreated);
+        return () => socket.off("logCreated", onLogCreated);
+    }, [socket, page, debouncedSearch, limit]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+            updateParams({ search: searchTerm });
+        }, 400);
+
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const updateParams = (newParams) => {
+        const params = new URLSearchParams(searchParams);
+
+        Object.entries(newParams).forEach(([key, value]) => {
+            if (!value || value === "all") params.delete(key);
+            else params.set(key, value);
+        });
+
+        navigate(`?${params.toString()}`);
+    };
 
     useEffect(() => {
         const observer = new IntersectionObserver(entries => {
@@ -90,18 +120,6 @@ function LogPage() {
         }
 
         return () => observer.disconnect();
-    }, []);
-
-    useEffect(() => {
-        const s = socketRef.current;
-
-        s.on("log:created", (newLog) => {
-            setLogs(prev => [newLog, ...prev]);
-        });
-
-        return () => {
-            s.off("log:created");
-        };
     }, []);
 
     const getLogType = (statusCode) => {
@@ -195,32 +213,11 @@ function LogPage() {
         <>
             <PageHeader title="Quản lý Log hệ thống" />
             <div className={styles.content}>
-                <div className={styles.sectionHeader}>
-                    <div>
-                        <h2 className={styles.sectionTitle}>Activity Logs</h2>
-                        <p className={styles.sectionSubtitle}>Lịch sử hoạt động hệ thống</p>
-                    </div>
-                    <div className={styles.sectionActions}>
-                        <button className={styles.exportButton}>
-                            <Download />
-                            Xuất Log
-                        </button>
-                    </div>
-                </div>
-
                 <div className={styles.searchFilterBar}>
                     <div className={styles.searchWrapper}>
                         <Search className={styles.searchIcon} />
                         <input type="text" placeholder="Tìm kiếm logs..." className={styles.searchInput} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
-                </div>
-
-                <div className={styles.filterTabs}>
-                    {filter.map((filter) => (
-                        <button key={filter.id} onClick={() => setSelectedFilter(filter.id)} className={`${styles.filterTab} ${selectedFilter === filter.id ? styles.filterTabActive : ""}`}>
-                            {filter.label}
-                        </button>
-                    ))}
                 </div>
 
                 <div className={styles.logsTimeline}>
@@ -256,7 +253,7 @@ function LogPage() {
 
                                     <p className={styles.logDescription}>{log.message}</p>
 
-                                    <div className={styles.logMeta}>
+                                    <div className={styles.logMeta} style={{ paddingBottom: "0.25rem", borderBottomLeftRadius: "0px", borderBottomRightRadius: "0px"}}>
                                         {log.email && (
                                             <div className={styles.logMetaItem}>
                                                 <User className={styles.metaIcon} />
@@ -290,7 +287,7 @@ function LogPage() {
                                     </div>
 
                                     {log.referrer && (
-                                        <div className={styles.logMeta} style={{ marginTop: "8px", opacity: 0.7 }}>
+                                        <div className={styles.logMeta} style={{ paddingTop: "0.25rem", borderTopLeftRadius: "0px", borderTopRightRadius: "0px"}}>
                                             <div className={styles.logMetaItem}>
                                                 <Info className={styles.metaIcon} />
                                                 <span style={{ fontSize: "0.85em" }}>From: {log.referrer}</span>

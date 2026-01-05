@@ -4,10 +4,38 @@ import { ChartBar } from "lucide-react";
 import styles from "./PropertyValuation.module.css";
 import { useParams, Link } from "react-router-dom";
 import { formatNumber } from "../../hooks/useNumberFormat";
+import { useSocket } from "../../context/SocketContext";
+import { useNavigate } from "react-router-dom";
 
 function PropertyValuationDetail() {
     const { id } = useParams();
     const [appraisal, setAppraisal] = useState({});
+    const socket = useSocket();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const onUpdated = (updated) => {
+            if (updated._id === id) {
+                setAppraisal(updated);
+            }
+        };
+
+        const onDeleted = (deletedId) => {
+            if (deletedId === id) {
+                navigate(-1);
+            }
+        };
+
+        socket.on("appraisalUpdated", onUpdated);
+        socket.on("appraisalDeleted", onDeleted);
+
+        return () => {
+            socket.off("appraisalUpdated", onUpdated);
+            socket.off("appraisalDeleted", onDeleted);
+        };
+    }, [socket, id, navigate]);
 
     useEffect(() => {
         axiosInstance.get(`/api/staff/appraisals/${id}`).then(res => setAppraisal(res.data.data));
