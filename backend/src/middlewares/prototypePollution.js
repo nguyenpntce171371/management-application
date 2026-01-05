@@ -25,7 +25,7 @@ export const prototypePollutionMiddleware = (req, res, next) => {
         return res.status(400).json({
             success: false,
             code: "FORBIDDEN_INPUT",
-            message: "Potentially malicious input detected"
+            message: "Dữ liệu đầu vào không hợp lệ.",
         });
     }
 

@@ -7,8 +7,8 @@ function StaffSidebar() {
 
     const menuItems = [
         { id: "dashboard", label: "Tổng quan", icon: LayoutDashboard, route: "/staff" },
+        { id: "real-estate", label: "Bất động sản", icon: Building2, route: "/user/real-estate" },
         { id: "add-real-estate", label: "Thêm mới", icon: PlusCircle, route: "/user/add-real-estate" },
-        { id: "real-estate", label: "Bất động sản", icon: Building2, route: "/staff/real-estate" },
         { id: "property-valuation", label: "Thẩm định giá", icon: Search, route: "/staff/property-valuation"},
     ];
 

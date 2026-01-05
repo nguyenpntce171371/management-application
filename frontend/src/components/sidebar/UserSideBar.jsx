@@ -7,6 +7,7 @@ function UserSidebar() {
 
     const menuItems = [
         { id: "dashboard", label: "Tổng quan", icon: LayoutDashboard, route: "/" },
+        { id: "real-estate", label: "Bất động sản", icon: Building2, route: "/user/real-estate" },
         { id: "add-real-estate", label: "Thêm mới", icon: PlusCircle, route: "/user/add-real-estate" },
     ];
 
@@ -17,7 +18,7 @@ function UserSidebar() {
                 const isActive = location.pathname === item.route;
 
                 return (
-                    <Link key={item.id} to={item.route} className={`${styles.navItem} ${isActive ? styles.navItemActive : ""}`}                    >
+                    <Link key={item.id} to={item.route} className={`${styles.navItem} ${isActive ? styles.navItemActive : ""}`}>
                         <Icon className={styles.navIcon} />
                         <span>{item.label}</span>
                     </Link>

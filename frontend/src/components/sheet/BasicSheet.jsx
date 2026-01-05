@@ -20,7 +20,7 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                         <th>TSTĐ</th>
                         {comparisonsData.map((comp, i) => (
                             <th key={comp._id}>
-                                <Link to={`/staff/real-estate/${comp.id}`} className={styles.TSSS} target="_blank">
+                                <Link to={`/user/real-estate/${comp.id}`} className={styles.TSSS} target="_blank">
                                     TSSS{i + 1}
                                 </Link>
                             </th>

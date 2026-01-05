@@ -1,26 +1,26 @@
-import { createContext, useContext, useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
 const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children }) => {
-  const socketRef = useRef(null);
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const socket = io(window.location.origin, {
+    const s = io(window.location.origin, {
       path: "/socket.io/",
       transports: ["websocket"],
     });
 
-    socketRef.current = socket;
+    setSocket(s);
 
     return () => {
-      socket.disconnect();
+      s.disconnect();
     };
   }, []);
 
   return (
-    <SocketContext.Provider value={socketRef}>
+    <SocketContext.Provider value={socket}>
       {children}
     </SocketContext.Provider>
   );

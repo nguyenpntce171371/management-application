@@ -12,7 +12,7 @@ function HomePage() {
                         <span className={styles.logoText}>Name</span>
                     </div>
                     <div className={styles.navLinks}>
-                        <Link to="/staff/real-estate" className={styles.navLink}>
+                        <Link to="/user/real-estate" className={styles.navLink}>
                             Bất động sản
                         </Link>
                     </div>
@@ -29,7 +29,7 @@ function HomePage() {
                         <p className={styles.heroSubtitle}>
                             Khám phá nhiều bất động sản cao cấp từ khắp cả nước.
                         </p>
-                        <Link className={styles.searchButton} to="/staff/real-estate">
+                        <Link className={styles.searchButton} to="/user/real-estate">
                             Tìm kiếm
                             <ArrowRight className={styles.searchButtonIcon} />
                         </Link>

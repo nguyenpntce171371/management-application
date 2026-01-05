@@ -86,7 +86,7 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
     const handleMouseDown = useCallback((e, propertyId) => {
         if (e.button === 1) {
             e.preventDefault();
-            window.open(`/staff/real-estate/${propertyId}`, "_blank", "noopener,noreferrer");
+            window.open(`/user/real-estate/${propertyId}`, "_blank", "noopener,noreferrer");
         }
     }, []);
 

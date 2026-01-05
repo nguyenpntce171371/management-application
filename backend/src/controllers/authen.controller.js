@@ -14,7 +14,7 @@ export const googleCallback = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "NO_CODE",
-                message: "Missing authorization code",
+                message: "Thiếu mã xác thực",
             });
         }
 
@@ -36,7 +36,7 @@ export const googleCallback = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "NO_ID_TOKEN",
-                message: "No id_token returned from Google",
+                message: "Không có id_token trả về từ Google",
             });
         }
 
@@ -51,7 +51,7 @@ export const googleCallback = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "NO_EMAIL",
-                message: "Google account has no email",
+                message: "Tài khoản Google không có email liên kết",
             });
         }
 
@@ -93,6 +93,8 @@ export const googleCallback = async (req, res) => {
             remember: remember ? true : false,
         });
 
+        io.to(user._id).emit("loggedInElsewhere", {});
+
         res.cookie("deviceId", rawDeviceId, {
             httpOnly: true,
             sameSite: "Lax",
@@ -116,7 +118,7 @@ export const googleCallback = async (req, res) => {
 
         return res.redirect(`${process.env.DOMAIN}/`);
     } catch (error) {
-        console.log(error);
+        console.log("Google login error:", error);
         return res.redirect(
             `${process.env.DOMAIN}/?login=google_failed`
         );
@@ -138,6 +140,7 @@ export const logout = async (req, res) => {
         if (rt && deviceId) {
             const hashedDeviceId = crypto.createHash("sha256").update(deviceId).digest("hex");
             await Token.deleteOne({ userId: req.user.userId, deviceId: hashedDeviceId });
+            io.to(req.user.userId).emit("loggedOut", {});
         }
 
         res.clearCookie("accessToken", { path: "/" });
@@ -146,13 +149,14 @@ export const logout = async (req, res) => {
         return res.status(200).json({
             success: true,
             code: "LOGOUT_OK",
-            message: "Logged out successfully",
+            message: "Đăng xuất thành công",
         });
-    } catch (e) {
-        return res.status(500).json({
+    } catch (error) {
+        console.error("Logout error:", error);
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Something went wrong!",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -161,19 +165,21 @@ export const logoutAll = async (req, res) => {
     try {
         await Token.deleteMany({ userId: req.user.userId });
 
+        io.to(req.user.userId).emit("loggedOut", {});
+
         res.clearCookie("accessToken", { path: "/" });
         res.clearCookie("refreshToken", { path: "/" });
 
         return res.status(200).json({
             success: true,
             code: "LOGOUT_ALL_OK",
-            message: "Logged out from all devices",
+            message: "Tất cả các phiên đã được đăng xuất thành công",
         });
     } catch (e) {
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Something went wrong!",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -188,7 +194,6 @@ export const listSessions = async (req, res) => {
         return res.status(200).json({
             success: true,
             code: "SESSIONS_OK",
-            message: "Sessions fetched successfully",
             data: sessions.map(s => ({
                 id: s._id,
                 deviceName: s.deviceName,
@@ -199,10 +204,10 @@ export const listSessions = async (req, res) => {
             }))
         });
     } catch (e) {
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Something went wrong!"
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -215,7 +220,7 @@ export const register = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_FIELDS",
-                message: "All fields required",
+                message: "Các trường bắt buộc bị thiếu",
             });
         }
 
@@ -224,7 +229,7 @@ export const register = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "INVALID_FULLNAME",
-                message: "Your fullname is invalid",
+                message: "Tên không hợp lệ",
             });
         }
 
@@ -233,7 +238,7 @@ export const register = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "USER_EXISTS",
-                message: "Email already registered",
+                message: "Người dùng này đã tồn tại",
             });
         }
 
@@ -242,7 +247,7 @@ export const register = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "OTP_NOT_VERIFIED",
-                message: "Please verify OTP before registering",
+                message: "Hãy xác minh mã OTP trước khi đăng ký",
             });
         }
 
@@ -251,20 +256,23 @@ export const register = async (req, res) => {
         const user = new User({ fullName, email, role });
         await user.setPassword(password);
         await user.save();
+
+        io.to("Admin").emit("newUserRegistered", { userId: user._id, email: user.email, role: user.role });
+
         await redis.del(`otp_verified:${email}`);
 
         return res.status(201).json({
             success: true,
             code: "REGISTER_OK",
-            message: "Registration successful",
+            message: "Đăng ký thành công",
         });
 
     } catch (error) {
         console.error("Register error:", error);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Something went wrong!",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -277,7 +285,7 @@ export const sendOtpRegister = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "EMAIL_REQUIRED",
-                message: "Email is required",
+                message: "Các trường bắt buộc bị thiếu",
             });
         }
 
@@ -286,7 +294,7 @@ export const sendOtpRegister = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "USER_EXISTS",
-                message: "Email is already registered",
+                message: "Người dùng này đã tồn tại",
             });
         }
 
@@ -296,23 +304,19 @@ export const sendOtpRegister = async (req, res) => {
         await redis.del(`otp_verified:${email}`);
         await redis.set(`otp:${email}`, hashed, "EX", 300);
 
-        await sendEmail(
-            email,
-            "Mã OTP đăng ký tài khoản",
-            `Mã OTP của bạn là: ${otp}\nHiệu lực 5 phút.`
-        );
+        await sendEmail(email, "Mã OTP đăng ký tài khoản", `Mã OTP của bạn là: ${otp}\nHiệu lực 5 phút.`);
 
-        return res.json({
+        return res.status(200).json({
             success: true,
             code: "OTP_SENT",
-            message: "OTP sent",
+            message: "Đã gửi mã OTP",
         });
     } catch (err) {
         console.error("sendOtpRegister error:", err);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Could not send OTP",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -325,7 +329,7 @@ export const verifyOtpRegister = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_FIELDS",
-                message: "Email and OTP required",
+                message: "Các trường bắt buộc bị thiếu",
             });
         }
 
@@ -333,8 +337,8 @@ export const verifyOtpRegister = async (req, res) => {
         if (!stored) {
             return res.status(400).json({
                 success: false,
-                code: "OTP_EXPIRED",
-                message: "OTP expired or not found",
+                code: "INVALID_OTP",
+                message: "Mã OTP không hợp lệ",
             });
         }
 
@@ -342,26 +346,25 @@ export const verifyOtpRegister = async (req, res) => {
         if (hashedInput !== stored) {
             return res.status(400).json({
                 success: false,
-                code: "OTP_INVALID",
-                message: "Invalid OTP",
+                code: "INVALID_OTP",
+                message: "Mã OTP không hợp lệ",
             });
         }
 
         await redis.del(`otp:${email}`);
         await redis.set(`otp_verified:${email}`, "true", "EX", 600);
 
-        return res.json({
+        return res.status(200).json({
             success: true,
-            code: "OTP_OK",
-            message: "OTP verified",
+            code: "OTP_VERIFIED",
+            message: "Xác minh OTP thành công",
         });
-
     } catch (err) {
         console.error("verifyOtpRegister error:", err);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Could not verify OTP",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -374,7 +377,7 @@ export const login = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_FIELDS",
-                message: "All fields are required",
+                message: "Các trường bắt buộc bị thiếu",
             });
         }
 
@@ -383,7 +386,7 @@ export const login = async (req, res) => {
             return res.status(401).json({
                 success: false,
                 code: "INVALID_CREDENTIALS",
-                message: "Invalid credentials",
+                message: "Thông tin đăng nhập không hợp lệ",
             });
         }
 
@@ -392,7 +395,7 @@ export const login = async (req, res) => {
             return res.status(401).json({
                 success: false,
                 code: "INVALID_CREDENTIALS",
-                message: "Invalid credentials",
+                message: "Thông tin đăng nhập không hợp lệ",
             });
         }
 
@@ -421,6 +424,8 @@ export const login = async (req, res) => {
             remember: remember ? true : false,
         });
 
+        io.to(user._id).emit("loggedInElsewhere", {});
+
         res.cookie("deviceId", rawDeviceId, {
             httpOnly: true,
             sameSite: "Lax",
@@ -445,14 +450,14 @@ export const login = async (req, res) => {
         return res.status(200).json({
             success: true,
             code: "LOGIN_OK",
-            message: "Login successful",
+            message: "Đăng nhập thành công",
         });
     } catch (error) {
         console.error("Login error:", error);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Something went wrong!",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -463,7 +468,7 @@ export const refreshToken = async (req, res) => {
         return res.status(400).json({
             success: false,
             code: "NO_REFRESH_TOKEN",
-            message: "No refresh token provided",
+            message: "Không có token làm mới.",
         });
     }
 
@@ -474,7 +479,7 @@ export const refreshToken = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "NO_DEVICE_ID",
-                message: "Missing device identifier",
+                message: "Thiết bị không được nhận dạng.",
             });
         }
 
@@ -493,7 +498,7 @@ export const refreshToken = async (req, res) => {
             return res.status(401).json({
                 success: false,
                 code: "REUSED_TOKEN_DETECTED",
-                message: "Potential token reuse detected. All sessions revoked.",
+                message: "Phát hiện sử dụng lại token. Tất cả các phiên đăng nhập đã bị thu hồi.",
             });
         }
 
@@ -506,7 +511,7 @@ export const refreshToken = async (req, res) => {
             return res.status(401).json({
                 success: false,
                 code: "REUSED_TOKEN_DETECTED",
-                message: "Token reuse detected. All sessions revoked.",
+                message: "Phát hiện sử dụng lại token. Tất cả các phiên đăng nhập đã bị thu hồi.",
             });
         }
 
@@ -515,7 +520,7 @@ export const refreshToken = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 code: "USER_NOT_FOUND",
-                message: "User not found",
+                message: "Người dùng không tồn tại",
             });
         }
 
@@ -554,14 +559,14 @@ export const refreshToken = async (req, res) => {
         return res.status(200).json({
             success: true,
             code: "REFRESH_OK",
-            message: "Refresh successful",
+            message: "Phiên đã được làm mới thành công",
         });
     } catch (error) {
         console.error("Refresh error:", error);
-        return res.status(401).json({
+        res.status(500).json({
             success: false,
-            code: "INVALID_REFRESH",
-            message: "Invalid or expired refresh token",
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -573,7 +578,7 @@ export const logoutSession = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_SESSION_ID",
-                message: "Session id is required",
+                message: "Các trường bắt buộc bị thiếu",
             });
         }
 
@@ -582,7 +587,7 @@ export const logoutSession = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "NO_DEVICE_ID",
-                message: "Missing device identifier",
+                message: "Thiết bị không được nhận dạng.",
             });
         }
 
@@ -597,7 +602,7 @@ export const logoutSession = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "CANNOT_LOGOUT_CURRENT_SESSION",
-                message: "Cannot logout the current session here",
+                message: "Không thể đăng xuất phiên hiện tại",
             });
         }
 
@@ -606,23 +611,25 @@ export const logoutSession = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 code: "SESSION_NOT_FOUND",
-                message: "Session not found",
+                message: "Phien không tồn tại",
             });
         }
 
         await Token.deleteOne({ _id: sessionId });
 
+        io.to(req.user.userId).emit("sessionLoggedOut", { sessionId });
+
         return res.status(200).json({
             success: true,
             code: "LOGOUT_SESSION_OK",
-            message: "Session logged out successfully",
+            message: "Đăng xuất phiên thành công",
         });
     } catch (error) {
         console.error("logoutSession error:", error);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Something went wrong!",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };

@@ -14,7 +14,7 @@ export const singleFlightLock = (ttlSeconds = 5) => {
                 return res.status(429).json({
                     success: false,
                     code: "TOO_MANY_PARALLEL_REQUESTS",
-                    message: "Please wait for previous request to finish."
+                    message: "Quá nhiều yêu cầu song song. Vui lòng thử lại sau.",
                 });
             }
 

@@ -10,7 +10,7 @@ export const updateUserRole = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_FIELDS",
-                message: "Email and role are required",
+                message: "Các trường bắt buộc bị thiếu",
             });
         }
 
@@ -19,7 +19,7 @@ export const updateUserRole = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "INVALID_ROLE",
-                message: "Invalid role provided",
+                message: "Vai trò không hợp lệ",
             });
         }
 
@@ -38,12 +38,18 @@ export const updateUserRole = async (req, res) => {
         }
 
         await Token.deleteMany({ userId: updatedUser._id });
+
         io.to(updatedUser._id).emit("roleUpdated", { role });
+        io.to("Admin").emit("userRoleChanged", {
+            userId: updatedUser._id,
+            email: updatedUser.email,
+            role: role
+        });
 
         return res.status(200).json({
             success: true,
             code: "ROLE_UPDATED",
-            message: "User role updated successfully",
+            message: "Cập nhật vai trò thành công",
             data: {
                 id: updatedUser._id,
                 email: updatedUser.email,
@@ -51,11 +57,11 @@ export const updateUserRole = async (req, res) => {
             },
         });
     } catch (error) {
-        console.error("Error updating user role:", error);
-        return res.status(500).json({
+        console.error("Error fetching user stats:", error);
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Error updating user role",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -81,17 +87,13 @@ export const getUsers = async (req, res) => {
             query.role = role;
         }
 
-        const data = await User.find(query, "fullName email role _id createdAt avatar")
-            .sort({ [sortBy]: sortOrder, _id: sortOrder })
-            .skip(skip)
-            .limit(limit);
+        const data = await User.find(query, "fullName email role _id createdAt avatar").sort({ [sortBy]: sortOrder, _id: sortOrder }).skip(skip).limit(limit);
 
         const total = await User.countDocuments(query);
 
         return res.status(200).json({
             success: true,
             code: "USERS_FETCHED",
-            message: "Fetched users successfully",
             pagination: {
                 page,
                 limit,
@@ -102,11 +104,11 @@ export const getUsers = async (req, res) => {
             data,
         });
     } catch (error) {
-        console.error("Error fetching users:", error);
-        return res.status(500).json({
+        console.error("Error fetching user stats:", error);
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Something went wrong!",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -130,19 +132,25 @@ export const deleteUser = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_EMAIL",
-                message: "Email is required",
+                message: "Các trường bắt buộc bị thiếu",
             });
         }
 
 
         const deletedUser = await User.findOneAndDelete({ email }).lean();
+
         io.to(deletedUser._id).emit("accountDeleted", { deletedUser });
+        io.to("Admin").emit("userDeleted", {
+            userId: deletedUser._id,
+            email: deletedUser.email,
+            role: deletedUser.role
+        });
 
         if (!deletedUser) {
             return res.status(404).json({
                 success: false,
                 code: "USER_NOT_FOUND",
-                message: "User not found",
+                message: "Không tìm thấy người dùng",
             });
         }
 
@@ -157,11 +165,11 @@ export const deleteUser = async (req, res) => {
             },
         });
     } catch (error) {
-        console.error("Error deleting user:", error);
-        return res.status(500).json({
+        console.error("Error fetching user stats:", error);
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Error deleting user",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -203,7 +211,6 @@ export const getLogs = async (req, res) => {
         return res.status(200).json({
             success: true,
             code: "LOGS_FETCHED",
-            message: "Fetched logs successfully",
             pagination: {
                 page,
                 limit,
@@ -214,11 +221,11 @@ export const getLogs = async (req, res) => {
             data,
         });
     } catch (error) {
-        console.error("Error fetching logs:", error);
-        return res.status(500).json({
+        console.error("Error fetching user stats:", error);
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Something went wrong!",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -228,13 +235,15 @@ export const getUserStats = async (req, res) => {
         const totalUsers = await User.countDocuments();
         return res.status(200).json({
             success: true,
+            code: "USER_STATS_FETCHED",
             data: totalUsers
         });
-
-    } catch (err) {
-        return res.status(500).json({
+    } catch (error) {
+        console.error("Error fetching user stats:", error);
+        res.status(500).json({
             success: false,
-            message: err.message
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };

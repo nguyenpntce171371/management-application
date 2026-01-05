@@ -13,7 +13,7 @@ export const verify = (requiredRole) => {
                 return res.status(401).json({
                     success: false,
                     code: refreshToken ? "TOKEN_EXPIRED" : "NO_TOKEN",
-                    message: refreshToken ? "Access token expired." : "No token provided.",
+                    message: refreshToken ? "Phiên làm việc đã hết hạn." : "Không có token được cung cấp.",
                 });
             }
 
@@ -25,7 +25,7 @@ export const verify = (requiredRole) => {
                 return res.status(401).json({
                     success: false,
                     code: "DEVICE_ID_MISSING",
-                    message: "Device ID is missing.",
+                    message: "Thiết bị không được nhận dạng.",
                 });
             }
             const hashedDeviceId = crypto.createHash("sha256").update(deviceId).digest("hex");
@@ -39,7 +39,7 @@ export const verify = (requiredRole) => {
                 return res.status(401).json({
                     success: false,
                     code: "TOKEN_NOT_FOUND",
-                    message: "Token not registered.",
+                    message: "Phiên không tồn tại.",
                 });
             }
 
@@ -47,7 +47,7 @@ export const verify = (requiredRole) => {
                 return res.status(401).json({
                     success: false,
                     code: "INVALID_DEVICE",
-                    message: "Access denied: device mismatch.",
+                    message: "Truy cập bị từ chối: thiết bị không khớp.",
                 });
             }
 
@@ -55,7 +55,7 @@ export const verify = (requiredRole) => {
                 return res.status(401).json({
                     success: false,
                     code: "TOKEN_EXPIRED",
-                    message: "Access token expired.",
+                    message: "Phiên làm việc đã hết hạn.",
                 });
             }
 
@@ -66,7 +66,7 @@ export const verify = (requiredRole) => {
                 return res.status(403).json({
                     success: false,
                     code: "FORBIDDEN",
-                    message: "Insufficient permission.",
+                    message: "Quyền truy cập không đủ.",
                 });
             }
 
@@ -76,7 +76,7 @@ export const verify = (requiredRole) => {
                 return res.status(401).json({
                     success: false,
                     code: "TOKEN_EXPIRED",
-                    message: "Access token expired.",
+                    message: "Phiên làm việc đã hết hạn.",
                 });
             }
 
@@ -84,7 +84,7 @@ export const verify = (requiredRole) => {
                 return res.status(401).json({
                     success: false,
                     code: "INVALID_TOKEN",
-                    message: "Invalid token.",
+                    message: "Token không hợp lệ.",
                 });
             }
 
@@ -92,7 +92,7 @@ export const verify = (requiredRole) => {
             return res.status(500).json({
                 success: false,
                 code: "SERVER_ERROR",
-                message: "Internal server error.",
+                message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
             });
         }
     };

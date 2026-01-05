@@ -43,6 +43,7 @@ export const getRealEstateStats = async (req, res) => {
 
         return res.status(200).json({
             success: true,
+            code: "REAL_ESTATE_STATS",
             data: {
                 total: totalRealEstate,
                 topProvinces,
@@ -50,11 +51,12 @@ export const getRealEstateStats = async (req, res) => {
             }
         });
 
-    } catch (err) {
-        console.error(err);
+    } catch (error) {
+        console.error("Error fetching real estate statistics:", error);
         return res.status(500).json({
             success: false,
-            message: err.message
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -71,24 +73,34 @@ export const convertAddress = async (req, res) => {
                 new: newAddress
             }
         });
-
-    } catch (err) {
+    } catch (error) {
         console.error("Convert Address Error:", err);
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Failed to convert address"
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
 
 export const getAppraisals = async (req, res) => {
     try {
-        const { search = "", status = "all" } = req.query;
-        const filter = {};
-        if (status !== "all") filter.status = status;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
 
-        if (search) {
+        const search = req.query.search || "";
+        const status = req.query.status || "all";
+        const sortBy = req.query.sortBy || "createdDate";
+        const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+
+        const filter = {};
+
+        if (status !== "all") {
+            filter.status = status;
+        }
+
+        if (search.trim()) {
             filter.$or = [
                 { code: { $regex: search, $options: "i" } },
                 { customerName: { $regex: search, $options: "i" } },
@@ -96,13 +108,32 @@ export const getAppraisals = async (req, res) => {
             ];
         }
 
-        const appraisals = await Appraisal
-            .find(filter)
-            .select("code customerName propertyType appraiser createdDate completedDate status notes")
-            .sort({ createdDate: -1 });
-        res.json({ success: true, data: appraisals });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        const query = Appraisal.find(filter).select("code customerName propertyType appraiser createdDate completedDate status notes").sort({ [sortBy]: sortOrder, _id: sortOrder }).skip(skip).limit(limit);
+
+        const [data, total] = await Promise.all([
+            query,
+            Appraisal.countDocuments(filter)
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            code: "APPRAISALS_FETCHED",
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+                hasMore: page * limit < total
+            },
+            data
+        });
+    } catch (error) {
+        console.error("Error fetching appraisals:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+        });
     }
 };
 
@@ -131,13 +162,22 @@ export const createAppraisal = async (req, res) => {
         });
 
         await newAppraisal.save();
-        io.emit("appraisal:created", JSON.parse(JSON.stringify(newAppraisal)));
 
-        res.status(201).json({ success: true, data: newAppraisal });
+        io.to("Staff").emit("appraisalCreated", JSON.parse(JSON.stringify(newAppraisal)));
 
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: err.message });
+        return res.status(201).json({
+            success: true,
+            code: "APPRAISAL_CREATED",
+            message: "Tạo hồ sơ thành công",
+            data: newAppraisal
+        });
+    } catch (error) {
+        console.error("Error creating appraisal:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+        });
     }
 };
 
@@ -148,11 +188,24 @@ export const getAppraisalById = async (req, res) => {
         const appraisal = await Appraisal.findById(id);
 
         if (!appraisal)
-            return res.status(404).json({ success: false, message: "Not found" });
+            return res.status(404).json({
+                success: false,
+                code: "APPRAISAL_NOT_FOUND",
+                message: "Không tìm thấy hồ sơ"
+            });
 
-        res.json({ success: true, data: appraisal });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        return res.status(200).json({
+            success: true,
+            code: "REAL_ESTATE_STATS",
+            data: appraisal
+        });
+    } catch (error) {
+        console.error("Error fetching appraisal:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+        });
     }
 };
 
@@ -163,6 +216,7 @@ export const updateAppraisalInfo = async (req, res) => {
         if (!id) {
             return res.status(400).json({
                 success: false,
+                code: "MISSING_ID",
                 message: "Thiếu id để xác định hồ sơ cần cập nhật"
             });
         }
@@ -179,6 +233,7 @@ export const updateAppraisalInfo = async (req, res) => {
         if (Object.keys(updateData).length === 0) {
             return res.status(400).json({
                 success: false,
+                code: "NO_FIELDS_TO_UPDATE",
                 message: "Không có trường nào để cập nhật"
             });
         }
@@ -197,22 +252,25 @@ export const updateAppraisalInfo = async (req, res) => {
         if (!appraisal) {
             return res.status(404).json({
                 success: false,
+                code: "APPRAISAL_NOT_FOUND",
                 message: "Không tìm thấy hồ sơ"
             });
         }
 
-        io.emit("appraisal:updated", JSON.parse(JSON.stringify(appraisal)));
+        io.to("Staff").emit("appraisalUpdated", JSON.parse(JSON.stringify(appraisal)));
 
-        res.json({
+        return res.status(200).json({
             success: true,
+            code: "APPRAISAL_UPDATED",
+            message: "Cập nhật hồ sơ thành công",
             data: appraisal
         });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({
+    } catch (error) {
+        console.error("Error updating appraisal:", error);
+        return res.status(500).json({
             success: false,
-            message: err.message
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -229,11 +287,19 @@ export const deleteAppraisal = async (req, res) => {
         }
 
         await appraisal.deleteOne();
-        io.emit("appraisal:deleted", id);
-        res.json({ success: true, message: "Đã xóa hồ sơ" });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: err.message });
+        io.to("Staff").emit("appraisalDeleted", id);
+        return res.status(200).json({
+            success: true,
+            code: "APPRAISAL_DELETED",
+            data: id
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+        });
     }
 };
 
@@ -245,6 +311,7 @@ export const updateAppraisalAssets = async (req, res) => {
         if (!id) {
             return res.status(400).json({
                 success: false,
+                code: "MISSING_ID",
                 message: "Thiếu id để xác định hồ sơ cần cập nhật"
             });
         }
@@ -252,6 +319,7 @@ export const updateAppraisalAssets = async (req, res) => {
         if (!assets || !Array.isArray(assets) || assets.length === 0) {
             return res.status(400).json({
                 success: false,
+                code: "INVALID_ASSETS",
                 message: "Thiếu thông tin assets hoặc assets không đúng định dạng"
             });
         }
@@ -399,6 +467,7 @@ export const updateAppraisalAssets = async (req, res) => {
         if (!appraisal) {
             return res.status(404).json({
                 success: false,
+                code: "APPRAISAL_NOT_FOUND",
                 message: "Không tìm thấy hồ sơ"
             });
         }
@@ -473,16 +542,25 @@ export const updateAppraisalAssets = async (req, res) => {
 
         await Promise.all(realEstatePromises);
 
-        res.json({
+        io.to("Staff").emit("appraisalUpdated", JSON.parse(JSON.stringify(appraisal)));
+        for (const asset of assets) {
+            for (const comp of asset.selectedComparisons) {
+                io.to("User").emit("realEstateUpdated", JSON.parse(JSON.stringify(comp)));
+            }
+        }
+
+        return res.status(200).json({
             success: true,
+            code: "APPRAISAL_ASSETS_UPDATED",
+            message: "Cập nhật tài sản hồ sơ thành công",
             data: appraisal
         });
-
-    } catch (err) {
-        console.error(err);
+    } catch (error) {
+        console.error(error);
         res.status(500).json({
             success: false,
-            message: err.message
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -558,7 +636,7 @@ export const getNearbyRealEstate = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_PARAMS",
-                message: "Province, district, ward, and street are required"
+                message: "Thiếu tham số địa chỉ cần thiết"
             });
         }
 
@@ -606,7 +684,7 @@ export const getNearbyRealEstate = async (req, res) => {
         return res.status(200).json({
             success: true,
             code: "NEARBY_REAL_ESTATE",
-            message: "Fetched nearby real estate successfully",
+            message: "Lấy bất động sản gần đây thành công",
             pagination: {
                 page: pageNum,
                 limit: limitNum,
@@ -616,12 +694,12 @@ export const getNearbyRealEstate = async (req, res) => {
             },
             data: processedData
         });
-    } catch (err) {
-        console.error("Nearby Real Estate Error:", err);
-        return res.status(500).json({
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
             success: false,
-            code: "DATABASE_ERROR",
-            message: "Failed to get nearby real estate"
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };

@@ -7,6 +7,7 @@ import axiosInstance from "../../services/axiosInstance";
 import { REAL_ESTATE_TYPES, REAL_ESTATE_LOCATIONS, REAL_ESTATE_STATUSES } from "../../config/realEstate";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PlusCircle, Search, SlidersHorizontal, Grid3x3, List, MapPin, TrendingUp, X, Filter } from "lucide-react";
+import { useSocket } from "../../context/SocketContext";
 
 function RealEstate() {
     const navigate = useNavigate();
@@ -18,7 +19,7 @@ function RealEstate() {
     const statusFromUrl = searchParams.get("status") || "all";
     const [page, setPage] = useState(pageFromUrl);
     const [searchTerm, setSearchTerm] = useState(searchFromUrl);
-    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchFromUrl);
+    const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
     const [selectedType, setSelectedType] = useState(typeFromUrl);
     const [selectedLocation, setSelectedLocation] = useState(locationFromUrl);
     const [selectedStatus, setSelectedStatus] = useState(statusFromUrl);
@@ -27,11 +28,13 @@ function RealEstate() {
     const [properties, setProperties] = useState([]);
     const [totalPages, setTotalPages] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
+    const [limit] = useState(21);
+    const socket = useSocket();
 
     useEffect(() => {
         setPage(pageFromUrl);
         setSearchTerm(searchFromUrl);
-        setDebouncedSearchTerm(searchFromUrl);
+        setDebouncedSearch(searchFromUrl);
         setSelectedType(typeFromUrl);
         setSelectedLocation(locationFromUrl);
         setSelectedStatus(statusFromUrl);
@@ -39,7 +42,7 @@ function RealEstate() {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            setDebouncedSearchTerm(searchTerm);
+            setDebouncedSearch(searchTerm);
             updateParams({ search: searchTerm, page: 1 });
         }, 400);
         return () => clearTimeout(timer);
@@ -49,8 +52,8 @@ function RealEstate() {
         const res = await axiosInstance.get("/api/real-estate", {
             params: {
                 page,
-                limit: 21,
-                search: debouncedSearchTerm,
+                limit,
+                search: debouncedSearch,
                 type: selectedType,
                 location: selectedLocation,
                 status: selectedStatus,
@@ -63,11 +66,51 @@ function RealEstate() {
         setProperties(newData);
         setTotalPages(pagination?.totalPages || 1);
         setTotalItems(pagination?.total || 0);
-    }, [page, debouncedSearchTerm, selectedType, selectedLocation, selectedStatus]);
+    }, [page, limit, debouncedSearch, selectedType, selectedLocation, selectedStatus]);
 
     useEffect(() => {
         fetchData();
-    }, [page, debouncedSearchTerm, selectedType, selectedLocation, selectedStatus]);
+    }, [fetchData]);
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const onCreated = () => {
+            fetchData();
+        };
+
+        const onDeleted = () => {
+            fetchData();
+        };
+
+        const onUpdated = (updated) => {
+            const updatedId = typeof updated === "string" ? updated : updated?._id;
+
+            setProperties(prev => {
+                const index = prev.findIndex(p => p._id === updatedId);
+                if (index === -1) return prev;
+
+                if (typeof updated === "object") {
+                    const next = [...prev];
+                    next[index] = updated;
+                    return next;
+                }
+
+                fetchData();
+                return prev;
+            });
+        };
+
+        socket.on("realEstateCreated", onCreated);
+        socket.on("realEstateDeleted", onDeleted);
+        socket.on("realEstateUpdated", onUpdated);
+
+        return () => {
+            socket.off("realEstateCreated", onCreated);
+            socket.off("realEstateDeleted", onDeleted);
+            socket.off("realEstateUpdated", onUpdated);
+        };
+    }, [socket, fetchData]);
 
     const updateParams = (newParams) => {
         const params = new URLSearchParams(searchParams);
@@ -171,7 +214,7 @@ function RealEstate() {
 
                 <div className={viewMode === "grid" ? styles.propertiesGrid : styles.propertiesList}>
                     {properties.map((property) => (
-                        <PropertyCard key={property._id} viewMode={viewMode} property={property} detailLink={`/staff/real-estate/${property._id}`} onDelete={true} onApprove={true} />
+                        <PropertyCard key={property._id} viewMode={viewMode} property={property} detailLink={`/user/real-estate/${property._id}`} onDelete={true} onApprove={true} />
                     ))}
                 </div>
 

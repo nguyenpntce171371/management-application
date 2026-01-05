@@ -11,7 +11,7 @@ export const changePassword = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_FIELDS",
-                message: "Email, old password and new password are required",
+                message: "Các trường bắt buộc bị thiếu",
             });
         }
 
@@ -19,7 +19,7 @@ export const changePassword = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "PASSWORD_MISMATCH",
-                message: "Password confirmation does not match",
+                message: "Mật khẩu xác nhận không khớp",
             });
         }
 
@@ -27,8 +27,8 @@ export const changePassword = async (req, res) => {
         if (!user) {
             return res.status(404).json({
                 success: false,
-                code: "USER_NOT_FOUND",
-                message: "User not found",
+                code: "INVALID_CREDENTIALS",
+                message: "Thông tin đăng nhập không hợp lệ",
             });
         }
 
@@ -36,25 +36,27 @@ export const changePassword = async (req, res) => {
         if (!isMatch) {
             return res.status(400).json({
                 success: false,
-                code: "INCORRECT_PASSWORD",
-                message: "Old password is incorrect",
+                code: "INVALID_CREDENTIALS",
+                message: "Thông tin đăng nhập không hợp lệ",
             });
         }
 
         await user.setPassword(newPassword);
         await user.save();
 
+        io.to(user._id).emit("passwordChanged", {});
+
         return res.status(200).json({
             success: true,
             code: "PASSWORD_CHANGED",
-            message: "Password changed successfully",
+            message: "Mật khẩu đã được thay đổi thành công",
         });
     } catch (error) {
         console.error("Change password error:", error);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Something went wrong while changing password",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -86,24 +88,20 @@ export const sendOtpForgot = async (req, res) => {
         user.otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
         await user.save();
 
-        await sendEmail(
-            email,
-            "Mã OTP khôi phục mật khẩu",
-            `Mã OTP của bạn là: ${otp}\nHiệu lực 5 phút.`
-        );
+        await sendEmail(email, "Mã OTP khôi phục mật khẩu", `Mã OTP của bạn là: ${otp}\nHiệu lực 5 phút.`);
 
         return res.json({
             success: true,
             code: "OTP_SENT",
-            message: "OTP sent",
+            message: "Đã gửi mã OTP đến email của bạn",
         });
 
     } catch (err) {
         console.error("sendOtpForgot error:", err);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Could not send OTP",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -116,7 +114,7 @@ export const verifyOTP = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_FIELDS",
-                message: "Email and OTP are required",
+                message: "Các trường bắt buộc bị thiếu",
             });
         }
 
@@ -125,7 +123,7 @@ export const verifyOTP = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 code: "USER_NOT_FOUND",
-                message: "User not found",
+                message: "Không tìm thấy người dùng",
             });
         }
 
@@ -134,29 +132,29 @@ export const verifyOTP = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "INVALID_OTP",
-                message: "Invalid OTP",
+                message: "Mã OTP không hợp lệ",
             });
         }
 
         if (user.otpExpiry < Date.now()) {
             return res.status(400).json({
                 success: false,
-                code: "OTP_EXPIRED",
-                message: "OTP has expired",
+                code: process.env.NODE_ENV === "development" ? "OTP_EXPIRED" : "INVALID_OTP",
+                message: process.env.NODE_ENV === "development" ? "OTP has expired" : "Mã OTP không hợp lệ",
             });
         }
 
         return res.status(200).json({
             success: true,
             code: "OTP_VERIFIED",
-            message: "OTP verified successfully",
+            message: "Mã OTP đã được xác minh thành công",
         });
     } catch (error) {
         console.error("Verify OTP error:", error);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Something went wrong while verifying OTP",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -168,7 +166,7 @@ export const resetPassword = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_FIELDS",
-                message: "All fields are required",
+                message: "Các trường bắt buộc bị thiếu",
             });
         }
 
@@ -176,7 +174,7 @@ export const resetPassword = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "PASSWORD_MISMATCH",
-                message: "Password confirmation does not match",
+                message: "Mật khẩu xác nhận không khớp",
             });
         }
 
@@ -185,7 +183,7 @@ export const resetPassword = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 code: "USER_NOT_FOUND",
-                message: "User not found",
+                message: "Không tìm thấy người dùng",
             });
         }
         const hashedInput = crypto.createHash("sha256").update(otp).digest("hex");
@@ -193,15 +191,15 @@ export const resetPassword = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "INVALID_OTP",
-                message: "Invalid OTP",
+                message: "Mã OTP không hợp lệ",
             });
         }
 
         if (user.otpExpiry < Date.now()) {
             return res.status(400).json({
                 success: false,
-                code: "OTP_EXPIRED",
-                message: "OTP has expired",
+                code: process.env.NODE_ENV === "development" ? "OTP_EXPIRED" : "INVALID_OTP",
+                message: process.env.NODE_ENV === "development" ? "OTP has expired" : "Mã OTP không hợp lệ",
             });
         }
 
@@ -210,17 +208,19 @@ export const resetPassword = async (req, res) => {
         user.otpExpiry = undefined;
         await user.save();
 
+        io.to(user._id).emit("passwordChanged", {});
+
         return res.status(200).json({
             success: true,
             code: "PASSWORD_RESET",
-            message: "Password reset successful",
+            message: "Đặt lại mật khẩu thành công",
         });
     } catch (error) {
         console.error("Reset password error:", error);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Something went wrong while resetting password",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };

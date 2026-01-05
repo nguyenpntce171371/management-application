@@ -48,6 +48,16 @@ function AppRouter() {
                         <UserPage />
                     </ProtectedRoute>
                 } />
+                <Route path="/user/real-estate" element={
+                    <ProtectedRoute role="User">
+                        <RealEstate />
+                    </ProtectedRoute>
+                } />
+                <Route path="/user/real-estate/:id" element={
+                    <ProtectedRoute role="User">
+                        <RealEstateDetail />
+                    </ProtectedRoute>
+                } />
                 <Route path="/user/add-real-estate" element={
                     <ProtectedRoute role="User">
                         <AddRealEstate />
@@ -63,18 +73,8 @@ function AppRouter() {
                         <StaffPage />
                     </ProtectedRoute>
                 } />
-                <Route path="/staff/real-estate" element={
-                    <ProtectedRoute role="Staff">
-                        <RealEstate />
-                    </ProtectedRoute>
-                } />
-                <Route path="/staff/real-estate/:id" element={
-                    <ProtectedRoute role="Staff">
-                        <RealEstateDetail />
-                    </ProtectedRoute>
-                } />
                 <Route path="/staff/property-valuation" element={
-                    <ProtectedRoute role="staff">
+                    <ProtectedRoute role="Staff">
                         <PropertyValuation />
                     </ProtectedRoute>
                 } />

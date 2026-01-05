@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import RealEstate from "../models/RealEstate.js";
 import { io } from "../index.js";
 import { createImageFingerprint, uploadMultipleImagesToOCI, deleteMultipleImagesFromOCI, generateReadPAR } from "../services/oci.service.js";
@@ -59,7 +58,7 @@ export const getUser = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 code: "USER_NOT_FOUND",
-                message: "User not found"
+                message: "Không tìm thấy người dùng"
             });
         }
 
@@ -72,7 +71,6 @@ export const getUser = async (req, res) => {
         return res.status(200).json({
             success: true,
             code: "USER_FETCHED",
-            message: "User fetched successfully",
             data: {
                 id: user.userId,
                 email: user.email,
@@ -87,7 +85,7 @@ export const getUser = async (req, res) => {
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Something went wrong while fetching user info"
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -126,13 +124,15 @@ export const updateUserProfile = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 code: "NO_CHANGES",
-                message: "No changes detected",
+                message: "Không có thay đổi nào được thực hiện",
                 data: user
             });
         }
 
         Object.assign(user, updateData);
         await user.save();
+
+        io.to(user._id).emit("profileUpdated", user);
 
         let avatarUrl = user.avatar;
 
@@ -143,7 +143,7 @@ export const updateUserProfile = async (req, res) => {
         return res.status(200).json({
             success: true,
             code: "USER_UPDATED",
-            message: "Profile updated successfully",
+            message: "Cập nhật hồ sơ người dùng thành công",
             data: {
                 id: user._id,
                 fullName: user.fullName,
@@ -158,7 +158,7 @@ export const updateUserProfile = async (req, res) => {
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Failed to update profile"
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -171,7 +171,7 @@ export const deleteUserAvatar = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 code: "USER_NOT_FOUND",
-                message: "User not found"
+                message: "Không tìm thấy người dùng"
             });
         }
 
@@ -179,7 +179,7 @@ export const deleteUserAvatar = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "NO_AVATAR",
-                message: "User does not have an avatar to delete"
+                message: "Không có avatar để xóa"
             });
         }
 
@@ -193,10 +193,12 @@ export const deleteUserAvatar = async (req, res) => {
         user.avatar = null;
         await user.save();
 
+        io.to(user._id).emit("profileUpdated", user);
+
         return res.status(200).json({
             success: true,
             code: "AVATAR_DELETED",
-            message: "Avatar deleted successfully",
+            message: "Xóa avatar thành công",
             data: {
                 id: user._id,
                 fullName: user.fullName,
@@ -212,7 +214,7 @@ export const deleteUserAvatar = async (req, res) => {
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Failed to delete avatar"
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -286,7 +288,6 @@ export const getRealEstateData = async (req, res) => {
         return res.status(200).json({
             success: true,
             code: "REAL_ESTATE_LIST",
-            message: "Fetched real estate data successfully",
             pagination: {
                 page,
                 limit,
@@ -297,16 +298,14 @@ export const getRealEstateData = async (req, res) => {
             data: processedData
         });
     } catch (error) {
-        console.error("Database Error:", error);
+        console.error("Get Real Estate Error:", error);
         return res.status(500).json({
             success: false,
-            code: "DATABASE_ERROR",
-            message: "Failed to get real estate data",
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
-
-const detailCache = new NodeCache({ stdTTL: 300, checkperiod: 120 });
 
 export const getRealEstateById = async (req, res) => {
     try {
@@ -316,7 +315,7 @@ export const getRealEstateById = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 code: "REAL_ESTATE_NOT_FOUND",
-                message: "Real estate not found",
+                message: "Không tìm thấy bất động sản",
             });
         }
 
@@ -334,15 +333,14 @@ export const getRealEstateById = async (req, res) => {
         return res.status(200).json({
             success: true,
             code: "REAL_ESTATE_FOUND",
-            message: "Fetched real estate successfully",
             data: processedItem,
         });
     } catch (error) {
-        console.error("Database Error:", error);
+        console.error("Get Real Estate Error:", error);
         return res.status(500).json({
             success: false,
-            code: "DATABASE_ERROR",
-            message: "Failed to get real estate data",
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -352,20 +350,12 @@ export const deleteRealEstateById = async (req, res) => {
         const { id } = req.params;
         const currentUser = req.user;
 
-        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({
-                success: false,
-                code: "INVALID_ID",
-                message: "Invalid real estate ID",
-            });
-        }
-
         const item = await RealEstate.findById(id).lean();
         if (!item) {
             return res.status(404).json({
                 success: false,
                 code: "REAL_ESTATE_NOT_FOUND",
-                message: "Real estate not found",
+                message: "Không tìm thấy bất động sản",
             });
         }
 
@@ -373,27 +363,27 @@ export const deleteRealEstateById = async (req, res) => {
             return res.status(403).json({
                 success: false,
                 code: "FORBIDDEN_IDOR",
-                message: "You are not allowed to delete real estate you do not own",
+                message: "Không được phép xóa bất động sản không thuộc sở hữu của bạn",
             });
         }
 
         await Promise.all([item.images?.length ? deleteMultipleImagesFromOCI(item.images) : Promise.resolve(), RealEstate.deleteOne({ _id: id })]);
 
-        io.emit("real_estate:deleted", { id });
+        io.to("User").emit("realEstateDeleted", { id });
 
         return res.status(200).json({
             success: true,
             code: "REAL_ESTATE_DELETED",
-            message: "Real estate has been deleted successfully",
+            message: "Xóa bất động sản thành công",
             data: { id },
         });
 
     } catch (error) {
-        console.error("Database Error:", error);
+        console.error("Delete Real Estate Error:", error);
         return res.status(500).json({
             success: false,
-            code: "DATABASE_ERROR",
-            message: "Failed to delete real estate",
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -436,7 +426,7 @@ export const createRealEstate = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "VALIDATION_ERROR",
-                message: validationErrors.join(", "),
+                message: processing.env.NODE_ENV === "development" ? `Validation errors: ${validationErrors.join(", ")}` : "Các trường bắt buộc bị thiếu",
             });
         }
 
@@ -445,7 +435,7 @@ export const createRealEstate = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "VALIDATION_ERROR",
-                message: "Invalid phone number format (10-11 digits required)",
+                message: "Số điện thoại không hợp lệ",
             });
         }
 
@@ -456,7 +446,7 @@ export const createRealEstate = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "VALIDATION_ERROR",
-                message: "Length and width must be positive numbers",
+                message: "Kich thước dài và rộng không hợp lệ",
             });
         }
 
@@ -466,7 +456,7 @@ export const createRealEstate = async (req, res) => {
                 return res.status(400).json({
                     success: false,
                     code: "VALIDATION_ERROR",
-                    message: "Bedrooms must be a non-negative number",
+                    message: "Số phòng ngủ không hợp lệ",
                 });
             }
         }
@@ -477,7 +467,7 @@ export const createRealEstate = async (req, res) => {
                 return res.status(400).json({
                     success: false,
                     code: "VALIDATION_ERROR",
-                    message: "Bathrooms must be a non-negative number",
+                    message: "Số phòng tắm không hợp lệ",
                 });
             }
         }
@@ -488,7 +478,7 @@ export const createRealEstate = async (req, res) => {
                 return res.status(400).json({
                     success: false,
                     code: "VALIDATION_ERROR",
-                    message: "Latitude must be between -90 and 90",
+                    message: "Tọa độ không hợp lệ",
                 });
             }
         }
@@ -499,7 +489,7 @@ export const createRealEstate = async (req, res) => {
                 return res.status(400).json({
                     success: false,
                     code: "VALIDATION_ERROR",
-                    message: "Longitude must be between -180 and 180",
+                    message: "Tọa độ không hợp lệ",
                 });
             }
         }
@@ -514,8 +504,8 @@ export const createRealEstate = async (req, res) => {
                     await cleanupLocks(fpLocks);
                     return res.status(400).json({
                         success: false,
-                        code: "FINGERPRINT_ERROR",
-                        message: `Failed to create fingerprint for image: ${req.files[i].originalname}`,
+                        code: process.env.NODE_ENV === "development" ? "FINGERPRINT_ERROR" : "UPLOAD_ERROR",
+                        message: process.env.NODE_ENV === "development" ? `Không thể tạo dấu vân tay hình ảnh cho: ${req.files[i].originalname}` : "Không thể tải hình ảnh lên",
                     });
                 }
 
@@ -524,8 +514,8 @@ export const createRealEstate = async (req, res) => {
                     await cleanupLocks(fpLocks);
                     return res.status(400).json({
                         success: false,
-                        code: "DUPLICATE_IMAGE",
-                        message: `Image "${req.files[i].originalname}" already exists in another listing`,
+                        code: process.env.NODE_ENV === "development" ? "DUPLICATE_IMAGE" : "UPLOAD_ERROR",
+                        message: process.env.NODE_ENV === "development" ? `Hình ảnh trùng lặp được phát hiện: ${req.files[i].originalname}` : "Không thể tải hình ảnh lên",
                     });
                 }
 
@@ -555,8 +545,7 @@ export const createRealEstate = async (req, res) => {
                 return res.status(500).json({
                     success: false,
                     code: "UPLOAD_ERROR",
-                    message: "Failed to upload images to Object Storage",
-                    error: uploadError.message,
+                    message: process.env.NODE_ENV === "development" ? uploadError.message : "Không thể tải hình ảnh lên",
                 });
             }
         }
@@ -599,15 +588,14 @@ export const createRealEstate = async (req, res) => {
         });
 
         const created = await newRealEstate.save();
-        io.emit("real_estate:created", JSON.parse(JSON.stringify(created)));
+        io.to("User").emit("realEstateCreated", JSON.parse(JSON.stringify(created)));
 
         return res.status(201).json({
             success: true,
             code: "REAL_ESTATE_CREATED",
-            message: "Real estate created successfully",
+            message: "Tạo bất động sản thành công",
             data: created
         });
-
     } catch (error) {
         console.error("Create Real Estate Error:", error);
 
@@ -618,8 +606,8 @@ export const createRealEstate = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            code: "DATABASE_ERROR",
-            message: "Failed to create real estate listing"
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -634,15 +622,7 @@ export const modifyRealEstateById = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_ID",
-                message: "Real estate ID is required",
-            });
-        }
-
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({
-                success: false,
-                code: "INVALID_OBJECT_ID",
-                message: "Provided ID is not a valid ObjectId",
+                message: "ID bất động sản là bắt buộc",
             });
         }
 
@@ -651,7 +631,7 @@ export const modifyRealEstateById = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "INVALID_STATUS",
-                message: `Status must be one of: ${ALLOWED_STATUS.join(", ")}`,
+                message: `Trạng thái phải là một trong các giá trị: ${ALLOWED_STATUS.join(", ")}`,
             });
         }
 
@@ -661,7 +641,7 @@ export const modifyRealEstateById = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 code: "REAL_ESTATE_NOT_FOUND",
-                message: "Real estate not found",
+                message: "Không tìm thấy bất động sản",
             });
         }
 
@@ -669,7 +649,7 @@ export const modifyRealEstateById = async (req, res) => {
             return res.status(403).json({
                 success: false,
                 code: "FORBIDDEN_IDOR",
-                message: "You are not allowed to modify real estate you do not own",
+                message: "Không được phép cập nhật bất động sản không thuộc sở hữu của bạn",
             });
         }
 
@@ -688,21 +668,20 @@ export const modifyRealEstateById = async (req, res) => {
             { new: true }
         );
 
-        io.emit("real_estate:updated", JSON.parse(JSON.stringify(updated)));
+        io.to("User").emit("realEstateUpdated", JSON.parse(JSON.stringify(updated)));
 
         return res.status(200).json({
             success: true,
             code: "REAL_ESTATE_UPDATED",
-            message: "Real estate updated successfully",
+            message: "Cập nhật bất động sản thành công",
             data: updated,
         });
-
     } catch (error) {
-        console.error("Database Error:", error);
-        return res.status(500).json({
+        console.error(error);
+        res.status(500).json({
             success: false,
-            code: "DATABASE_ERROR",
-            message: "Failed to update real estate",
+            code: "SERVER_ERROR",
+            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };

@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { io } from "socket.io-client";
 import axiosInstance from "../../services/axiosInstance";
-import { Search, Trash2, Plus, FileText } from "lucide-react";
+import { Search, Trash2, Plus } from "lucide-react";
 import styles from "./PropertyValuation.module.css";
+import { useSocket } from "../../context/SocketContext";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 const statusConfig = {
     draft: { label: "Nháp", className: styles.statusDraft },
@@ -14,66 +15,77 @@ const statusConfig = {
 };
 
 function PropertyValuation() {
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const pageFromUrl = parseInt(searchParams.get("page") || "1");
+    const searchFromUrl = searchParams.get("search") || "";
+    const [page, setPage] = useState(pageFromUrl);
+    const [searchTerm, setSearchTerm] = useState(searchFromUrl);
+    const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
     const [appraisals, setAppraisals] = useState([]);
-    const [searchTerm, setSearchTerm] = useState("");
-    const socketRef = useRef(null);
+    const socket = useSocket();
     const debounceTimers = useRef({})
+    const [limit] = useState(10);
+    const [totalPages, setTotalPages] = useState(1);
 
     useEffect(() => {
-        socketRef.current = io(window.location.origin, {
-            path: "/socket.io/",
-            transports: ["websocket"],
+        setPage(pageFromUrl);
+        setSearchTerm(searchFromUrl);
+        setDebouncedSearch(searchFromUrl);
+    }, [pageFromUrl, searchFromUrl]);
+
+    const fetchAppraisals = useCallback(async () => {
+        const res = await axiosInstance.get("/api/staff/appraisals", {
+            params: {
+                page,
+                limit,
+                search: debouncedSearch,
+            },
         });
 
-        return () => {
-            socketRef.current.disconnect();
-            Object.values(debounceTimers.current).forEach(clearTimeout);
-        };
-    }, []);
+        setAppraisals(res.data.data);
+        setTotalPages(res.data.pagination.totalPages);
+    }, [page, limit, debouncedSearch]);
 
     useEffect(() => {
-        const socket = socketRef.current;
+        fetchAppraisals();
+    }, [fetchAppraisals]);
+
+    useEffect(() => {
         if (!socket) return;
 
-        socket.on("appraisal:created", (newAppraisal) => {
-            setAppraisals(prev => {
-                const exists = prev.some(a => a._id === newAppraisal._id);
-                if (exists) return prev;
-                return [newAppraisal, ...prev];
-            });
-        });
-        socket.on("appraisal:updated", (updatedAppraisal) => {
+        const onUpdated = (updated) => {
             setAppraisals(prev =>
-                prev.map(a => a._id === updatedAppraisal._id ? updatedAppraisal : a)
+                prev.map(a => a._id === updated._id ? updated : a)
             );
-        });
-        socket.on("appraisal:deleted", (deletedId) => {
-            setAppraisals(prev => prev.filter(a => a._id !== deletedId));
-        });
+        };
+
+        socket.on("appraisalCreated", fetchAppraisals);
+        socket.on("appraisalUpdated", onUpdated);
+        socket.on("appraisalDeleted", fetchAppraisals);
 
         return () => {
-            socket.off("appraisal:created");
-            socket.off("appraisal:updated");
-            socket.off("appraisal:deleted");
-            socket.off("appraisal:error");
+            socket.off("appraisalCreated", fetchAppraisals);
+            socket.off("appraisalUpdated", onUpdated);
+            socket.off("appraisalDeleted", fetchAppraisals);
         };
-    }, []);
+    }, [socket, page, debouncedSearch, limit]);
 
     useEffect(() => {
-        axiosInstance.get("/api/staff/appraisals").then(res => {
-            setAppraisals(res.data.data);
-        });
-    }, []);
+        const t = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+            updateParams({ search: searchTerm, page: 1 });
+        }, 400);
+
+        return () => clearTimeout(t);
+    }, [searchTerm]);
 
     const handleChange = useCallback((id, field, value) => {
         setAppraisals(prev =>
             prev.map(a => a._id === id ? { ...a, [field]: value } : a)
         );
 
-        const socket = socketRef.current;
-        if (!socket) {
-            return;
-        }
+        if (!socket) return;
 
         const timerKey = `${id}-${field}`;
         if (debounceTimers.current[timerKey]) {
@@ -84,7 +96,16 @@ function PropertyValuation() {
             socket.emit("appraisal:update", { id, field, value });
             delete debounceTimers.current[timerKey];
         }, 500);
-    }, []);
+    }, [socket]);
+
+    const updateParams = (newParams) => {
+        const params = new URLSearchParams(searchParams);
+        Object.entries(newParams).forEach(([key, value]) => {
+            if (value === "" || value === "all") params.delete(key);
+            else params.set(key, value);
+        });
+        navigate(`?${params.toString()}`);
+    };
 
     const handleCreate = async () => {
         await axiosInstance.post("/api/staff/appraisals", {
@@ -97,22 +118,16 @@ function PropertyValuation() {
         const appraisal = appraisals.find(a => a._id === id);
         if (!appraisal) return;
         if (!window.confirm(`Xác nhận xóa hồ sơ ${appraisal.code}?`)) return;
-        try {
-            setAppraisals(prev => prev.filter(a => a._id !== id));
-            await axiosInstance.delete(`/api/staff/appraisals/${id}`);
-        } catch (error) {
-            axiosInstance.get("/api/staff/appraisals").then(res => {
-                setAppraisals(res.data.data);
-            });
-        }
+        setAppraisals(prev => prev.filter(a => a._id !== id));
+        await axiosInstance.delete(`/api/staff/appraisals/${id}`);
     };
 
-    const filteredAppraisals = (appraisals || []).filter(appraisal => {
-        const matchesSearch =
-            appraisal.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (appraisal.customerName || "").toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesSearch;
-    });
+    const handlePageChange = (newPage) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            updateParams({ page: newPage });
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+    };
 
     return (
         <div className={styles.container}>
@@ -179,7 +194,7 @@ function PropertyValuation() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredAppraisals.map((appraisal) => (
+                            {appraisals.map((appraisal) => (
                                 <tr key={appraisal._id} className={styles.row}>
                                     <td className={styles.codeCell}>
                                         <Link to={`/staff/property-valuation/${appraisal._id}`} className={styles.code}>{appraisal.code}</Link>
@@ -219,6 +234,46 @@ function PropertyValuation() {
                     </table>
                 </div>
             </div>
+
+            {totalPages > 1 && (
+                <div className={styles.paginationContainer}>
+                    <button onClick={() => handlePageChange(page - 1)} disabled={page === 1} className={styles.pageNavButton}>
+                        Trước
+                    </button>
+
+                    <div className={styles.pageNumbers}>
+                        {(() => {
+                            const pages = [];
+                            const maxVisible = 5;
+                            let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
+                            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+                            if (endPage - startPage < maxVisible - 1) {
+                                startPage = Math.max(1, endPage - maxVisible + 1);
+                            }
+                            if (startPage > 1) {
+                                pages.push(<button key={1} onClick={() => handlePageChange(1)} className={styles.pageButton}>1</button>);
+                                if (startPage > 2)
+                                    pages.push(<span key="dots1" className={styles.pageDots}>...</span>);
+                            }
+                            for (let i = startPage; i <= endPage; i++) {
+                                pages.push(<button key={i} onClick={() => handlePageChange(i)} className={`${styles.pageButton} ${i === page ? styles.pageButtonActive : ""}`}>{i}</button>);
+                            }
+
+                            if (endPage < totalPages) {
+                                if (endPage < totalPages - 1)
+                                    pages.push(<span key="dots2" className={styles.pageDots}>...</span>);
+                                pages.push(<button key={totalPages} onClick={() => handlePageChange(totalPages)} className={styles.pageButton}>{totalPages}</button>);
+                            }
+
+                            return pages;
+                        })()}
+                    </div>
+
+                    <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages} className={styles.pageNavButton}>
+                        Sau
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
