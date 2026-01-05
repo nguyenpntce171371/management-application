@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
 import Log from "../models/Log.js";
 import User from "../models/User.js";
+import { io } from "../index.js";
 
 export const updateUserRole = async (req, res) => {
     try {
@@ -36,6 +36,9 @@ export const updateUserRole = async (req, res) => {
                 message: "User not found",
             });
         }
+
+        await Token.deleteMany({ userId: updatedUser._id });
+        io.to(updatedUser._id).emit("roleUpdated", { role });
 
         return res.status(200).json({
             success: true,
@@ -131,7 +134,9 @@ export const deleteUser = async (req, res) => {
             });
         }
 
+
         const deletedUser = await User.findOneAndDelete({ email }).lean();
+        io.to(deletedUser._id).emit("accountDeleted", { deletedUser });
 
         if (!deletedUser) {
             return res.status(404).json({

@@ -14,12 +14,7 @@ export function NotificationProvider({ children }) {
     const addNotification = useCallback((notification) => {
         const id = Math.random().toString(36).substring(2, 9);
         const newNotification = { ...notification, id };
-
         setNotifications((prev) => [...prev, newNotification]);
-
-        setTimeout(() => {
-            removeNotification(id);
-        }, 5000);
     }, [removeNotification]);
 
     addNotificationRef = addNotification;

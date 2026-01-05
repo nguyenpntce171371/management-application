@@ -1,9 +1,9 @@
 import express from "express";
 import { verify } from "../middlewares/authMiddleware.js";
 import { rateLimitRedis } from "../middlewares/rateLimitRedis.js";
-import { createRealEstate, deleteRealEstateById, getNearbyRealEstate, getRealEstateById, getRealEstateData, modifyRealEstateById } from "../controllers/user.controller.js";
+import { createRealEstate, deleteRealEstateById, getRealEstateById, getRealEstateData, modifyRealEstateById, updateUserProfile } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/upload.js";
-import { getRealEstateStats } from "../controllers/staff.controller.js";
+import { getRealEstateStats, getNearbyRealEstate } from "../controllers/staff.controller.js";
 
 const router = express.Router();
 

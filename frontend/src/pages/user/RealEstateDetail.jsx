@@ -6,6 +6,7 @@ import { useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import axiosInstance from "../../services/axiosInstance";
 import { Role } from "../../config/role";
+import { notify } from "../../context/NotificationContext";
 
 function RealEstateDetail() {
     const { id } = useParams();
@@ -52,8 +53,12 @@ function RealEstateDetail() {
 
     const handleSave = () => {
         axiosInstance.post(`/api/real-estate/${id}`, formData)
-            .then(() => { loadDetail(); })
-            .finally(() => { setIsEditMode(false); });
+            .then(() => notify({
+                type: "success",
+                title: "Thành công",
+                message: "Cập nhật trạng thái thành công!",
+            }))
+            .finally(() => setIsEditMode(false));
     };
 
     const handleCancel = () => {
@@ -64,8 +69,11 @@ function RealEstateDetail() {
     const handleApprove = async (action) => {
         formData.status = action;
         axiosInstance.post(`/api/real-estate/${id}`, formData)
-            .then(() => { loadDetail(); })
-            .finally(() => { setIsEditMode(false); });
+            .then(() => notify({
+                type: "success",
+                title: "Thành công",
+                message: "Cập nhật trạng thái thành công!",
+            }));
     };
 
     const formatDate = (date) => {
@@ -123,7 +131,7 @@ function RealEstateDetail() {
 
                 <div className={styles.gallery}>
                     <div className={styles.mainImage} onClick={() => setShowImageModal(true)}>
-                        <img src={property.images[selectedImage].startsWith("http") ? property.images[selectedImage] : property.imageUrls[selectedImage]} alt="Property" />
+                        <img src={property.images[selectedImage]} alt="Property" />
                         <div className={styles.imageOverlay}>
                             <span>
                                 Xem tất cả {property.images.length} ảnh
@@ -133,7 +141,7 @@ function RealEstateDetail() {
                     <div className={styles.thumbnails}>
                         {property.images.map((img, idx) => (
                             <div key={idx} className={`${styles.thumbnail} ${selectedImage === idx ? styles.thumbnailActive : ""}`} onClick={() => setSelectedImage(idx)}>
-                                <img src={img.startsWith("http") ? img : property.imageUrls[idx]} alt={`Thumbnail ${idx + 1}`} />
+                                <img src={img} alt={`Thumbnail ${idx + 1}`} />
                             </div>
                         ))}
                     </div>
@@ -409,11 +417,11 @@ function RealEstateDetail() {
                         <button className={styles.modalClose} onClick={() => setShowImageModal(false)}>
                             <X />
                         </button>
-                        <img src={property.images[selectedImage].startsWith("http") ? property.images[selectedImage] : property.imageUrls[selectedImage]} alt="Property" className={styles.modalImage} />
+                        <img src={property.images[selectedImage]} alt="Property" className={styles.modalImage} />
                         <div className={styles.modalThumbnails}>
                             {property.images.map((img, idx) => (
                                 <div key={idx} className={`${styles.modalThumbnail} ${selectedImage === idx ? styles.modalThumbnailActive : ""}`} onClick={() => setSelectedImage(idx)}>
-                                    <img src={img.startsWith("http") ? img : property.imageUrls[idx]} alt={`Thumbnail ${idx + 1}`} />
+                                    <img src={img} alt={`Thumbnail ${idx + 1}`} />
                                 </div>
                             ))}
                         </div>

@@ -4,6 +4,7 @@ import { io } from "../index.js";
 import { createImageFingerprint, uploadMultipleImagesToOCI, deleteMultipleImagesFromOCI, generateReadPAR } from "../services/oci.service.js";
 import { redis } from "../middlewares/rateLimitRedis.js";
 import NodeCache from "node-cache";
+import User from "../models/User.js";
 
 const imageUrlCache = new NodeCache({
     stdTTL: 1800,
@@ -41,69 +42,6 @@ const normalize = (str) => {
         .toLowerCase() || "";
 };
 
-const buildMatchPipeline = ({ street, ward, district, province, locationFilter }) => {
-    const streetSearch = normalize(street);
-    const wardSearch = normalize(ward);
-    const districtSearch = normalize(district);
-    const provinceSearch = normalize(province);
-
-    return [
-        {
-            $match: {
-                provinceSearch: { $exists: true, $nin: [null, ""] },
-                districtSearch: { $exists: true, $nin: [null, ""] },
-                wardSearch: { $exists: true, $nin: [null, ""] },
-                streetSearch: { $exists: true, $nin: [null, ""] },
-                ...locationFilter
-            }
-        },
-        {
-            $addFields: {
-                priority: {
-                    $switch: {
-                        branches: [
-                            {
-                                case: {
-                                    $and: [
-                                        { $eq: [{ $toLower: "$provinceSearch" }, provinceSearch] },
-                                        { $eq: [{ $toLower: "$districtSearch" }, districtSearch] },
-                                        { $eq: [{ $toLower: "$wardSearch" }, wardSearch] },
-                                        { $eq: [{ $toLower: "$streetSearch" }, streetSearch] }
-                                    ]
-                                },
-                                then: 2
-                            },
-                            {
-                                case: {
-                                    $and: [
-                                        { $eq: [{ $toLower: "$provinceSearch" }, provinceSearch] },
-                                        { $eq: [{ $toLower: "$districtSearch" }, districtSearch] },
-                                        { $eq: [{ $toLower: "$wardSearch" }, wardSearch] }
-                                    ]
-                                },
-                                then: 1
-                            }
-                        ],
-                        default: 0
-                    }
-                }
-            }
-        },
-        { $match: { priority: { $gt: 0 } } }
-    ];
-};
-
-const buildPipeline = ({ street, ward, district, province, page, limit, locationFilter }) => {
-    const skip = (page - 1) * limit;
-
-    return [
-        ...buildMatchPipeline({ street, ward, district, province, locationFilter }),
-        { $sort: { priority: -1, street: 1, listedAt: -1 } },
-        { $skip: skip },
-        { $limit: limit }
-    ];
-};
-
 async function cleanupLocks(locks) {
     if (!locks?.length) return;
 
@@ -116,14 +54,19 @@ async function cleanupLocks(locks) {
 
 export const getUser = async (req, res) => {
     try {
-        const user = req.user;
-
+        const user = await User.findById(req.user.userId).lean();
         if (!user) {
             return res.status(404).json({
                 success: false,
                 code: "USER_NOT_FOUND",
-                message: "User not found",
+                message: "User not found"
             });
+        }
+
+        let avatarUrl = user.avatar;
+
+        if (user.avatar && !user.avatar.startsWith("http")) {
+            avatarUrl = await getCachedImageUrl(user.avatar);
         }
 
         return res.status(200).json({
@@ -134,15 +77,142 @@ export const getUser = async (req, res) => {
                 id: user.userId,
                 email: user.email,
                 role: user.role,
-                avatar: user.avatar,
-            },
+                fullName: user.fullName,
+                address: user.address,
+                avatar: avatarUrl
+            }
         });
     } catch (error) {
         console.error("Get user error:", error);
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: "Something went wrong while fetching user info",
+            message: "Something went wrong while fetching user info"
+        });
+    }
+};
+
+export const updateUserProfile = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const user = await User.findById(userId);
+
+        const { fullName, address } = req.body;
+        const updateData = {};
+        let hasChange = false;
+
+        if (fullName !== undefined && fullName !== user.fullName) {
+            updateData.fullName = fullName;
+            hasChange = true;
+        }
+
+        if (address !== undefined && address !== user.address) {
+            updateData.address = address;
+            hasChange = true;
+        }
+
+        if (req.file) {
+            const [avatarPath] = await uploadMultipleImagesToOCI([req.file], "avatars");
+
+            if (user.avatar) {
+                await deleteMultipleImagesFromOCI([user.avatar]);
+            }
+
+            updateData.avatar = avatarPath;
+            hasChange = true;
+        }
+
+        if (!hasChange) {
+            return res.status(200).json({
+                success: true,
+                code: "NO_CHANGES",
+                message: "No changes detected",
+                data: user
+            });
+        }
+
+        Object.assign(user, updateData);
+        await user.save();
+
+        let avatarUrl = user.avatar;
+
+        if (user.avatar && !user.avatar.startsWith("http")) {
+            avatarUrl = await getCachedImageUrl(user.avatar);
+        }
+
+        return res.status(200).json({
+            success: true,
+            code: "USER_UPDATED",
+            message: "Profile updated successfully",
+            data: {
+                id: user._id,
+                fullName: user.fullName,
+                address: user.address,
+                email: user.email,
+                avatar: avatarUrl,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.error("Update User Profile Error:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: "Failed to update profile"
+        });
+    }
+};
+
+export const deleteUserAvatar = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                code: "USER_NOT_FOUND",
+                message: "User not found"
+            });
+        }
+
+        if (!user.avatar) {
+            return res.status(400).json({
+                success: false,
+                code: "NO_AVATAR",
+                message: "User does not have an avatar to delete"
+            });
+        }
+
+        const avatarPath = user.avatar;
+
+        if (avatarPath && !avatarPath.startsWith("http")) {
+            await deleteMultipleImagesFromOCI([avatarPath]);
+            imageUrlCache.del(avatarPath);
+        }
+
+        user.avatar = null;
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            code: "AVATAR_DELETED",
+            message: "Avatar deleted successfully",
+            data: {
+                id: user._id,
+                fullName: user.fullName,
+                address: user.address,
+                email: user.email,
+                avatar: null,
+                role: user.role
+            }
+        });
+
+    } catch (error) {
+        console.error("Delete Avatar Error:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: "Failed to delete avatar"
         });
     }
 };
@@ -196,17 +266,20 @@ export const getRealEstateData = async (req, res) => {
                 .lean()
         ]);
 
-        await Promise.all(
+        const processedData = await Promise.all(
             data.map(async (item) => {
                 if (item.images?.length) {
-                    const firstImage = item.images[0];
-                    if (firstImage && !firstImage.startsWith("http")) {
-                        const url = await getCachedImageUrl(firstImage);
-                        item.imageUrls = url ? [url] : [];
-                    } else {
-                        item.imageUrls = [firstImage];
-                    }
+                    const processedImages = await Promise.all(
+                        item.images.map(img =>
+                            img && !img.startsWith("http") ? getCachedImageUrl(img) : Promise.resolve(img)
+                        )
+                    );
+                    return {
+                        ...item,
+                        images: processedImages.filter(Boolean)
+                    };
                 }
+                return item;
             })
         );
 
@@ -221,7 +294,7 @@ export const getRealEstateData = async (req, res) => {
                 totalPages: Math.ceil(total / limit),
                 hasMore: page * limit < total
             },
-            data
+            data: processedData
         });
     } catch (error) {
         console.error("Database Error:", error);
@@ -239,40 +312,22 @@ export const getRealEstateById = async (req, res) => {
     try {
         const { id } = req.params;
 
-        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({
+        if (!id) {
+            return res.status(404).json({
                 success: false,
-                code: "INVALID_ID",
-                message: "Invalid real estate ID",
+                code: "REAL_ESTATE_NOT_FOUND",
+                message: "Real estate not found",
             });
         }
 
-        const cacheKey = `detail:${id}`;
-        let item = detailCache.get(cacheKey);
+        const item = await RealEstate.findById(id).lean();
 
-        if (!item) {
-            item = await RealEstate.findById(id).lean();
-
-            if (!item) {
-                return res.status(404).json({
-                    success: false,
-                    code: "REAL_ESTATE_NOT_FOUND",
-                    message: "Real estate not found",
-                });
-            }
-
-            detailCache.set(cacheKey, item);
-        }
-
-
+        const processedItem = { ...item };
         if (item.images?.length) {
-            item.imageUrls = await Promise.all(
-                item.images.map(img => {
-                    if (img && !img.startsWith("http")) {
-                        return getCachedImageUrl(img);
-                    }
-                    return img;
-                })
+            processedItem.images = await Promise.all(
+                item.images.map(img =>
+                    img && !img.startsWith("http") ? getCachedImageUrl(img) : Promise.resolve(img)
+                )
             );
         }
 
@@ -280,7 +335,7 @@ export const getRealEstateById = async (req, res) => {
             success: true,
             code: "REAL_ESTATE_FOUND",
             message: "Fetched real estate successfully",
-            data: item,
+            data: processedItem,
         });
     } catch (error) {
         console.error("Database Error:", error);
@@ -306,7 +361,6 @@ export const deleteRealEstateById = async (req, res) => {
         }
 
         const item = await RealEstate.findById(id).lean();
-
         if (!item) {
             return res.status(404).json({
                 success: false,
@@ -323,14 +377,7 @@ export const deleteRealEstateById = async (req, res) => {
             });
         }
 
-        await Promise.all([
-            item.images?.length ? deleteMultipleImagesFromOCI(item.images) : Promise.resolve(),
-            RealEstate.deleteOne({ _id: id }),
-            Promise.resolve().then(() => {
-                detailCache.del(`detail:${id}`);
-                item.images?.forEach(img => imageUrlCache.del(img));
-            })
-        ]);
+        await Promise.all([item.images?.length ? deleteMultipleImagesFromOCI(item.images) : Promise.resolve(), RealEstate.deleteOne({ _id: id })]);
 
         io.emit("real_estate:deleted", { id });
 
@@ -347,80 +394,6 @@ export const deleteRealEstateById = async (req, res) => {
             success: false,
             code: "DATABASE_ERROR",
             message: "Failed to delete real estate",
-        });
-    }
-};
-
-export const getNearbyRealEstate = async (req, res) => {
-    try {
-        const { street, ward, district, province, page = 1, limit = 12 } = req.query;
-
-        if (!province || !district || !ward || !street) {
-            return res.status(400).json({
-                success: false,
-                code: "MISSING_PARAMS",
-                message: "Province, district, ward, and street are required"
-            });
-        }
-
-        const locationFilter = {};
-        const pageNum = parseInt(page);
-        const limitNum = parseInt(limit);
-
-        const [countResult, data] = await Promise.all([
-            RealEstate.aggregate([
-                ...buildMatchPipeline({ street, ward, district, province, locationFilter }),
-                { $count: "total" }
-            ]),
-            RealEstate.aggregate([
-                ...buildPipeline({
-                    street,
-                    ward,
-                    district,
-                    province,
-                    page: pageNum,
-                    limit: limitNum,
-                    locationFilter
-                })
-            ])
-        ]);
-
-        const total = countResult.length > 0 ? countResult[0].total : 0;
-
-        await Promise.all(
-            data.map(async (item) => {
-                if (item.images?.length) {
-                    const firstImage = item.images[0];
-                    if (firstImage && !firstImage.startsWith("http")) {
-                        const url = await getCachedImageUrl(firstImage);
-                        item.imageUrls = url ? [url] : [];
-                    } else {
-                        item.imageUrls = [firstImage];
-                    }
-                }
-            })
-        );
-
-        return res.status(200).json({
-            success: true,
-            code: "NEARBY_REAL_ESTATE",
-            message: "Fetched nearby real estate successfully",
-            pagination: {
-                page: pageNum,
-                limit: limitNum,
-                total,
-                totalPages: Math.ceil(total / limitNum),
-                hasMore: pageNum * limitNum < total
-            },
-            data
-        });
-
-    } catch (err) {
-        console.error("Nearby Real Estate Error:", err);
-        return res.status(500).json({
-            success: false,
-            code: "DATABASE_ERROR",
-            message: "Failed to get nearby real estate"
         });
     }
 };
@@ -673,6 +646,15 @@ export const modifyRealEstateById = async (req, res) => {
             });
         }
 
+        const ALLOWED_STATUS = ["Chờ duyệt", "Đang bán", "Đã bán"];
+        if (updateData.status !== undefined && !ALLOWED_STATUS.includes(updateData.status)) {
+            return res.status(400).json({
+                success: false,
+                code: "INVALID_STATUS",
+                message: `Status must be one of: ${ALLOWED_STATUS.join(", ")}`,
+            });
+        }
+
         const item = await RealEstate.findById(id);
 
         if (!item) {
@@ -691,7 +673,7 @@ export const modifyRealEstateById = async (req, res) => {
             });
         }
 
-        const allowedFields = ["propertyType", "length", "width", "area", "usableArea", "floors", "bedrooms", "bathrooms", "direction", "price", "legalStatus", "address", "description", "images", "contacts", "location", "status"];
+        const allowedFields = ["propertyType", "length", "width", "area", "usableArea", "floors", "bedrooms", "bathrooms", "direction", "price", "legalStatus", "address", "description", "contacts", "location", "status"];
 
         const sanitizedData = {};
         for (const key of allowedFields) {

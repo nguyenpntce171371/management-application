@@ -4,17 +4,20 @@ import Layout from "./layouts/Layout";
 import { AuthProvider } from "./context/AuthContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import NotificationContainer from "./components/notification/NotificationContainer";
+import { SocketProvider } from "./context/SocketContext";
 
 const App = () => {
     return (
         <BrowserRouter>
             <AuthProvider>
-                <NotificationProvider>
-                    <NotificationContainer />
-                    <Layout>
-                        <AppRouter />
-                    </Layout>
-                </NotificationProvider>
+                <SocketProvider>
+                    <NotificationProvider>
+                        <NotificationContainer />
+                        <Layout>
+                            <AppRouter />
+                        </Layout>
+                    </NotificationProvider>
+                </SocketProvider>
             </AuthProvider>
         </BrowserRouter>
     );

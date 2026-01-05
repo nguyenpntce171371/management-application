@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { redis } from "../middlewares/rateLimitRedis.js";
 import { sendEmail } from "../services/email.service.js";
 import axios from "axios";
+import { io } from "../index.js";
 
 export const googleCallback = async (req, res) => {
     try {
@@ -385,6 +386,7 @@ export const login = async (req, res) => {
                 message: "Invalid credentials",
             });
         }
+
         const validPassword = await user.comparePassword(password);
         if (!validPassword) {
             return res.status(401).json({

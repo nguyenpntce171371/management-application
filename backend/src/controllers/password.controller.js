@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import { sendEmail } from "../services/email.service.js";
 import crypto from "crypto";
+import { io } from "../index.js";
 
 export const changePassword = async (req, res) => {
     try {
@@ -40,7 +41,7 @@ export const changePassword = async (req, res) => {
             });
         }
 
-        user.password = newPassword;
+        await user.setPassword(newPassword);
         await user.save();
 
         return res.status(200).json({

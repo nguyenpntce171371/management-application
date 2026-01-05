@@ -1,10 +1,24 @@
 import Appraisal from "../models/Appraisal.js";
+import { redis } from "../middlewares/rateLimitRedis.js";
 
 export const setupAppraisalSocketHandlers = (io, socket) => {
-
     socket.on("appraisal:update", async (data) => {
         try {
+            if (!["Admin", "Staff"].includes(socket.user.role)) {
+                return socket.emit("FORBIDDEN");
+            }
+
             const { id, field, value } = data;
+            if (!id || !field) return;
+
+            const deviceId = socket.deviceId;
+            const redisKey = `socket:update:${socket.user.userId}:${deviceId}:${id}:${field}`;
+
+            const allowed = await redis.set(redisKey, 1, "PX", 300, "NX");
+
+            if (!allowed) {
+                return;
+            }
 
             const allowedFields = [
                 "customerName",
@@ -44,19 +58,10 @@ export const setupAppraisalSocketHandlers = (io, socket) => {
                 });
             }
 
-            io.emit("appraisal:updated", JSON.parse(JSON.stringify(appraisal)));
-
+            io.to("Staff").emit("appraisal:updated", JSON.parse(JSON.stringify(appraisal)));
         } catch (error) {
             console.error("Socket update error:", error);
             socket.emit("appraisal:error", { message: error.message });
         }
-    });
-
-    socket.on("appraisal:subscribe", (appraisalId) => {
-        socket.join(`appraisal:${appraisalId}`);
-    });
-
-    socket.on("appraisal:unsubscribe", (appraisalId) => {
-        socket.leave(`appraisal:${appraisalId}`);
     });
 };

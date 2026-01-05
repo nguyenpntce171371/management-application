@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import styles from "./RealEstate.module.css";
 import PageHeader from "../../components/layout/PageHeader";
-import PropertyCard from "../../components/property/PropertyCard";
+import PropertyCard from "../../components/card/PropertyCard";
 import axiosInstance from "../../services/axiosInstance";
 import { REAL_ESTATE_TYPES, REAL_ESTATE_LOCATIONS, REAL_ESTATE_STATUSES } from "../../config/realEstate";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -171,7 +171,7 @@ function RealEstate() {
 
                 <div className={viewMode === "grid" ? styles.propertiesGrid : styles.propertiesList}>
                     {properties.map((property) => (
-                        <PropertyCard key={property._id} viewMode={viewMode} property={property} detailLink={`/staff/real-estate/${property._id}`} onDelete={true} />
+                        <PropertyCard key={property._id} viewMode={viewMode} property={property} detailLink={`/staff/real-estate/${property._id}`} onDelete={true} onApprove={true} />
                     ))}
                 </div>
 

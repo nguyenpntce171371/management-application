@@ -15,3 +15,12 @@ export const upload = multer({
         files: 20,
     },
 });
+
+export const uploadSingle = multer({
+    storage,
+    fileFilter,
+    limits: {
+        fileSize: OCI_CONFIG.MAX_FILE_SIZE,
+        files: 1,
+    },
+});

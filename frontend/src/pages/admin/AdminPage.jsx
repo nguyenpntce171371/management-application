@@ -4,7 +4,7 @@ import PageHeader from "../../components/layout/PageHeader";
 import styles from "./AdminPage.module.css";
 import PieChart from "../../components/chart/PieChart";
 import BarChart from "../../components/chart/BarChart";
-import PropertyCard from "../../components/property/PropertyCard";
+import PropertyCard from "../../components/card/PropertyCard";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axiosInstance from "../../services/axiosInstance";

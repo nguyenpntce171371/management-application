@@ -4,8 +4,14 @@ import styles from "./AddRealEstate.module.css";
 import PageHeader from "../../components/layout/PageHeader";
 import axiosInstance from "../../services/axiosInstance";
 import provinces from "../../data/vietnam-provinces.json";
+import { notify } from "../../context/NotificationContext";
+import { useNavigate } from "react-router-dom";
 
 function AddRealEstate() {
+    const Navigate = useNavigate();
+    const [images, setImages] = useState([]);
+    const [districts, setDistricts] = useState([]);
+    const [wards, setWards] = useState([]);
     const [formData, setFormData] = useState({
         propertyType: "",
         price: "",
@@ -26,10 +32,6 @@ function AddRealEstate() {
         name: "",
         phone: ""
     });
-
-    const [images, setImages] = useState([]);
-    const [districts, setDistricts] = useState([]);
-    const [wards, setWards] = useState([]);
 
     const handleProvinceChange = (e) => {
         const provinceName = e.target.value;
@@ -91,12 +93,18 @@ function AddRealEstate() {
             });
         }
 
-        const response = await axiosInstance.post("/api/real-estate", submitData, { headers: { "Content-Type": "multipart/form-data" } });
-
-        if (response.data.success) {
-            setFormData({ propertyType: "", price: "", length: "", width: "", usableArea: "", bedrooms: "", bathrooms: "", address: "", province: "", district: "", ward: "", street: "", description: "", lat: "", lng: "", name: "", phone: "" });
-            setImages([]);
-        }
+        const response = await axiosInstance
+            .post("/api/real-estate", submitData, { headers: { "Content-Type": "multipart/form-data" } })
+            .then(() => {
+                notify({
+                    type: "success",
+                    title: "Thành công",
+                    message: "Bất động sản đã được thêm thành công!",
+                });
+                setFormData({ propertyType: "", price: "", length: "", width: "", usableArea: "", bedrooms: "", bathrooms: "", address: "", province: "", district: "", ward: "", street: "", description: "", lat: "", lng: "", name: "", phone: "" });
+                setImages([]);
+                Navigate("/user/real-estate");
+            });
     };
 
     return (

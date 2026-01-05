@@ -196,6 +196,11 @@
     transition: color 0.2s ease;
 }
 
+.actionBtnApprove:hover {
+    background: #22c55e;
+    border-color: #22c55e;
+}
+
 .actionBtnDanger:hover {
     background: #ef4444;
     border-color: #ef4444;

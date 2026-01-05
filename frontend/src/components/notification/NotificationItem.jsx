@@ -7,22 +7,9 @@ function NotificationItem({ notification, onClose }) {
     const [progress, setProgress] = useState(100);
 
     useEffect(() => {
-        if (notification.type === "success") {
-            const startTime = Date.now();
-            const duration = 5000;
-
-            const interval = setInterval(() => {
-                const elapsed = Date.now() - startTime;
-                const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
-                setProgress(remaining);
-
-                if (remaining <= 0) {
-                    clearInterval(interval);
-                }
-            }, 16);
-
-            return () => clearInterval(interval);
-        }
+        if (notification.type !== "success") return;
+        const t = setTimeout(handleClose, 5000);
+        return () => clearTimeout(t);
     }, [notification.type]);
 
     const handleClose = () => {
@@ -64,10 +51,7 @@ function NotificationItem({ notification, onClose }) {
 
             {notification.type === "success" && (
                 <div className={styles.progressBar}>
-                    <div
-                        className={styles.progressFill}
-                        style={{ width: `${progress}%` }}
-                    ></div>
+                    <div className={styles.progressFill} />
                 </div>
             )}
         </div>

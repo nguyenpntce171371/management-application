@@ -486,3 +486,142 @@ export const updateAppraisalAssets = async (req, res) => {
         });
     }
 };
+
+const buildMatchPipeline = ({ street, ward, district, province, locationFilter }) => {
+    const streetSearch = normalize(street);
+    const wardSearch = normalize(ward);
+    const districtSearch = normalize(district);
+    const provinceSearch = normalize(province);
+
+    return [
+        {
+            $match: {
+                provinceSearch: { $exists: true, $nin: [null, ""] },
+                districtSearch: { $exists: true, $nin: [null, ""] },
+                wardSearch: { $exists: true, $nin: [null, ""] },
+                streetSearch: { $exists: true, $nin: [null, ""] },
+                ...locationFilter
+            }
+        },
+        {
+            $addFields: {
+                priority: {
+                    $switch: {
+                        branches: [
+                            {
+                                case: {
+                                    $and: [
+                                        { $eq: [{ $toLower: "$provinceSearch" }, provinceSearch] },
+                                        { $eq: [{ $toLower: "$districtSearch" }, districtSearch] },
+                                        { $eq: [{ $toLower: "$wardSearch" }, wardSearch] },
+                                        { $eq: [{ $toLower: "$streetSearch" }, streetSearch] }
+                                    ]
+                                },
+                                then: 2
+                            },
+                            {
+                                case: {
+                                    $and: [
+                                        { $eq: [{ $toLower: "$provinceSearch" }, provinceSearch] },
+                                        { $eq: [{ $toLower: "$districtSearch" }, districtSearch] },
+                                        { $eq: [{ $toLower: "$wardSearch" }, wardSearch] }
+                                    ]
+                                },
+                                then: 1
+                            }
+                        ],
+                        default: 0
+                    }
+                }
+            }
+        },
+        { $match: { priority: { $gt: 0 } } }
+    ];
+};
+
+const buildPipeline = ({ street, ward, district, province, page, limit, locationFilter }) => {
+    const skip = (page - 1) * limit;
+
+    return [
+        ...buildMatchPipeline({ street, ward, district, province, locationFilter }),
+        { $sort: { priority: -1, street: 1, listedAt: -1 } },
+        { $skip: skip },
+        { $limit: limit }
+    ];
+};
+
+export const getNearbyRealEstate = async (req, res) => {
+    try {
+        const { street, ward, district, province, page = 1, limit = 12 } = req.query;
+
+        if (!province || !district || !ward || !street) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_PARAMS",
+                message: "Province, district, ward, and street are required"
+            });
+        }
+
+        const locationFilter = {};
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+
+        const [countResult, data] = await Promise.all([
+            RealEstate.aggregate([
+                ...buildMatchPipeline({ street, ward, district, province, locationFilter }),
+                { $count: "total" }
+            ]),
+            RealEstate.aggregate([
+                ...buildPipeline({
+                    street,
+                    ward,
+                    district,
+                    province,
+                    page: pageNum,
+                    limit: limitNum,
+                    locationFilter
+                })
+            ])
+        ]);
+
+        const total = countResult.length > 0 ? countResult[0].total : 0;
+
+        const processedData = await Promise.all(
+            data.map(async (item) => {
+                if (item.images?.length) {
+                    const processedImages = await Promise.all(
+                        item.images.map(img =>
+                            img && !img.startsWith("http") ? getCachedImageUrl(img) : Promise.resolve(img)
+                        )
+                    );
+                    return {
+                        ...item,
+                        images: processedImages.filter(Boolean)
+                    };
+                }
+                return item;
+            })
+        );
+
+        return res.status(200).json({
+            success: true,
+            code: "NEARBY_REAL_ESTATE",
+            message: "Fetched nearby real estate successfully",
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total,
+                totalPages: Math.ceil(total / limitNum),
+                hasMore: pageNum * limitNum < total
+            },
+            data: processedData
+        });
+    } catch (err) {
+        console.error("Nearby Real Estate Error:", err);
+        return res.status(500).json({
+            success: false,
+            code: "DATABASE_ERROR",
+            message: "Failed to get nearby real estate"
+        });
+    }
+};

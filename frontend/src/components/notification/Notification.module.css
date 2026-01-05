@@ -11,7 +11,7 @@
     pointer-events: none;
 }
 
-.container > * {
+.container>* {
     pointer-events: auto;
 }
 
@@ -52,6 +52,7 @@
         transform: translateX(-120%);
         opacity: 0;
     }
+
     to {
         transform: translateX(0);
         opacity: 1;
@@ -67,6 +68,7 @@
         transform: translateX(0);
         opacity: 1;
     }
+
     to {
         transform: translateX(-120%);
         opacity: 0;
@@ -188,9 +190,19 @@
 
 .progressFill {
     height: 100%;
-    background: linear-gradient(90deg, #D4AF37 0%, #F4D03F 100%);
-    transition: width 0.1s linear;
-    box-shadow: 0 0 8px rgba(212, 175, 55, 0.6);
+    width: 100%;
+    background: linear-gradient(90deg, #D4AF37, #F4D03F);
+    animation: shrink 5s linear forwards;
+}
+
+@keyframes shrink {
+    from {
+        width: 100%;
+    }
+
+    to {
+        width: 0%;
+    }
 }
 
 @media (max-width: 768px) {
