@@ -1,28 +1,30 @@
 FROM node:22-alpine
 
-ARG NODE_ENV
+ARG NODE_ENV=development
 ARG CACHEBUST
+
+ENV NODE_ENV=${NODE_ENV}
+ENV HOST=0.0.0.0
+ENV PORT=5173
 
 WORKDIR /app
 
 COPY package*.json ./
 RUN npm install
 
-RUN echo "Cache bust: $CACHEBUST"
-
 COPY . .
+
+RUN echo "Cache bust: $CACHEBUST"
 
 RUN if [ "$NODE_ENV" = "production" ]; then \
       npm run build; \
     fi
 
-ENV HOST=0.0.0.0
-ENV PORT=5173
-EXPOSE 5173
-
-CMD ["sh", "-c", "rm -rf node_modules/.vite && \
-  if [ \"$NODE_ENV\" = \"production\" ]; then \
-    npm run preview -- --host --port 5173; \
-  else \
+CMD ["sh", "-c", "\
+  rm -rf node_modules/.vite && \
+  if [ \"$NODE_ENV\" = \"development\" ]; then \
     npm run dev -- --host; \
-  fi"]
+  else \
+    tail -f /dev/null; \
+  fi \
+"]

@@ -6,6 +6,7 @@ import { redis } from "../middlewares/rateLimitRedis.js";
 import { sendEmail } from "../services/email.service.js";
 import axios from "axios";
 import { io } from "../index.js";
+import { OAuth2Client } from "google-auth-library";
 
 export const googleCallback = async (req, res) => {
     try {
@@ -40,7 +41,22 @@ export const googleCallback = async (req, res) => {
             });
         }
 
-        const payload = JSON.parse(Buffer.from(id_token.split(".")[1], "base64").toString());
+        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+        const ticket = await client.verifyIdToken({
+            idToken: id_token,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+
+        if (!payload.email_verified) {
+            return res.status(400).json({
+                success: false,
+                code: "EMAIL_NOT_VERIFIED",
+                message: "Email Google chưa được xác minh",
+            });
+        }
 
         const email = payload.email;
         const fullName = payload.name;
@@ -128,7 +144,7 @@ export const googleCallback = async (req, res) => {
 export const googleLogin = (req, res) => {
     const redirectUri = encodeURIComponent(`${process.env.DOMAIN}/api/auth/google/callback`);
     const scope = encodeURIComponent("openid email profile");
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
     return res.redirect(url);
 };
 
