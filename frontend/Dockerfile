@@ -17,6 +17,7 @@ COPY . .
 RUN echo "Cache bust: $CACHEBUST"
 
 RUN if [ "$NODE_ENV" = "production" ]; then \
+      rm -rf dist && \
       npm run build; \
     fi
 

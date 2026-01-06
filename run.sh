@@ -87,6 +87,14 @@ else
 fi
 
 print_step "Building Images"
+if [ "$NODE_ENV" = "production" ]; then
+    print_info "Cleaning old frontend dist..."
+    cd ./frontend
+    rm -rf dist
+    print_info "Building frontend for production..."
+    npm run build
+    cd -
+fi
 if sudo CACHEBUST=$CACHEBUST docker compose -f $COMPOSE_FILE build; then
     print_success "Images built successfully"
 else
