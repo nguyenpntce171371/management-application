@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import styles from "./Sidebar.module.css";
-import { Building2, LayoutDashboard, Logs, PlusCircle, Users, Lock, SlidersHorizontal, Search } from "lucide-react";
+import { Building2, LayoutDashboard, Logs, PlusCircle, Users, Search } from "lucide-react";
 
 function AdminSidebar() {
     const location = useLocation();

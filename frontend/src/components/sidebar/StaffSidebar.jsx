@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import styles from "./Sidebar.module.css";
-import { Building2, LayoutDashboard, PlusCircle, Lock, SlidersHorizontal } from "lucide-react";
+import { Building2, LayoutDashboard, PlusCircle, Search } from "lucide-react";
 
 function StaffSidebar() {
     const location = useLocation();
@@ -9,7 +9,7 @@ function StaffSidebar() {
         { id: "dashboard", label: "Tổng quan", icon: LayoutDashboard, route: "/staff" },
         { id: "real-estate", label: "Bất động sản", icon: Building2, route: "/user/real-estate" },
         { id: "add-real-estate", label: "Thêm mới", icon: PlusCircle, route: "/user/add-real-estate" },
-        { id: "property-valuation", label: "Thẩm định giá", icon: Search, route: "/staff/property-valuation"},
+        { id: "property-valuation", label: "Thẩm định giá", icon: Search, route: "/staff/property-valuation" },
     ];
 
     return (

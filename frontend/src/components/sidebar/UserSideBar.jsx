@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import styles from "./Sidebar.module.css";
-import { LayoutDashboard, PlusCircle } from "lucide-react";
+import { Building2, LayoutDashboard, PlusCircle } from "lucide-react";
 
 function UserSidebar() {
     const location = useLocation();
