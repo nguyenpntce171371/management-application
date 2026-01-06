@@ -66,26 +66,28 @@ services:
     volumes:
       - ./frontend/dist:/workspace/source:ro
       - frontend_dist:/workspace/output
-    command: sh -c "
-      echo '=== Frontend Deployment Started ===' && 
-      echo 'Source files:' && 
-      ls -lah /workspace/source/assets/ && 
-      echo '' && 
-      echo 'Cleaning output directory completely...' && 
-      rm -rf /workspace/output/* && 
-      rm -rf /workspace/output/.* 2>/dev/null || true && 
-      echo 'Output cleaned!' && 
-      echo '' && 
-      echo 'Copying fresh files...' && 
-      cp -r /workspace/source/* /workspace/output/ && 
-      echo '' && 
-      echo '=== Deployment Complete ===' && 
-      echo 'Deployed files:' && 
-      ls -lah /workspace/output/assets/ && 
-      echo '' && 
-      echo 'Keeping container alive...' && 
-      tail -f /dev/null
-    "
+    command:
+      - sh
+      - -c
+      - |
+        echo '=== Frontend Deployment Started ==='
+        echo 'Source files:'
+        ls -lah /workspace/source/assets/
+        echo ''
+        echo 'Cleaning output directory completely...'
+        rm -rf /workspace/output/*
+        rm -rf /workspace/output/.* 2>/dev/null || true
+        echo 'Output cleaned!'
+        echo ''
+        echo 'Copying fresh files...'
+        cp -r /workspace/source/* /workspace/output/
+        echo ''
+        echo '=== Deployment Complete ==='
+        echo 'Deployed files:'
+        ls -lah /workspace/output/assets/
+        echo ''
+        echo 'Keeping container alive...'
+        tail -f /dev/null
 
   caddy:
     image: caddy:2-alpine
