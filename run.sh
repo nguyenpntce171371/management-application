@@ -137,9 +137,6 @@ print_info "Removing dangling images..."
 sudo docker image prune -f
 print_info "Removing stopped containers..."
 sudo docker container prune -f
-print_info "Removing unused networks..."
-sudo docker network prune -f
-print_success "Cleanup completed"
 
 print_step "New Docker Disk Usage"
 sudo docker system df
