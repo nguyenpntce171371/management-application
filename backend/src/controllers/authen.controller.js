@@ -25,7 +25,7 @@ export const googleCallback = async (req, res) => {
                 code,
                 client_id: process.env.GOOGLE_CLIENT_ID,
                 client_secret: process.env.GOOGLE_CLIENT_SECRET,
-                redirect_uri: `${process.env.DOMAIN}/api/auth/google/callback`,
+                redirect_uri: `https://${process.env.DOMAIN}/api/auth/google/callback`,
                 grant_type: "authorization_code",
             },
             { headers: { "Content-Type": "application/json" } }
@@ -142,7 +142,7 @@ export const googleCallback = async (req, res) => {
 };
 
 export const googleLogin = (req, res) => {
-    const redirectUri = encodeURIComponent(`${process.env.DOMAIN}/api/auth/google/callback`);
+    const redirectUri = encodeURIComponent(`https://${process.env.DOMAIN}/api/auth/google/callback`);
     const scope = encodeURIComponent("openid email profile");
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
     return res.redirect(url);
