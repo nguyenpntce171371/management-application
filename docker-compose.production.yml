@@ -59,18 +59,33 @@ services:
       - "127.0.0.1:3000:3000"
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - BUILD_MODE=production
-        - CACHEBUST=${CACHEBUST:-1}
+    image: alpine:latest
     container_name: frontend
     restart: "no"
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
+    working_dir: /workspace
     volumes:
-      - frontend_dist:/app/dist
+      - ./frontend/dist:/workspace/source:ro
+      - frontend_dist:/workspace/output
+    command: sh -c "
+      echo '=== Frontend Deployment Started ===' && 
+      echo 'Source files:' && 
+      ls -lah /workspace/source/assets/ && 
+      echo '' && 
+      echo 'Cleaning output directory completely...' && 
+      rm -rf /workspace/output/* && 
+      rm -rf /workspace/output/.* 2>/dev/null || true && 
+      echo 'Output cleaned!' && 
+      echo '' && 
+      echo 'Copying fresh files...' && 
+      cp -r /workspace/source/* /workspace/output/ && 
+      echo '' && 
+      echo '=== Deployment Complete ===' && 
+      echo 'Deployed files:' && 
+      ls -lah /workspace/output/assets/ && 
+      echo '' && 
+      echo 'Keeping container alive...' && 
+      tail -f /dev/null
+    "
 
   caddy:
     image: caddy:2-alpine
@@ -90,6 +105,7 @@ services:
       - caddy_config:/config
     depends_on:
       - backend
+      - frontend
 
 volumes:
   mongo_production_data:

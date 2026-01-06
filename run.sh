@@ -1,7 +1,5 @@
 #!/bin/bash
-
 set -e
-
 RED="\033[0;31m"
 GREEN="\033[0;32m"
 YELLOW="\033[1;33m"
@@ -49,6 +47,47 @@ print_info "NODE_ENV: ${NODE_ENV:-development}"
 print_info "Compose file: $COMPOSE_FILE"
 print_info "Timestamp: $(date "+%Y-%m-%d %H:%M:%S")"
 
+if [ "$NODE_ENV" = "production" ]; then
+    print_step "Building Frontend for Production"
+    cd ./frontend
+    
+    print_info "Cleaning ALL caches and old build..."
+    rm -rf dist
+    rm -rf node_modules
+    rm -rf .vite
+    rm -rf node_modules/.cache
+    
+    print_info "Installing fresh dependencies (including devDependencies)..."
+    if NODE_ENV=development npm install; then
+        print_success "Dependencies installed"
+    else
+        print_error "Failed to install dependencies"
+        exit 1
+    fi
+    
+    print_info "Building fresh production bundle..."
+    if npm run build; then
+        print_success "Frontend build completed!"
+        if [ -d "dist" ] && [ -f "dist/index.html" ]; then
+            print_info "Built files:"
+            ls -lah dist/assets/ | grep "index-" || ls -lah dist/assets/ | head -5
+            
+            INDEX_FILE=$(ls dist/assets/index-*.js 2>/dev/null | head -1)
+            if [ -n "$INDEX_FILE" ]; then
+                print_info "New JS file: $(basename $INDEX_FILE)"
+            fi
+        else
+            print_error "Build output is incomplete"
+            exit 1
+        fi
+    else
+        print_error "Frontend build failed"
+        exit 1
+    fi
+    
+    cd -
+fi
+
 print_step "Current Docker Disk Usage"
 sudo docker system df
 
@@ -66,6 +105,13 @@ if sudo docker compose -f $OTHER_COMPOSE_FILE down; then
     print_success "Other environment containers stopped"
 else
     print_info "No other environment containers running"
+fi
+
+if [ "$NODE_ENV" = "production" ]; then
+    print_step "Cleaning Frontend Volume"
+    print_info "Removing old frontend_dist volume..."
+    sudo docker volume rm managementapplication_frontend_dist 2>/dev/null || print_info "Volume doesn't exist or already removed"
+    print_success "Frontend volume cleaned"
 fi
 
 print_step "Removing Old Project Images"
@@ -107,7 +153,7 @@ else
 fi
 
 print_step "Waiting for Containers to be Ready"
-sleep 3
+sleep 5
 
 print_step "Container Status"
 sudo docker compose -f $COMPOSE_FILE ps
@@ -122,12 +168,31 @@ else
     print_info "Check logs for errors"
 fi
 
+if [ "$NODE_ENV" = "production" ]; then
+    print_step "Verifying Frontend Deployment"
+    print_info "Checking deployed files..."
+    sleep 3
+    
+    print_info "Files in volume:"
+    sudo docker exec caddy ls -lah /srv/frontend/assets/ 2>/dev/null || print_info "Files still being copied..."
+    
+    print_info "Files on host:"
+    ls -lah ./frontend/dist/assets/index-*.js 2>/dev/null || echo "No index files found"
+    
+    print_info "Frontend container logs:"
+    sudo docker logs frontend 2>/dev/null | tail -10 || echo "No logs yet"
+fi
+
 print_step "Deployment Summary"
 echo -e "${GREEN}✅ Deployment completed successfully!${NC}"
 echo -e "${BLUE}ℹ️  CACHEBUST: $CACHEBUST${NC}"
 echo -e "${BLUE}ℹ️  NODE_ENV: ${NODE_ENV:-development}${NC}"
 echo -e "${BLUE}ℹ️  Time: $(date "+%Y-%m-%d %H:%M:%S")${NC}"
 echo ""
+if [ "$NODE_ENV" = "production" ]; then
+    echo -e "${YELLOW}⚠️  IMPORTANT: Hard refresh your browser (Ctrl+Shift+R) to load new code!${NC}"
+    echo ""
+fi
 echo -e "${YELLOW}📋 View logs: sudo docker compose -f $COMPOSE_FILE logs -f${NC}"
 echo -e "${YELLOW}📊 Check status: sudo docker compose -f $COMPOSE_FILE ps${NC}"
 echo -e "${YELLOW}⏹️  Stop: sudo docker compose -f $COMPOSE_FILE down${NC}"
