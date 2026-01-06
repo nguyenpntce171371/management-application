@@ -125,7 +125,7 @@ else
 fi
 
 print_step "Building Images"
-if sudo CACHEBUST=$CACHEBUST docker compose -f $COMPOSE_FILE build; then
+if sudo CACHEBUST=$CACHEBUST docker compose -f $COMPOSE_FILE build --build-arg NODE_ENV=$NODE_ENV; then
     print_success "Images built successfully"
 else
     print_error "Build failed"
@@ -137,6 +137,9 @@ print_info "Removing dangling images..."
 sudo docker image prune -f
 print_info "Removing stopped containers..."
 sudo docker container prune -f
+print_info "Removing unused networks..."
+sudo docker network prune -f
+print_success "Cleanup completed"
 
 print_step "New Docker Disk Usage"
 sudo docker system df
@@ -186,10 +189,6 @@ echo -e "${BLUE}ℹ️  CACHEBUST: $CACHEBUST${NC}"
 echo -e "${BLUE}ℹ️  NODE_ENV: ${NODE_ENV:-development}${NC}"
 echo -e "${BLUE}ℹ️  Time: $(date "+%Y-%m-%d %H:%M:%S")${NC}"
 echo ""
-if [ "$NODE_ENV" = "production" ]; then
-    echo -e "${YELLOW}⚠️  IMPORTANT: Hard refresh your browser (Ctrl+Shift+R) to load new code!${NC}"
-    echo ""
-fi
 echo -e "${YELLOW}📋 View logs: sudo docker compose -f $COMPOSE_FILE logs -f${NC}"
 echo -e "${YELLOW}📊 Check status: sudo docker compose -f $COMPOSE_FILE ps${NC}"
 echo -e "${YELLOW}⏹️  Stop: sudo docker compose -f $COMPOSE_FILE down${NC}"
