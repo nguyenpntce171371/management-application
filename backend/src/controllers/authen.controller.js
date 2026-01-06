@@ -132,7 +132,7 @@ export const googleCallback = async (req, res) => {
             secure: process.env.NODE_ENV === "production",
         });
 
-        return res.redirect(`${process.env.DOMAIN}/`);
+        return res.redirect(`https://${process.env.DOMAIN}/`);
     } catch (error) {
         console.log("Google login error:", error);
         return res.redirect(
