@@ -30,8 +30,8 @@
         reverse_proxy backend:3000 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
+            header_up Connection {>Connection}
+            header_up Upgrade {>Upgrade}
             transport http {
                 read_timeout 86400s
                 write_timeout 86400s
@@ -43,8 +43,6 @@
         reverse_proxy backend:3000 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
             transport http {
                 read_timeout 300s
                 dial_timeout 300s
@@ -53,12 +51,23 @@
         }
     }
 
+    @websocket {
+        header Connection *Upgrade*
+        header Upgrade websocket
+    }
+    handle @websocket {
+        reverse_proxy frontend:5173 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up Connection {>Connection}
+            header_up Upgrade {>Upgrade}
+        }
+    }
+
     handle {
         reverse_proxy frontend:5173 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
         }
     }
 

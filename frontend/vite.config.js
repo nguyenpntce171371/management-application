@@ -6,8 +6,16 @@ export default defineConfig({
     plugins: [react(), tailwindcss()],
     server: {
         host: "0.0.0.0",
-        allowedHosts: ["frontend", "nginx", "localhost", "127.0.0.1"],
-        port: 5173
+        port: 5173,
+        strictPort: true,
+        hmr: {
+            clientPort: 80,
+            protocol: 'ws'
+        },
+        watch: {
+            usePolling: true,
+            interval: 1000
+        }
     },
     preview: {
         host: "0.0.0.0",
