@@ -48,15 +48,7 @@ print_info "CACHEBUST: $CACHEBUST"
 print_info "NODE_ENV: ${NODE_ENV:-development}"
 print_info "Compose file: $COMPOSE_FILE"
 print_info "Timestamp: $(date "+%Y-%m-%d %H:%M:%S")"
-print_step "Installing Backend Dependencies"
-cd ./backend
-npm install
-cd -
 
-print_step "Installing Frontend Dependencies"
-cd ./frontend
-npm install
-cd -
 print_step "Current Docker Disk Usage"
 sudo docker system df
 
@@ -87,14 +79,6 @@ else
 fi
 
 print_step "Building Images"
-if [ "$NODE_ENV" = "production" ]; then
-    print_info "Cleaning old frontend dist..."
-    cd ./frontend
-    rm -rf dist
-    print_info "Building frontend for production..."
-    npm run build
-    cd -
-fi
 if sudo CACHEBUST=$CACHEBUST docker compose -f $COMPOSE_FILE build; then
     print_success "Images built successfully"
 else
