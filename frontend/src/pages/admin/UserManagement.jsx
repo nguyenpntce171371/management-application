@@ -92,12 +92,13 @@ function UserManagement() {
         socket.on("userRoleChanged", onUserUpdated);
         socket.on("userUpdated", onUserUpdated);
         socket.on("userDeleted", onUserDeleted);
-
+        socket.on("profileUpdated", onUserUpdated);
         return () => {
             socket.off("newUserRegistered", onUserCreated);
             socket.off("userRoleChanged", onUserUpdated);
             socket.off("userUpdated", onUserUpdated);
             socket.off("userDeleted", onUserDeleted);
+            socket.on("profileUpdated", onUserUpdated);
         };
     }, [socket, fetchUsers]);
 
@@ -153,7 +154,6 @@ function UserManagement() {
                                 <tr>
                                     <th className={styles.tableHeader}>Tên</th>
                                     <th className={styles.tableHeader}>Email</th>
-                                    <th className={styles.tableHeader}>Số điện thoại</th>
                                     <th className={styles.tableHeader}>Địa chỉ</th>
                                     <th className={styles.tableHeader}>Vai trò</th>
                                     <th className={styles.tableHeader}>Thao tác</th>
@@ -164,8 +164,7 @@ function UserManagement() {
                                     <tr key={user._id} className={styles.tableRow}>
                                         <td className={styles.tableCell}>{user.fullName}</td>
                                         <td className={styles.tableCell}>{user.email}</td>
-                                        <td className={styles.tableCell}><div className={styles.userActions}>{user.phone}</div></td>
-                                        <td className={styles.tableCell}>{user.location}</td>
+                                        <td className={styles.tableCell}>{user.address}</td>
                                         <td className={styles.tableCell}>
                                             <div className={styles.userActions}>
                                                 <span className={`${styles.roleBadge} ${styles[`role${getRoleInfo(user.role).class.charAt(0).toUpperCase() + getRoleInfo(user.role).class.slice(1)}`]}`}>

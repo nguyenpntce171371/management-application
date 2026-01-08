@@ -263,6 +263,14 @@ export default function Profile() {
 
     const handleChangePassword = async (e) => {
         e.preventDefault();
+        if (user.provider !== "local" && !formData.currentPassword) {
+            notify({
+                type: "error",
+                title: "Thiếu thông tin",
+                message: "Vui lòng nhập mật khẩu hiện tại!",
+            });
+            return;
+        }
         if (formData.newPassword !== formData.confirmPassword) {
             notify({
                 type: "error",
@@ -423,7 +431,7 @@ export default function Profile() {
                             <form onSubmit={handleChangePassword}>
                                 <div className={styles.formGroup}>
                                     <label className={styles.label}>Mật khẩu hiện tại</label>
-                                    <input type="password" name="currentPassword" value={formData.currentPassword} onChange={handleInputChange} className={styles.input} required />
+                                    <input type="password" name="currentPassword" value={formData.currentPassword} onChange={handleInputChange} className={styles.input} required disabled={user.provider !== "local"} />
                                 </div>
 
                                 <div className={styles.formGroup}>

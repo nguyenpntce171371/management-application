@@ -2,6 +2,7 @@ import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Check } from "lucide-react";
 import styles from "../../pages/auth/AuthForm.module.css";
 import { useState } from "react";
 import axiosInstance from "../../services/axiosInstance";
+import { notify } from "../../context/NotificationContext";
 
 function RegisterStep1({ formData, setFormData, setCurrentStep }) {
     const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +31,7 @@ function RegisterStep1({ formData, setFormData, setCurrentStep }) {
         }
 
         setIsLoading(true);
-        axiosInstance.post("/api/password/send-otp-register", { email: formData.email })
+        axiosInstance.post("/api/auth/send-otp-register", { email: formData.email })
             .then(() => { setCurrentStep(2) })
             .finally(() => { setIsLoading(false) });
     };

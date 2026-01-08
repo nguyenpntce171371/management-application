@@ -13,5 +13,4 @@ router.delete("/avatar", verify("User"), deleteUserAvatar);
 router.get("/stats", verify("Admin"), getUserStats);
 router.get("/get-users", verify("Admin"), getUsers);
 
-
 export default router;

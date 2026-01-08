@@ -77,7 +77,8 @@ export const getUser = async (req, res) => {
                 role: user.role,
                 fullName: user.fullName,
                 address: user.address,
-                avatar: avatarUrl
+                avatar: avatarUrl,
+                provider: user.provider
             }
         });
     } catch (error) {
