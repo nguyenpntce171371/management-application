@@ -21,6 +21,16 @@ function RegisterStep1({ formData, setFormData, setCurrentStep }) {
             return;
         }
 
+        const fullNameRegex = /^[A-Za-zÀ-ỹ]+(?:\s[A-Za-zÀ-ỹ]+)+$/;
+        if (!fullNameRegex.test(formData.fullName.trim())) {
+            notify({
+                type: "error",
+                title: "Tên không hợp lệ",
+                message: "Họ và tên phải có ít nhất 2 từ, chỉ chứa chữ cái.",
+            });
+            return;
+        }
+
         if (formData.password !== formData.confirmPassword) {
             notify({
                 type: "error",

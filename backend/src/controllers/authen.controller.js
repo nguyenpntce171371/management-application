@@ -3,10 +3,11 @@ import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { redis } from "../middlewares/rateLimitRedis.js";
-import { sendEmail } from "../services/email.service.js";
+import { sendOTPRegisterEmail } from "../services/email.service.js";
 import axios from "axios";
 import { io } from "../index.js";
 import { OAuth2Client } from "google-auth-library";
+import { OTPService } from "../services/otp.service.js";
 
 export const googleCallback = async (req, res) => {
     try {
@@ -260,7 +261,7 @@ export const register = async (req, res) => {
             });
         }
 
-        const verified = await redis.get(`otp_verified:${email}`);
+        const verified = await OTPService.isVerified(email, "register");
         if (!verified) {
             return res.status(400).json({
                 success: false,
@@ -276,8 +277,6 @@ export const register = async (req, res) => {
         await user.save();
 
         io.to("Admin").emit("newUserRegistered", { userId: user._id, email: user.email, role: user.role });
-
-        await redis.del(`otp_verified:${email}`);
 
         return res.status(201).json({
             success: true,
@@ -316,26 +315,30 @@ export const sendOtpRegister = async (req, res) => {
             });
         }
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const hashed = crypto.createHash("sha256").update(otp).digest("hex");
-
-        await redis.del(`otp_verified:${email}`);
-        await redis.set(`otp:${email}`, hashed, "EX", 300);
-
-        await sendEmail(email, "Mã OTP đăng ký tài khoản", `Mã OTP của bạn là: ${otp}\nHiệu lực 5 phút.`);
+        const { code, expiresIn } = await OTPService.create(email, "register");
+        console.log(code)
+        await sendOTPRegisterEmail(email, code, expiresIn);
 
         return res.status(200).json({
             success: true,
             code: "OTP_SENT",
             message: "Đã gửi mã OTP",
         });
-    } catch (err) {
-        console.error("sendOtpRegister error:", err);
-        res.status(500).json({
-            success: false,
-            code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
-        });
+    } catch (error) {
+        if (error.code === "OTP_LIMIT") {
+            res.status(429).json({
+                success: false,
+                code: error.code,
+                message: error.message
+            });
+        } else {
+            console.error("sendOtpRegister error:", error);
+            res.status(500).json({
+                success: false,
+                code: "SERVER_ERROR",
+                message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            });
+        }
     }
 };
 
@@ -351,39 +354,34 @@ export const verifyOtpRegister = async (req, res) => {
             });
         }
 
-        const stored = await redis.get(`otp:${email}`);
-        if (!stored) {
-            return res.status(400).json({
-                success: false,
-                code: "INVALID_OTP",
-                message: "Mã OTP không hợp lệ",
-            });
-        }
-
-        const hashedInput = crypto.createHash("sha256").update(otp).digest("hex");
-        if (hashedInput !== stored) {
-            return res.status(400).json({
-                success: false,
-                code: "INVALID_OTP",
-                message: "Mã OTP không hợp lệ",
-            });
-        }
-
-        await redis.del(`otp:${email}`);
-        await redis.set(`otp_verified:${email}`, "true", "EX", 600);
+        await OTPService.verify(email, otp, "register");
 
         return res.status(200).json({
             success: true,
             code: "OTP_VERIFIED",
             message: "Xác minh OTP thành công",
         });
-    } catch (err) {
-        console.error("verifyOtpRegister error:", err);
-        res.status(500).json({
-            success: false,
-            code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
-        });
+    } catch (error) {
+        if (error.code === "OTP_ERROR") {
+            res.status(400).json({
+                success: false,
+                code: error.code,
+                message: error.message
+            });
+        } else  if (error.code === "OTP_LIMIT") {
+            res.status(429).json({
+                success: false,
+                code: error.code,
+                message: error.message
+            });
+        } else {
+            console.error("sendOtpRegister error:", error);
+            res.status(500).json({
+                success: false,
+                code: "SERVER_ERROR",
+                message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            });
+        }
     }
 };
 

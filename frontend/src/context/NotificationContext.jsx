@@ -12,10 +12,25 @@ export function NotificationProvider({ children }) {
     }, []);
 
     const addNotification = useCallback((notification) => {
-        const id = Math.random().toString(36).substring(2, 9);
-        const newNotification = { ...notification, id };
-        setNotifications((prev) => [...prev, newNotification]);
-    }, [removeNotification]);
+        setNotifications((prev) => {
+            const index = prev.findIndex(
+                n => n.title === notification.title &&
+                     n.message === notification.message &&
+                     n.type === notification.type
+            );
+
+            if (index !== -1) {
+                const updated = [...prev];
+                updated[index] = {
+                    ...updated[index],
+                    count: (updated[index].count || 1) + 1
+                };
+                return updated;
+            }
+            const id = Math.random().toString(36).substring(2, 9);
+            return [...prev, { ...notification, id, count: 1 }];
+        });
+    }, []);
 
     addNotificationRef = addNotification;
 

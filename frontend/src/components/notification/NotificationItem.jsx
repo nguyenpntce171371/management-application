@@ -4,7 +4,6 @@ import styles from "./Notification.module.css";
 
 function NotificationItem({ notification, onClose }) {
     const [isExiting, setIsExiting] = useState(false);
-    const [progress, setProgress] = useState(100);
 
     useEffect(() => {
         if (notification.type !== "success") return;
@@ -39,7 +38,7 @@ function NotificationItem({ notification, onClose }) {
             <div className={styles.iconWrapper}>{getIcon()}</div>
 
             <div className={styles.content}>
-                <div className={styles.title}>{notification.title}</div>
+                <div className={styles.title}>{notification.title}{notification.count > 1 && <span className={styles.count}>{notification.count}</span>}</div>
                 {notification.message && (
                     <div className={styles.message}>{notification.message}</div>
                 )}

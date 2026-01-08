@@ -1,5 +1,6 @@
 import User from "../models/User.js";
-import { sendEmail } from "../services/email.service.js";
+import { sendOTPResetPasswordEmail, sendPasswordChangedEmail } from "../services/email.service.js";
+import { OTPService } from "../services/otp.service.js";
 import crypto from "crypto";
 import { io } from "../index.js";
 import Token from "../models/Token.js";
@@ -44,6 +45,7 @@ export const changePassword = async (req, res) => {
 
         await user.setPassword(newPassword);
         await user.save();
+
         const deviceId = req.cookies.deviceId;
         const hashedDeviceId = crypto.createHash("sha256").update(deviceId).digest("hex");
         const currentSession = await Token.findOne({ userId: user._id, deviceId: hashedDeviceId });
@@ -52,6 +54,8 @@ export const changePassword = async (req, res) => {
         await Token.deleteMany({ _id: { $in: sessionIdsToDelete } });
 
         io.to(user._id).emit("loggedOut", { sessionIds: sessionIdsToDelete });
+
+        await sendPasswordChangedEmail(email, user.fullName);
 
         return res.status(200).json({
             success: true,
@@ -79,7 +83,6 @@ export const sendOtpForgot = async (req, res) => {
                 message: "Email is required",
             });
         }
-
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({
@@ -89,27 +92,29 @@ export const sendOtpForgot = async (req, res) => {
             });
         }
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
-        user.otp = hashedOtp;
-        user.otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
-        await user.save();
+        const { code, expiresIn } = await OTPService.create(email, "reset_password");
+        await sendOTPResetPasswordEmail(email, code, expiresIn);
 
-        await sendEmail(email, "Mã OTP khôi phục mật khẩu", `Mã OTP của bạn là: ${otp}\nHiệu lực 5 phút.`);
-
-        return res.json({
+        return res.status(200).json({
             success: true,
             code: "OTP_SENT",
             message: "Đã gửi mã OTP đến email của bạn",
         });
-
-    } catch (err) {
-        console.error("sendOtpForgot error:", err);
-        res.status(500).json({
-            success: false,
-            code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
-        });
+    } catch (error) {
+        if (error.code === "OTP_LIMIT") {
+            res.status(429).json({
+                success: false,
+                code: error.code,
+                message: error.message
+            });
+        } else {
+            console.error("sendOtpRegister error:", error);
+            res.status(500).json({
+                success: false,
+                code: "SERVER_ERROR",
+                message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            });
+        }
     }
 };
 
@@ -134,22 +139,7 @@ export const verifyOTP = async (req, res) => {
             });
         }
 
-        const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
-        if (!user.otp || user.otp !== hashedOtp) {
-            return res.status(400).json({
-                success: false,
-                code: "INVALID_OTP",
-                message: "Mã OTP không hợp lệ",
-            });
-        }
-
-        if (user.otpExpiry < Date.now()) {
-            return res.status(400).json({
-                success: false,
-                code: process.env.NODE_ENV === "development" ? "OTP_EXPIRED" : "INVALID_OTP",
-                message: process.env.NODE_ENV === "development" ? "OTP has expired" : "Mã OTP không hợp lệ",
-            });
-        }
+        await OTPService.verify(email, otp, "reset_password");
 
         return res.status(200).json({
             success: true,
@@ -157,19 +147,33 @@ export const verifyOTP = async (req, res) => {
             message: "Mã OTP đã được xác minh thành công",
         });
     } catch (error) {
-        console.error("Verify OTP error:", error);
-        res.status(500).json({
-            success: false,
-            code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
-        });
+        if (error.code === "OTP_ERROR") {
+            res.status(400).json({
+                success: false,
+                code: error.code,
+                message: error.message
+            });
+        } else if (error.code === "OTP_LIMIT") {
+            res.status(429).json({
+                success: false,
+                code: error.code,
+                message: error.message
+            });
+        } else {
+            console.error("sendOtpRegister error:", error);
+            res.status(500).json({
+                success: false,
+                code: "SERVER_ERROR",
+                message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            });
+        }
     }
 };
 
 export const resetPassword = async (req, res) => {
     try {
-        let { email, otp, newPassword, confirm } = req.body;
-        if (!email || !otp || !newPassword || !confirm) {
+        let { email, newPassword, confirm } = req.body;
+        if (!email || !newPassword || !confirm) {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_FIELDS",
@@ -193,27 +197,19 @@ export const resetPassword = async (req, res) => {
                 message: "Không tìm thấy người dùng",
             });
         }
-        const hashedInput = crypto.createHash("sha256").update(otp).digest("hex");
-        if (user.otp !== hashedInput) {
-            return res.status(400).json({
-                success: false,
-                code: "INVALID_OTP",
-                message: "Mã OTP không hợp lệ",
-            });
-        }
 
-        if (user.otpExpiry < Date.now()) {
+        const verified = await OTPService.isVerified(email, "reset_password");
+        if (!verified) {
             return res.status(400).json({
                 success: false,
-                code: process.env.NODE_ENV === "development" ? "OTP_EXPIRED" : "INVALID_OTP",
-                message: process.env.NODE_ENV === "development" ? "OTP has expired" : "Mã OTP không hợp lệ",
+                code: "OTP_NOT_VERIFIED",
+                message: "Vui lòng xác minh OTP trước",
             });
         }
 
         await user.setPassword(newPassword);
-        user.otp = undefined;
-        user.otpExpiry = undefined;
         await user.save();
+
         const sessions = await Token.find({ userId: user._id });
         const sessionIds = sessions.map(s => s._id);
         await Token.deleteMany({ userId: user._id });

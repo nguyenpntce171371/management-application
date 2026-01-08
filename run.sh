@@ -88,6 +88,11 @@ if [ "$NODE_ENV" = "production" ]; then
     cd -
 fi
 
+print_step "Cleaning Docker Build Cache"
+print_info "Pruning Docker builder cache..."
+sudo docker builder prune -a -f
+print_success "Docker build cache cleaned"
+
 print_step "Current Docker Disk Usage"
 sudo docker system df
 

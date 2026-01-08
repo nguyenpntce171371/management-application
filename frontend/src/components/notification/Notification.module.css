@@ -149,6 +149,40 @@
     margin-bottom: 0.25rem;
 }
 
+.count {
+    display: inline-block;
+    margin-left: 0.5rem;
+    background: #f59e0b;
+    color: white;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    padding: 0 0.4rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    line-height: 1.5;
+    vertical-align: middle;
+}
+
+.notification.success .count {
+    background: #2ecc71;
+}
+
+.notification.error .count {
+    background: #dc2626;
+}
+
+.notification.warning .count {
+    background: #f59e0b;
+}
+
+.notification.info .count {
+    background: #3b82f6;
+}
+
 .message {
     font-size: 0.875rem;
     color: #64748b;

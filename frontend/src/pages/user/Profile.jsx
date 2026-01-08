@@ -230,24 +230,26 @@ export default function Profile() {
     const handleSaveInfo = async () => {
         if (!user) return;
         if (formData.fullName !== (user.fullName || "") || formData.address !== (user.address || "")) {
-            try {
-                const res = await axiosInstance.post("/api/user", {
-                    fullName: formData.fullName,
-                    address: formData.address,
-                });
-                setUser(res.data.data);
-                notify({
-                    type: "success",
-                    title: "Thành công",
-                    message: "Cập nhật thông tin thành công",
-                });
-            } catch (error) {
+            const fullNameRegex = /^[A-Za-zÀ-ỹ]+(?:\s[A-Za-zÀ-ỹ]+)+$/;
+            if (!fullNameRegex.test(formData.fullName.trim())) {
                 notify({
                     type: "error",
-                    title: "Lỗi",
-                    message: error.response?.data?.message || "Không thể cập nhật thông tin",
+                    title: "Tên không hợp lệ",
+                    message: "Họ và tên phải có ít nhất 2 từ, chỉ chứa chữ cái.",
                 });
+                return;
             }
+
+            const res = await axiosInstance.post("/api/user", {
+                fullName: formData.fullName,
+                address: formData.address,
+            });
+            setUser(res.data.data);
+            notify({
+                type: "success",
+                title: "Thành công",
+                message: "Cập nhật thông tin thành công",
+            });
         }
         setIsEditingInfo(false);
     };

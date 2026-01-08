@@ -11,8 +11,6 @@ const userSchema = new mongoose.Schema({
         }
     },
     role: { type: String, enum: ["Admin", "Staff", "User"], default: "User", index: true },
-    otp: { type: String, default: null },
-    otpExpiry: { type: Date, default: null },
     provider: { type: String, enum: ["local", "google"], default: "local" },
     providerId: { type: String, default: null },
     avatar: { type: String, default: "" },

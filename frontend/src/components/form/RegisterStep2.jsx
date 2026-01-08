@@ -6,6 +6,19 @@ import axiosInstance from "../../services/axiosInstance";
 function RegisterStep2({ formData, currentStep, setCurrentStep }) {
     const [isLoading, setIsLoading] = useState(false);
     const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+    const cooldownRef = useRef(null);
+
+    useEffect(() => {
+        if (resendCooldown > 0) {
+            cooldownRef.current = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+        }
+        return () => clearTimeout(cooldownRef.current);
+    }, [resendCooldown]);
+
+    const startCooldown = (seconds = 60) => {
+        setResendCooldown(seconds);
+    };
+
 
     const handleOtpChange = (index, value) => {
         if (value.length > 1) return;
@@ -59,6 +72,13 @@ function RegisterStep2({ formData, currentStep, setCurrentStep }) {
         next?.focus();
     };
 
+    const handleResendOTP = async (e) => {
+        e.preventDefault();
+        if (resendCooldown > 0) return;
+        setIsLoading(true);
+        axiosInstance.post("/api/auth/send-otp-register", { email: formData.email }).then(() => startCooldown(60)).finally(() => { setIsLoading(false) });
+    };
+
     return (
         <form onSubmit={handleOtpSubmit} className={styles.form}>
             <div className={styles.formGroup}>
@@ -82,7 +102,7 @@ function RegisterStep2({ formData, currentStep, setCurrentStep }) {
 
             <div className={styles.resendSection}>
                 <span className={styles.resendText}>Không nhận được mã?</span>
-                <button type="button" className={styles.resendButton}>Gửi lại</button>
+                <button type="button" className={styles.resendButton} onClick={handleResendOTP} disabled={resendCooldown == 0}>Gửi lại</button>
             </div>
 
             <div className={styles.buttonGroup}>
