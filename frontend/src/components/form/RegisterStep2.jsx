@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import styles from "../../pages/auth/AuthForm.module.css";
 import { Shield, ArrowLeft, Check } from "lucide-react";
 import axiosInstance from "../../services/axiosInstance";
@@ -7,6 +7,7 @@ function RegisterStep2({ formData, currentStep, setCurrentStep }) {
     const [isLoading, setIsLoading] = useState(false);
     const [otp, setOtp] = useState(["", "", "", "", "", ""]);
     const cooldownRef = useRef(null);
+    const [resendCooldown, setResendCooldown] = useState(0);
 
     useEffect(() => {
         if (resendCooldown > 0) {
