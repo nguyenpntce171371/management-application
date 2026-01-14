@@ -1,17 +1,16 @@
-# backend/Dockerfile
 FROM node:22-alpine
 
 ARG CACHEBUST
-ARG NODE_ENV=production
+ARG APP_MODE=development
 ENV HOST=0.0.0.0
 ENV PORT=3000
-ENV NODE_ENV=$NODE_ENV
+ENV APP_MODE=$APP_MODE
 
 WORKDIR /app
 
 COPY package*.json ./
 
-RUN if [ "$NODE_ENV" = "development" ]; then \
+RUN if [ "$APP_MODE" = "development" ]; then \
       npm install; \
     else \
       npm install --omit=dev; \
@@ -21,8 +20,10 @@ COPY . .
 
 RUN echo "Cache bust: $CACHEBUST"
 
-CMD if [ "$NODE_ENV" = "development" ]; then \
-      npm run dev -- --host; \
-    else \
-      node src/index.js; \
-    fi
+CMD ["sh", "-c", "\
+  if [ \"$APP_MODE\" = \"development\" ]; then \
+    npm run dev -- --host; \
+  else \
+    node src/index.js; \
+  fi \
+"]
