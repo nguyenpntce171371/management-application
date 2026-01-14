@@ -10,9 +10,9 @@ if [ -f .env ]; then
     export $(grep -v '^#' .env | grep -v '^[[:space:]]*$' | xargs)
 fi
 
-NODE_ENV=${NODE_ENV:-development}
+APP_MODE=${APP_MODE:-development}
 
-if [ "$NODE_ENV" = "production" ]; then
+if [ "$APP_MODE" = "production" ]; then
     COMPOSE_FILE="docker-compose.production.yml"
     OTHER_COMPOSE_FILE="docker-compose.development.yml"
 else
@@ -43,11 +43,11 @@ export CACHEBUST=$(date +%s)
 
 print_step "Starting Deployment"
 print_info "CACHEBUST: $CACHEBUST"
-print_info "NODE_ENV: ${NODE_ENV:-development}"
+print_info "APP_MODE: ${APP_MODE:-development}"
 print_info "Compose file: $COMPOSE_FILE"
 print_info "Timestamp: $(date "+%Y-%m-%d %H:%M:%S")"
 
-if [ "$NODE_ENV" = "production" ]; then
+if [ "$APP_MODE" = "production" ]; then
     print_step "Building Frontend for Production"
     cd ./frontend
     
@@ -58,7 +58,7 @@ if [ "$NODE_ENV" = "production" ]; then
     rm -rf node_modules/.cache
     
     print_info "Installing fresh dependencies (including devDependencies)..."
-    if NODE_ENV=development npm install; then
+    if APP_MODE=development npm install; then
         print_success "Dependencies installed"
     else
         print_error "Failed to install dependencies"
@@ -98,11 +98,11 @@ sudo docker system df
 
 print_step "Stopping All Containers (Both Environments)"
 
-print_info "Stopping $NODE_ENV containers..."
+print_info "Stopping $APP_MODE containers..."
 if sudo docker compose -f $COMPOSE_FILE down; then
-    print_success "$NODE_ENV containers stopped"
+    print_success "$APP_MODE containers stopped"
 else
-    print_info "No $NODE_ENV containers running"
+    print_info "No $APP_MODE containers running"
 fi
 
 print_info "Stopping other environment containers..."
@@ -112,7 +112,7 @@ else
     print_info "No other environment containers running"
 fi
 
-if [ "$NODE_ENV" = "production" ]; then
+if [ "$APP_MODE" = "production" ]; then
     print_step "Cleaning Frontend Volume"
     print_info "Removing old frontend_dist volume..."
     sudo docker volume rm managementapplication_frontend_dist 2>/dev/null || print_info "Volume doesn't exist or already removed"
@@ -130,7 +130,7 @@ else
 fi
 
 print_step "Building Images"
-if sudo CACHEBUST=$CACHEBUST docker compose -f $COMPOSE_FILE build --build-arg NODE_ENV=$NODE_ENV; then
+if sudo CACHEBUST=$CACHEBUST docker compose -f $COMPOSE_FILE build --build-arg APP_MODE=$APP_MODE; then
     print_success "Images built successfully"
 else
     print_error "Build failed"
@@ -152,6 +152,10 @@ sudo docker system df
 print_step "Starting Containers"
 if sudo docker compose -f $COMPOSE_FILE up -d; then
     print_success "Containers started successfully"
+    if [ "$APP_MODE" = "development" ]; then
+        print_step "Development Tools"
+        echo -e "${GREEN}👉 Code Server: https://code.${DOMAIN}${NC}"
+    fi
 else
     print_error "Failed to start containers"
     exit 1
@@ -173,7 +177,7 @@ else
     print_info "Check logs for errors"
 fi
 
-if [ "$NODE_ENV" = "production" ]; then
+if [ "$APP_MODE" = "production" ]; then
     print_step "Verifying Frontend Deployment"
     print_info "Checking deployed files..."
     sleep 3
@@ -191,7 +195,7 @@ fi
 print_step "Deployment Summary"
 echo -e "${GREEN}✅ Deployment completed successfully!${NC}"
 echo -e "${BLUE}ℹ️  CACHEBUST: $CACHEBUST${NC}"
-echo -e "${BLUE}ℹ️  NODE_ENV: ${NODE_ENV:-development}${NC}"
+echo -e "${BLUE}ℹ️  APP_MODE: ${APP_MODE:-development}${NC}"
 echo -e "${BLUE}ℹ️  Time: $(date "+%Y-%m-%d %H:%M:%S")${NC}"
 echo ""
 echo -e "${YELLOW}📋 View logs: sudo docker compose -f $COMPOSE_FILE logs -f${NC}"

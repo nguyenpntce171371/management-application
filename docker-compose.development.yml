@@ -27,7 +27,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       args:
-        - NODE_ENV=${NODE_ENV:-development}
+        - APP_MODE=${APP_MODE:-development}
         - CACHEBUST=${CACHEBUST:-1}
     container_name: backend
     restart: unless-stopped
@@ -35,7 +35,7 @@ services:
       - ./backend/src:/app/src
       - backend_node_modules:/app/node_modules
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
+      - APP_MODE=${APP_MODE:-development}
       - DOMAIN=${DOMAIN}
       - TRUSTED_PROXY_RANGE=${TRUSTED_PROXY_RANGE}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -66,13 +66,14 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - NODE_ENV=development
+        - APP_MODE=development
     container_name: frontend
     restart: unless-stopped
     ports:
       - "127.0.0.1:5173:5173"
     environment:
-      - NODE_ENV=development
+      - APP_MODE=development
+      - DOMAIN=${DOMAIN}
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
@@ -97,6 +98,22 @@ services:
       - frontend
       - backend
 
+  code-server:
+    image: codercom/code-server:latest
+    container_name: code-server
+    restart: unless-stopped
+    environment:
+      PASSWORD: ${CODE_SERVER_PASSWORD}
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - .:/home/coder/project
+      - code_server_data:/home/coder/.local/share/code-server
+    command: >
+      code-server
+      --bind-addr 0.0.0.0:8080
+      --auth password
+      /home/coder/project
+
 volumes:
   mongo_development_data:
   redis_development_data:
@@ -104,3 +121,4 @@ volumes:
   frontend_node_modules:
   caddy_data:
   caddy_config:
+  code_server_data:

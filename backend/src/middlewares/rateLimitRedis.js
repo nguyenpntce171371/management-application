@@ -1,7 +1,7 @@
 import Redis from "ioredis";
 import crypto from "crypto";
 
-export const redis = new Redis(`redis://:${process.env.REDIS_PASSWORD}@redis-${process.env.NODE_ENV}:6379/0`);
+export const redis = new Redis(`redis://:${process.env.REDIS_PASSWORD}@redis-${process.env.APP_MODE}:6379/0`);
 redis.on("error", (err) => console.error("Redis Client Error:", err));
 
 export const rateLimitRedis = (maxRequests, windowSeconds, identityType = "ip") => {

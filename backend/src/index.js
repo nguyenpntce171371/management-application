@@ -12,7 +12,7 @@ import { initializeSocket } from "./sockets/index.js";
 import { prototypePollutionMiddleware } from "./middlewares/prototypePollution.js";
 import { sanitizeInputMiddleware } from "./middlewares/sanitizeInput.js";
 
-const { MONGO_INITDB_ROOT_USERNAME, MONGO_INITDB_ROOT_PASSWORD, MONGO_DB_NAME, PORT = 3000, NODE_ENV = "development", TRUSTED_PROXY_RANGE } = process.env;
+const { MONGO_INITDB_ROOT_USERNAME, MONGO_INITDB_ROOT_PASSWORD, MONGO_DB_NAME, PORT = 3000, APP_MODE = "development", TRUSTED_PROXY_RANGE } = process.env;
 const app = express();
 app.set("trust proxy", TRUSTED_PROXY_RANGE.split(",").map(ip => ip.trim()));
 const server = http.createServer(app);
@@ -30,7 +30,7 @@ app.use(loggingMiddleware);
 app.use("/api", router);
 
 mongoose
-    .connect(`mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-${NODE_ENV}:27017/${MONGO_DB_NAME}?authSource=admin`)
+    .connect(`mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-${APP_MODE}:27017/${MONGO_DB_NAME}?authSource=admin`)
     .then(async () => console.log("MongoDB connected"))
     .catch(err => console.error("MongoDB connection error:", err.message));
 

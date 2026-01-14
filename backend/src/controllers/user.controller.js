@@ -86,7 +86,7 @@ export const getUser = async (req, res) => {
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -174,7 +174,7 @@ export const updateUserProfile = async (req, res) => {
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -237,7 +237,7 @@ export const deleteUserAvatar = async (req, res) => {
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -325,7 +325,7 @@ export const getRealEstateData = async (req, res) => {
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -363,7 +363,7 @@ export const getRealEstateById = async (req, res) => {
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -406,7 +406,7 @@ export const deleteRealEstateById = async (req, res) => {
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -449,7 +449,7 @@ export const createRealEstate = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "VALIDATION_ERROR",
-                message: processing.env.NODE_ENV === "development" ? `Validation errors: ${validationErrors.join(", ")}` : "Các trường bắt buộc bị thiếu",
+                message: processing.env.APP_MODE === "development" ? `Validation errors: ${validationErrors.join(", ")}` : "Các trường bắt buộc bị thiếu",
             });
         }
 
@@ -527,8 +527,8 @@ export const createRealEstate = async (req, res) => {
                     await cleanupLocks(fpLocks);
                     return res.status(400).json({
                         success: false,
-                        code: process.env.NODE_ENV === "development" ? "FINGERPRINT_ERROR" : "UPLOAD_ERROR",
-                        message: process.env.NODE_ENV === "development" ? `Không thể tạo dấu vân tay hình ảnh cho: ${req.files[i].originalname}` : "Không thể tải hình ảnh lên",
+                        code: process.env.APP_MODE === "development" ? "FINGERPRINT_ERROR" : "UPLOAD_ERROR",
+                        message: process.env.APP_MODE === "development" ? `Không thể tạo dấu vân tay hình ảnh cho: ${req.files[i].originalname}` : "Không thể tải hình ảnh lên",
                     });
                 }
 
@@ -537,8 +537,8 @@ export const createRealEstate = async (req, res) => {
                     await cleanupLocks(fpLocks);
                     return res.status(400).json({
                         success: false,
-                        code: process.env.NODE_ENV === "development" ? "DUPLICATE_IMAGE" : "UPLOAD_ERROR",
-                        message: process.env.NODE_ENV === "development" ? `Hình ảnh trùng lặp được phát hiện: ${req.files[i].originalname}` : "Không thể tải hình ảnh lên",
+                        code: process.env.APP_MODE === "development" ? "DUPLICATE_IMAGE" : "UPLOAD_ERROR",
+                        message: process.env.APP_MODE === "development" ? `Hình ảnh trùng lặp được phát hiện: ${req.files[i].originalname}` : "Không thể tải hình ảnh lên",
                     });
                 }
 
@@ -568,7 +568,7 @@ export const createRealEstate = async (req, res) => {
                 return res.status(500).json({
                     success: false,
                     code: "UPLOAD_ERROR",
-                    message: process.env.NODE_ENV === "development" ? uploadError.message : "Không thể tải hình ảnh lên",
+                    message: process.env.APP_MODE === "development" ? uploadError.message : "Không thể tải hình ảnh lên",
                 });
             }
         }
@@ -630,7 +630,7 @@ export const createRealEstate = async (req, res) => {
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -704,7 +704,7 @@ export const modifyRealEstateById = async (req, res) => {
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };

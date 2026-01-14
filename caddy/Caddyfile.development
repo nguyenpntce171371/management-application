@@ -78,10 +78,19 @@
     }
 }
 
-http://{$DOMAIN} {
+{$DOMAIN} {
     import common
 }
 
-https://{$DOMAIN} {
-    import common
+code.{$DOMAIN} {
+    header {
+        -Strict-Transport-Security
+    }
+
+    reverse_proxy code-server:8080
+
+    log {
+        output stdout
+        format console
+    }
 }

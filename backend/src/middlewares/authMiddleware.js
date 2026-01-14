@@ -92,7 +92,7 @@ export const verify = (requiredRole) => {
             return res.status(500).json({
                 success: false,
                 code: "SERVER_ERROR",
-                message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+                message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
             });
         }
     };

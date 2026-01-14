@@ -27,12 +27,12 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       args:
-        - NODE_ENV=${NODE_ENV:-production}
+        - APP_MODE=${APP_MODE:-production}
         - CACHEBUST=${CACHEBUST:-1}
     container_name: backend
     restart: unless-stopped
     environment:
-      - NODE_ENV=${NODE_ENV:-production}
+      - APP_MODE=${APP_MODE:-production}
       - DOMAIN=${DOMAIN}
       - TRUSTED_PROXY_RANGE=${TRUSTED_PROXY_RANGE}
       - REDIS_PASSWORD=${REDIS_PASSWORD}

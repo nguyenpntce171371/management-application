@@ -116,21 +116,21 @@ export const googleCallback = async (req, res) => {
             httpOnly: true,
             sameSite: "Lax",
             expires: new Date("9999-12-31"),
-            secure: process.env.NODE_ENV === "production",
+            secure: process.env.APP_MODE === "production",
         });
 
         res.cookie("accessToken", accessToken, {
             httpOnly: true,
             sameSite: "Lax",
-            maxAge: process.env.NODE_ENV === "production" ? 15 * 60 * 1000 : 10 * 365 * 24 * 60 * 60 * 1000,
-            secure: process.env.NODE_ENV === "production",
+            maxAge: process.env.APP_MODE === "production" ? 15 * 60 * 1000 : 10 * 365 * 24 * 60 * 60 * 1000,
+            secure: process.env.APP_MODE === "production",
         });
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
             sameSite: "Lax",
             maxAge: remember ? 7 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000,
-            secure: process.env.NODE_ENV === "production",
+            secure: process.env.APP_MODE === "production",
         });
 
         return res.redirect(`https://${process.env.DOMAIN}/`);
@@ -173,7 +173,7 @@ export const logout = async (req, res) => {
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -198,7 +198,7 @@ export const logoutAll = async (req, res) => {
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -226,7 +226,7 @@ export const listSessions = async (req, res) => {
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -289,7 +289,7 @@ export const register = async (req, res) => {
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -336,7 +336,7 @@ export const sendOtpRegister = async (req, res) => {
             res.status(500).json({
                 success: false,
                 code: "SERVER_ERROR",
-                message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+                message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
             });
         }
     }
@@ -379,7 +379,7 @@ export const verifyOtpRegister = async (req, res) => {
             res.status(500).json({
                 success: false,
                 code: "SERVER_ERROR",
-                message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+                message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
             });
         }
     }
@@ -446,21 +446,21 @@ export const login = async (req, res) => {
             httpOnly: true,
             sameSite: "Lax",
             expires: new Date("9999-12-31"),
-            secure: process.env.NODE_ENV === "production",
+            secure: process.env.APP_MODE === "production",
         });
 
         res.cookie("accessToken", accessToken, {
             httpOnly: true,
             sameSite: "Lax",
-            maxAge: process.env.NODE_ENV === "production" ? 15 * 60 * 1000 : 10 * 365 * 24 * 60 * 60 * 1000,
-            secure: process.env.NODE_ENV === "production",
+            maxAge: process.env.APP_MODE === "production" ? 15 * 60 * 1000 : 10 * 365 * 24 * 60 * 60 * 1000,
+            secure: process.env.APP_MODE === "production",
         });
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
             sameSite: "Lax",
             maxAge: remember ? 7 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000,
-            secure: process.env.NODE_ENV === "production",
+            secure: process.env.APP_MODE === "production",
         });
 
         return res.status(200).json({
@@ -473,7 +473,7 @@ export const login = async (req, res) => {
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -582,7 +582,7 @@ export const refreshToken = async (req, res) => {
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -645,7 +645,7 @@ export const logoutSession = async (req, res) => {
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };

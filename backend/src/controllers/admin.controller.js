@@ -63,7 +63,7 @@ export const updateUserRole = async (req, res) => {
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -110,7 +110,7 @@ export const getUsers = async (req, res) => {
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -178,7 +178,7 @@ export const deleteUser = async (req, res) => {
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -234,7 +234,7 @@ export const getLogs = async (req, res) => {
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
@@ -252,7 +252,7 @@ export const getUserStats = async (req, res) => {
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.NODE_ENV === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
 };
