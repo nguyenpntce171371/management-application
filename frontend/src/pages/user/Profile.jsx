@@ -302,23 +302,6 @@ export default function Profile() {
         }));
     };
 
-    const handleDeleteAccount = () => {
-        if (deleteConfirm !== user.email) {
-            notify({
-                type: "error",
-                title: "Lỗi",
-                message: "Vui lòng nhập đúng email để xác nhận xóa tài khoản",
-            });
-            return;
-        }
-        notify({
-            type: "success",
-            title: "Thành công",
-            message: "Tài khoản đã được đánh dấu để xóa. Thao tác này sẽ hoàn tất trong 30 ngày.",
-        });
-        setDeleteConfirm("");
-    };
-
     const tabs = [
         { id: "info", label: "Thông tin" },
         { id: "security", label: "Bảo mật" },
@@ -511,29 +494,6 @@ export default function Profile() {
                         <div className={styles.logout}>
                             <button className={styles.logoutAllButton} onClick={() => handleLogout()}>
                                 Đăng xuất
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            }
-            {activeTab === "delete" &&
-                <div className={styles.content}>
-                    <div className={styles.dangerZone}>
-                        <h3 className={styles.dangerTitle}>Xóa tài khoản</h3>
-                        <p className={styles.dangerText}>
-                            Hành động này sẽ xóa vĩnh viễn tài khoản của bạn và tất cả dữ liệu liên quan.
-                        </p>
-
-                        <div className={styles.confirmGroup}>
-                            <label className={styles.confirmLabel}>
-                                Để xác nhận xóa tài khoản, vui lòng nhập email của bạn: <span className={styles.emailHighlight}>{formData.email}</span>
-                            </label>
-                            <input type="text" value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} className={styles.confirmInput} placeholder="Nhập email của bạn" />
-                        </div>
-
-                        <div className={styles.buttonGroup}>
-                            <button onClick={handleDeleteAccount} disabled={deleteConfirm !== formData.email} className={`${styles.button} ${styles.buttonDanger}`} style={{ opacity: deleteConfirm === formData.email ? 1 : 0.5, cursor: deleteConfirm === formData.email ? "pointer" : "not-allowed" }}>
-                                Xóa tài khoản vĩnh viễn
                             </button>
                         </div>
                     </div>
