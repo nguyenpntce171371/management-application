@@ -49,8 +49,9 @@ function RegisterStep2({ formData, currentStep, setCurrentStep }) {
         axiosInstance.post("/api/auth/verify-otp-register", { email: formData.email, otp: otp.join("") })
             .then(() => {
                 axiosInstance.post("/api/auth/register", { fullName: formData.fullName, email: formData.email, password: formData.password })
-                    .then(() => { setCurrentStep(3) })
+                    .then(() => { setCurrentStep(3) }).catch(() => { })
             })
+            .catch(() => { })
             .finally(() => { setIsLoading(false); });
     };
 
@@ -77,7 +78,7 @@ function RegisterStep2({ formData, currentStep, setCurrentStep }) {
         e.preventDefault();
         if (resendCooldown > 0) return;
         setIsLoading(true);
-        axiosInstance.post("/api/auth/send-otp-register", { email: formData.email }).then(() => startCooldown(60)).finally(() => { setIsLoading(false) });
+        axiosInstance.post("/api/auth/send-otp-register", { email: formData.email }).then(() => startCooldown(60)).finally(() => { setIsLoading(false) }).catch(() => { });
     };
 
     return (

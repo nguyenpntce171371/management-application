@@ -40,7 +40,7 @@ export default function Profile() {
     }, [user]);
 
     useEffect(() => {
-        axiosInstance.get("/api/auth/sessions").then(res => setSessions(res.data.data));
+        axiosInstance.get("/api/auth/sessions").then(res => setSessions(res.data.data)).catch(() => { });
     }, []);
 
     useEffect(() => {
@@ -49,7 +49,7 @@ export default function Profile() {
             if (data._id) {
                 axiosInstance.get("/api/auth/sessions").then(res => {
                     setSessions(res.data.data);
-                });
+                }).catch(() => { });
             }
         };
 
@@ -159,7 +159,7 @@ export default function Profile() {
 
             const res = await axiosInstance.post("/api/user", formData, {
                 headers: { "Content-Type": "multipart/form-data" }
-            });
+            }).catch(() => { });
 
             setUser(res.data.data);
             setAvatarFile(null);
@@ -186,7 +186,7 @@ export default function Profile() {
     const handleDeleteAvatar = async () => {
         try {
             setIsUploadingAvatar(true);
-            const res = await axiosInstance.delete("/api/user/avatar");
+            const res = await axiosInstance.delete("/api/user/avatar").catch(() => { });
             setUser(res.data.data);
             setAvatarFile(null);
             setAvatarPreview(null);
@@ -202,19 +202,19 @@ export default function Profile() {
 
     const handleLogoutAllDevices = async () => {
         if (!confirm("Bạn có chắc muốn đăng xuất khỏi tất cả thiết bị?")) return;
-        await axiosInstance.post("/api/auth/logout-all-device");
+        await axiosInstance.post("/api/auth/logout-all-device").catch(() => { });
         setUser(null);
     };
 
     const handleLogoutSession = async (sessionId) => {
-        const res = await axiosInstance.post("/api/auth/logout-sessions", { sessionId });
+        const res = await axiosInstance.post("/api/auth/logout-sessions", { sessionId }).catch(() => { });
         if (res.data.success) {
             setSessions(prev => prev.filter(s => s.id !== sessionId));
         }
     };
 
     const handleLogout = async () => {
-        await axiosInstance.post("/api/auth/logout");
+        await axiosInstance.post("/api/auth/logout").catch(() => { });
         setUser(null);
     };
 
@@ -243,7 +243,7 @@ export default function Profile() {
             const res = await axiosInstance.post("/api/user", {
                 fullName: formData.fullName,
                 address: formData.address,
-            });
+            }).catch(() => { });
             setUser(res.data.data);
             notify({
                 type: "success",
@@ -265,11 +265,11 @@ export default function Profile() {
 
     const handleChangePassword = async (e) => {
         e.preventDefault();
-        if (user.provider !== "local" && !formData.currentPassword) {
+        if ((user.provider !== "local" && !formData.currentPassword) || !formData.newPassword || !formData.confirmPassword) {
             notify({
                 type: "error",
                 title: "Thiếu thông tin",
-                message: "Vui lòng nhập mật khẩu hiện tại!",
+                message: "Vui lòng nhập đầy đủ thông tin!",
             });
             return;
         }
@@ -286,7 +286,7 @@ export default function Profile() {
             oldPassword: formData.currentPassword,
             newPassword: formData.newPassword,
             confirm: formData.confirmPassword
-        });
+        }).catch(() => { });
         notify({
             type: "success",
             title: "Thành công",
@@ -425,25 +425,25 @@ export default function Profile() {
                             <div className={styles.passwordToggle}>
                                 <div className={styles.buttonGroup}>
                                     <button onClick={() => setShowPasswordForm(true)} className={`${styles.button} ${styles.buttonSecondary}`}>
-                                        Thay đổi mật khẩu
+                                        {user.provider === "local" ? "Đổi mật khẩu" : "Thêm mật khẩu"}
                                     </button>
                                 </div>
                             </div>
                         ) : (
                             <form onSubmit={handleChangePassword}>
-                                <div className={styles.formGroup}>
+                                {user.provider === "local" && <div className={styles.formGroup}>
                                     <label className={styles.label}>Mật khẩu hiện tại</label>
-                                    <input type="password" name="currentPassword" value={formData.currentPassword} onChange={handleInputChange} className={styles.input} required disabled={user.provider !== "local"} />
-                                </div>
+                                    <input type="password" name="currentPassword" value={formData.currentPassword} onChange={handleInputChange} className={styles.input} />
+                                </div>}
 
                                 <div className={styles.formGroup}>
                                     <label className={styles.label}>Mật khẩu mới</label>
-                                    <input type="password" name="newPassword" value={formData.newPassword} onChange={handleInputChange} className={styles.input} required />
+                                    <input type="password" name="newPassword" value={formData.newPassword} onChange={handleInputChange} className={styles.input} />
                                 </div>
 
                                 <div className={styles.formGroup}>
                                     <label className={styles.label}>Xác nhận mật khẩu mới</label>
-                                    <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} className={styles.input} required />
+                                    <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} className={styles.input} />
                                 </div>
 
                                 <div className={styles.buttonGroup}>

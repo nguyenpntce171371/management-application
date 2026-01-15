@@ -53,6 +53,7 @@ function ForgotPasswordStep2({ email, otp, setOtp, currentStep, setCurrentStep }
         setIsLoading(true);
         axiosInstance.post("/api/password/verify-otp-forgot", { email: email, otp: otp.join("") })
             .then(() => setCurrentStep(3))
+            .catch(() => { })
             .finally(() => setIsLoading(false));
     };
 

@@ -43,6 +43,7 @@ function RegisterStep1({ formData, setFormData, setCurrentStep }) {
         setIsLoading(true);
         axiosInstance.post("/api/auth/send-otp-register", { email: formData.email })
             .then(() => { setCurrentStep(2) })
+            .catch(() => { })
             .finally(() => { setIsLoading(false) });
     };
 

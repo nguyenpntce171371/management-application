@@ -39,7 +39,7 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
                 sortBy: "createdAt",
                 sortOrder: "desc",
             },
-        });
+        }).catch(() => { });
         const data = res.data?.data ?? [];
         setSearchResults(data.map(p => ({ ...p, id: p._id })));
     }, []);
@@ -54,7 +54,7 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
                 street: appraisal.street,
                 limit: 20,
             },
-        });
+        }).catch(() => { });;
         return (res.data?.data ?? []).map(p => ({ ...p, id: p._id }));
     }, [appraisal]);
 

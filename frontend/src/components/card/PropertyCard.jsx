@@ -35,7 +35,7 @@ function PropertyCard({ property, viewMode, detailLink, onDelete, selected, onCl
                 type: "success",
                 title: "Thành công",
                 message: "Cập nhật trạng thái thành công!",
-            }));
+            })).catch(() => { });
     }
 
     const handleDelete = async (id) => {

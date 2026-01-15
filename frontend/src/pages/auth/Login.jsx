@@ -30,7 +30,7 @@ function Login() {
 
         axiosInstance.post("/api/auth/login", { email, password, remember: rememberMe })
             .then(async (res) => {
-                const response = await axiosInstance.get("/api/user");
+                const response = await axiosInstance.get("/api/user").catch(() => { });
                 if (response.data?.data) {
                     setUser(response.data.data);
                 }
@@ -42,6 +42,7 @@ function Login() {
                     navigate("/", { replace: true });
                 }
             })
+            .catch(() => { })
             .finally(() => setIsLoading(false));
     };
 

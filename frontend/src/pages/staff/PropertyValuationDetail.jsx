@@ -38,7 +38,7 @@ function PropertyValuationDetail() {
     }, [socket, id, navigate]);
 
     useEffect(() => {
-        axiosInstance.get(`/api/staff/appraisals/${id}`).then(res => setAppraisal(res.data.data));
+        axiosInstance.get(`/api/staff/appraisals/${id}`).then(res => setAppraisal(res.data.data)).catch(() => { });
     }, [id]);
 
     const [totalLand, setTotalLand] = useState(0);

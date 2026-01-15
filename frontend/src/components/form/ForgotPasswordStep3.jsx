@@ -49,6 +49,7 @@ function ForgotPasswordStep3({ email, otp, currentStep, setCurrentStep }) {
                 });
                 navigate("/login");
             })
+            .catch(() => { })
             .finally(() => {
                 setIsLoading(false);
             });

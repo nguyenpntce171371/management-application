@@ -24,7 +24,7 @@ function RealEstateDetail() {
     }, [id]);
 
     const loadDetail = async () => {
-        const res = await axiosInstance.get(`/api/real-estate/${id}`);
+        const res = await axiosInstance.get(`/api/real-estate/${id}`).catch(() => { });
         setProperty(res.data.data);
         setFormData(res.data.data);
     };
@@ -58,6 +58,7 @@ function RealEstateDetail() {
                 title: "Thành công",
                 message: "Cập nhật trạng thái thành công!",
             }))
+            .catch(() => { })
             .finally(() => setIsEditMode(false));
     };
 
@@ -73,7 +74,7 @@ function RealEstateDetail() {
                 type: "success",
                 title: "Thành công",
                 message: "Cập nhật trạng thái thành công!",
-            }));
+            })).catch(() => { });
     };
 
     const formatDate = (date) => {

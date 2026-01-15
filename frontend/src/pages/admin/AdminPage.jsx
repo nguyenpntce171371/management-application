@@ -24,8 +24,8 @@ function AdminPage() {
 
     const fetchStats = async () => {
         const [realEstateRes, userRes, latestRes] = await Promise.all([
-            axiosInstance.get("/api/real-estate/stats"),
-            axiosInstance.get("/api/user/stats"),
+            axiosInstance.get("/api/real-estate/stats").catch(() => { }),
+            axiosInstance.get("/api/user/stats").catch(() => { }),
             axiosInstance.get("/api/real-estate", {
                 params: {
                     page: 1,
@@ -34,7 +34,7 @@ function AdminPage() {
                     sortOrder: "desc",
                     status: "Đang bán"
                 },
-            }),
+            }).catch(() => { }),
         ]);
         const realEstate = realEstateRes.data?.data ?? {};
         const userCount = userRes.data?.data ?? 0;

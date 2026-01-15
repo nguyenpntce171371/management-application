@@ -9,7 +9,7 @@ export const changePassword = async (req, res) => {
     try {
         let { email, oldPassword, newPassword, confirm } = req.body;
 
-        if (!email || !oldPassword || !newPassword || !confirm) {
+        if (!email || !newPassword || !confirm) {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_FIELDS",
@@ -31,6 +31,14 @@ export const changePassword = async (req, res) => {
                 success: false,
                 code: "INVALID_CREDENTIALS",
                 message: "Thông tin đăng nhập không hợp lệ",
+            });
+        }
+
+        if (user.provider === "local" && !oldPassword) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_FIELDS",
+                message: "Các trường bắt buộc bị thiếu",
             });
         }
 

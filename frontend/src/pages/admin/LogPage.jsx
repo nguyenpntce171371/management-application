@@ -45,7 +45,7 @@ function LogPage() {
                 sortBy: "createdAt",
                 sortOrder: "desc",
             },
-        });
+        }).catch(() => { });
 
         const newData = res.data?.data ?? [];
         const pagination = res.data?.pagination;

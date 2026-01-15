@@ -41,7 +41,7 @@ function PropertyValuation() {
                 limit,
                 search: debouncedSearch,
             },
-        });
+        }).catch(() => { });
 
         setAppraisals(res.data.data);
         setTotalPages(res.data.pagination.totalPages);
@@ -111,7 +111,7 @@ function PropertyValuation() {
         await axiosInstance.post("/api/staff/appraisals", {
             customerName: "",
             propertyType: ""
-        });
+        }).catch(() => { });
     };
 
     const handleDelete = async (id) => {
@@ -119,7 +119,7 @@ function PropertyValuation() {
         if (!appraisal) return;
         if (!window.confirm(`Xác nhận xóa hồ sơ ${appraisal.code}?`)) return;
         setAppraisals(prev => prev.filter(a => a._id !== id));
-        await axiosInstance.delete(`/api/staff/appraisals/${id}`);
+        await axiosInstance.delete(`/api/staff/appraisals/${id}`).catch(() => { });
     };
 
     const handlePageChange = (newPage) => {

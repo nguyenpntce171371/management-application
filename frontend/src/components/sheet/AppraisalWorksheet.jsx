@@ -47,12 +47,12 @@ function AppraisalWorksheet() {
     }, [provinces]);
 
     const convertAddress = async (address) => {
-        const response = await axiosInstance.post("/api/staff/convert-address", { address });
+        const response = await axiosInstance.post("/api/staff/convert-address", { address }).catch(() => { });
         return response?.data?.data?.new || address;
     };
 
     const loadAppraisalFromAPI = useCallback(async () => {
-        const response = await axiosInstance.get(`/api/staff/appraisals/${id}`);
+        const response = await axiosInstance.get(`/api/staff/appraisals/${id}`).catch(() => { });
         const appraisalData = response.data.data;
         const assets = appraisalData.assets || [];
         const constructions = appraisalData.constructions || [];
@@ -81,7 +81,7 @@ function AppraisalWorksheet() {
 
             for (const compId of comparisonIds) {
                 const comparisonExtraData = apiComparisons.find(comp => (comp.id || comp._id) === compId);
-                const compRes = await axiosInstance.get(`/api/real-estate/${compId}`);
+                const compRes = await axiosInstance.get(`/api/real-estate/${compId}`).catch(() => { });
                 const compData = compRes.data.data;
                 const mergedCompData = { ...compData, id: compData._id || compId, _id: compData._id || compId, isComparison: true, ...(comparisonExtraData || {}) };
                 const existingComp = await indexedDBService.getPropertyById(compId);
@@ -149,7 +149,7 @@ function AppraisalWorksheet() {
         for (const compId of selectedIds) {
             const exists = allIndexedProperties.find(p => (p.id === compId || p._id === compId) && p.isComparison);
             if (!exists) {
-                const res = await axiosInstance.get(`/api/real-estate/${compId}`);
+                const res = await axiosInstance.get(`/api/real-estate/${compId}`).catch(() => { });
                 const data = {
                     ...res.data.data,
                     id: res.data.data._id,
@@ -327,7 +327,7 @@ function AppraisalWorksheet() {
             let property = await indexedDBService.getPropertyById(comparisonId);
 
             if (!property) {
-                const res = await axiosInstance.get(`/api/real-estate/${comparisonId}`);
+                const res = await axiosInstance.get(`/api/real-estate/${comparisonId}`).catch(() => { });
                 property = {
                     ...res.data.data,
                     id: res.data.data._id,
@@ -484,11 +484,11 @@ function AppraisalWorksheet() {
         }));
         const payload = { assets, constructions };
 
-        await axiosInstance.post(`/api/staff/appraisals/assets/${id}`, payload);
+        await axiosInstance.post(`/api/staff/appraisals/assets/${id}`, payload).catch(() => { });
     }, [id, appraisalPropertiesData, selectedComparisons]);
 
     const handleReload = useCallback(async () => {
-        const response = await axiosInstance.get(`/api/staff/appraisals/${id}`);
+        const response = await axiosInstance.get(`/api/staff/appraisals/${id}`).catch(() => { });
         const appraisalData = response.data.data;
         const assets = appraisalData.assets || [];
         const constructions = appraisalData.constructions || [];
@@ -523,7 +523,7 @@ function AppraisalWorksheet() {
 
             for (const compId of comparisonIds) {
                 const comparisonExtraData = apiComparisons.find(comp => (comp.id || comp._id) === compId);
-                const compRes = await axiosInstance.get(`/api/real-estate/${compId}`);
+                const compRes = await axiosInstance.get(`/api/real-estate/${compId}`).catch(() => { });
                 const compData = compRes.data.data;
                 const mergedCompData = { ...compData, id: compData._id || compId, _id: compData._id || compId, isComparison: true, ...(comparisonExtraData || {}) };
                 const existingComp = await indexedDBService.getPropertyById(compId);
