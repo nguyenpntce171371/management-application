@@ -1,5 +1,4 @@
-import dotenv from "dotenv";
-dotenv.config();
+import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
 import router from "./routers/index.js";
@@ -29,9 +28,5 @@ app.use(compression());
 app.use(loggingMiddleware);
 app.use("/api", router);
 
-mongoose
-    .connect(`mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-${APP_MODE}:27017/${MONGO_DB_NAME}?authSource=admin`)
-    .then(async () => console.log("MongoDB connected"))
-    .catch(err => console.error("MongoDB connection error:", err.message));
-
-server.listen(PORT, "0.0.0.0", () => console.log(`Backend running on ${PORT}`));
+mongoose.connect(`mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-${APP_MODE}:27017/${MONGO_DB_NAME}?authSource=admin`).catch(err => console.error("MongoDB connection error:", err.message));
+server.listen(PORT, "0.0.0.0");

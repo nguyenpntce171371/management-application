@@ -35,6 +35,7 @@
             header_up X-Forwarded-Proto {scheme}
             trusted_proxies {$TRUSTED_PROXY_RANGE}
             transport http {
+                versions 1.1 2
                 read_timeout 86400s
                 write_timeout 86400s
             }

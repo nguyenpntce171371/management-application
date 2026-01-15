@@ -45,6 +45,7 @@ export default function Profile() {
 
     useEffect(() => {
         if (!socket || !user) return;
+        
         const handleLoggedInElsewhere = (data) => {
             if (data._id) {
                 axiosInstance.get("/api/auth/sessions").then(res => {

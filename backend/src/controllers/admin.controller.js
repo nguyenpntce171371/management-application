@@ -41,9 +41,9 @@ export const updateUserRole = async (req, res) => {
         const sessionIds = sessions.map(s => s._id);
         await Token.deleteMany({ userId: updatedUser._id });
 
-        io.to(updatedUser._id).emit("roleUpdated", { sessionIds });
+        io.to(updatedUser._id.toString()).emit("roleUpdated", { sessionIds });
         io.to("Admin").emit("userRoleChanged", {
-            userId: updatedUser._id,
+            userId: updatedUser._id.toString(),
             email: updatedUser.email,
             role: role
         });
@@ -89,7 +89,7 @@ export const getUsers = async (req, res) => {
             query.role = role;
         }
 
-        const data = await User.find(query, "fullName email role _id createdAt avatar").sort({ [sortBy]: sortOrder, _id: sortOrder }).skip(skip).limit(limit);
+        const data = await User.find(query, "fullName email role address _id createdAt avatar").sort({ [sortBy]: sortOrder, _id: sortOrder }).skip(skip).limit(limit);
 
         const total = await User.countDocuments(query);
 

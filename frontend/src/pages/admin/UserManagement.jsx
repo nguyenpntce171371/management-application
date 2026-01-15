@@ -92,13 +92,11 @@ function UserManagement() {
         socket.on("userRoleChanged", onUserUpdated);
         socket.on("userUpdated", onUserUpdated);
         socket.on("userDeleted", onUserDeleted);
-        socket.on("profileUpdated", onUserUpdated);
         return () => {
             socket.off("newUserRegistered", onUserCreated);
             socket.off("userRoleChanged", onUserUpdated);
             socket.off("userUpdated", onUserUpdated);
             socket.off("userDeleted", onUserDeleted);
-            socket.on("profileUpdated", onUserUpdated);
         };
     }, [socket, fetchUsers]);
 

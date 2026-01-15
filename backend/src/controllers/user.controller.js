@@ -139,16 +139,17 @@ export const updateUserProfile = async (req, res) => {
             avatarUrl = await getCachedImageUrl(user.avatar);
         }
 
-        io.to(user._id).emit("profileUpdated", {
-            id: user.userId,
+        io.to(user._id.toString()).emit("profileUpdated", {
+            _id: user._id.toString(),
             email: user.email,
             role: user.role,
             fullName: user.fullName,
             address: user.address,
             avatar: avatarUrl
         });
+
         io.to("Admin").emit("userUpdated", {
-            id: user.userId,
+            _id: user._id.toString(),
             email: user.email,
             role: user.role,
             fullName: user.fullName,

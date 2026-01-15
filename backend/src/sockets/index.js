@@ -21,7 +21,7 @@ export const initializeSocket = (server) => {
   io.on("connection", (socket) => {
     joinBaseRooms(socket);
     setupAppraisalSocketHandlers(io, socket);
-    socket.on("disconnect", () => {});
+    socket.on("disconnect", () => { });
     socket.on("error", () => { });
   });
 
