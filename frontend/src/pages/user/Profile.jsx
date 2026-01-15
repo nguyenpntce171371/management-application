@@ -305,8 +305,7 @@ export default function Profile() {
     const tabs = [
         { id: "info", label: "Thông tin" },
         { id: "security", label: "Bảo mật" },
-        { id: "sessions", label: "Quản lý Session" },
-        { id: "delete", label: "Xóa tài khoản" },
+        { id: "sessions", label: "Quản lý Session" }
     ];
 
     const displayAvatar = avatarPreview || user?.avatar;
