@@ -85,6 +85,10 @@ function RealEstateDetail() {
         });
     };
 
+    if (!property) {
+        return <div>Loading...</div>;
+    }
+
     return (
         <>
             <PageHeader title="Chi Tiết Bất Động Sản" back={true} />
