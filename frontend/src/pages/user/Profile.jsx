@@ -307,9 +307,7 @@ export default function Profile() {
         { id: "security", label: "Bảo mật" },
         { id: "sessions", label: "Quản lý Session" }
     ];
-
-    const displayAvatar = avatarPreview || user?.avatar;
-
+    
     return (
         <div className={styles.container}>
             <div className={styles.tabs}>
@@ -327,8 +325,8 @@ export default function Profile() {
                         <h3 className={styles.sectionTitle}>Ảnh đại diện</h3>
                         <div className={styles.avatarSection}>
                             <div className={styles.avatar}>
-                                {displayAvatar ? (
-                                    <img src={displayAvatar} alt="Avatar" className={styles.avatarImage} />
+                                {avatarPreview || user?.avatar ? (
+                                    <img src={avatarPreview || user?.avatar} alt="Avatar" className={styles.avatarImage} />
                                 ) : (
                                     formData.fullName.charAt(0).toUpperCase()
                                 )}

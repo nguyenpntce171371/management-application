@@ -256,7 +256,6 @@ function RealEstateDetail() {
                     </div>
                 </div>
 
-                <div className={styles.detailsGrid}>
                     <div className={styles.detailsSection}>
                         <div className={styles.sectionCard}>
                             <h2 className={styles.sectionTitle}>
@@ -379,42 +378,14 @@ function RealEstateDetail() {
                             </h2>
                             <div className={styles.contactRow}>
                                 {isEditMode ? (
-                                    property.contacts.map(idx => (<input key={idx} type="text" value={formData.contacts[idx].phone} onChange={(e) => handleContactChange(idx, "phone", e.target.value)} className={styles.editInputSmall} />))
+                                    property.contacts.map((c, i) => (<input key={i} type="text" value={formData.contacts[i].phone} onChange={(e) => handleContactChange(i, "phone", e.target.value)} className={styles.editInputSmall} />))
                                 ) : (
                                     <span>{property.contacts.map(c => c.phone).filter(Boolean).join(", ")}</span>
                                 )}
                             </div>
                         </div>
                     </div>
-
-                    <div className={styles.sideColumn}>
-                        <div className={styles.sectionCard}>
-                            <h2 className={styles.sectionTitle}>
-                                <DollarSign />
-                                Thông tin bổ sung
-                            </h2>
-                            <div className={styles.additionalStats}>
-                                <div className={styles.additionalStatItem}>
-                                    <div className={styles.additionalStatLabel}>
-                                        Giá
-                                    </div>
-                                    <div className={styles.additionalStatValue}>
-                                        {property.price ? property.price : "Thương lượng"}
-                                    </div>
-                                </div>
-                                <div className={styles.additionalStatItem}>
-                                    <div className={styles.additionalStatLabel}>
-                                        Trạng thái
-                                    </div>
-                                    <div className={styles.additionalStatValue}>
-                                        {property.status === "active" ? "Đang bán" : property.status}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
-            </div>
 
             {showImageModal && (
                 <div className={styles.modal} onClick={() => setShowImageModal(false)}>
