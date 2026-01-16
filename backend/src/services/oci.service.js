@@ -45,6 +45,10 @@ export const generateReadPAR = async (objectName, ttlMinutes = 60) => {
 };
 
 export const deleteImageFromOCI = async (objectName) => {
+    if (objectName.startsWith("http://") || objectName.startsWith("https://")) {
+        return;
+    }
+
     await ociClient.deleteObject({
         namespaceName: OCI_CONFIG.NAMESPACE,
         bucketName: OCI_CONFIG.BUCKET,
