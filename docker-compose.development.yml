@@ -113,6 +113,8 @@ services:
       --bind-addr 0.0.0.0:8080
       --auth password
       /home/coder/project
+    ports:
+      - "127.0.0.1:8080:8080"
 
 volumes:
   mongo_development_data:
