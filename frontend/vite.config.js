@@ -8,7 +8,7 @@ export default defineConfig({
         host: "0.0.0.0",
         port: 5173,
         strictPort: true,
-        allowedHosts: [process.env.DOMAIN],
+        allowedHosts: [`dev.${process.env.DOMAIN}`],
         hmr: {
             clientPort: 443,
             protocol: "wss"
@@ -21,6 +21,6 @@ export default defineConfig({
     preview: {
         host: "0.0.0.0",
         port: 5173,
-        allowedHosts: [process.env.DOMAIN]
+        allowedHosts: [`dev.${process.env.DOMAIN}`]
     }
 });
