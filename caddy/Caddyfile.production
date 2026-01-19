@@ -3,7 +3,7 @@
     auto_https off
 }
 
-{$DOMAIN} {
+:80 {
     request_body {
         max_size 50MB
     }
