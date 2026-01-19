@@ -65,7 +65,7 @@
     }
 }
 
-dev.{$DOMAIN} {
+{$DOMAIN} {
     import common
 }
 
