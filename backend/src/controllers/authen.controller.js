@@ -2,7 +2,6 @@ import Token from "../models/Token.js";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { redis } from "../middlewares/rateLimitRedis.js";
 import { sendOTPRegisterEmail } from "../services/email.service.js";
 import axios from "axios";
 import { io } from "../index.js";
@@ -10,6 +9,7 @@ import { OAuth2Client } from "google-auth-library";
 import { OTPService } from "../services/otp.service.js";
 
 export const googleCallback = async (req, res) => {
+    const DOMAIN = `https://${process.env.APP_MODE === "development" ? "dev." : ""}${process.env.DOMAIN}`
     try {
         const code = req.query.code;
         if (!code) {
@@ -26,7 +26,7 @@ export const googleCallback = async (req, res) => {
                 code,
                 client_id: process.env.GOOGLE_CLIENT_ID,
                 client_secret: process.env.GOOGLE_CLIENT_SECRET,
-                redirect_uri: `https://${process.env.DOMAIN}/api/auth/google/callback`,
+                redirect_uri: `${DOMAIN}/api/auth/google/callback`,
                 grant_type: "authorization_code",
             },
             { headers: { "Content-Type": "application/json" } }
@@ -133,17 +133,18 @@ export const googleCallback = async (req, res) => {
             secure: process.env.APP_MODE === "production",
         });
 
-        return res.redirect(`https://${process.env.DOMAIN}/`);
+        return res.redirect(DOMAIN);
     } catch (error) {
         console.log("Google login error:", error);
         return res.redirect(
-            `${process.env.DOMAIN}/?login=google_failed`
+            `${DOMAIN}/?login=google_failed`
         );
     }
 };
 
 export const googleLogin = (req, res) => {
-    const redirectUri = encodeURIComponent(`https://${process.env.DOMAIN}/api/auth/google/callback`);
+    const DOMAIN = `https://${process.env.APP_MODE === "development" ? "dev." : ""}${process.env.DOMAIN}`
+    const redirectUri = encodeURIComponent(`${DOMAIN}/api/auth/google/callback`);
     const scope = encodeURIComponent("openid email profile");
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
     return res.redirect(url);
@@ -156,7 +157,7 @@ export const logout = async (req, res) => {
 
         if (rt && deviceId) {
             const hashedDeviceId = crypto.createHash("sha256").update(deviceId).digest("hex");
-            const session = await Token.deleteOne({ userId: req.user.userId, deviceId: hashedDeviceId });
+            const session = await Token.findOneAndDelete({ userId: req.user.userId, deviceId: hashedDeviceId });
             io.to(req.user.userId).emit("loggedOut", { _id: session._id });
         }
 
@@ -368,7 +369,7 @@ export const verifyOtpRegister = async (req, res) => {
                 code: error.code,
                 message: error.message
             });
-        } else  if (error.code === "OTP_LIMIT") {
+        } else if (error.code === "OTP_LIMIT") {
             res.status(429).json({
                 success: false,
                 code: error.code,
