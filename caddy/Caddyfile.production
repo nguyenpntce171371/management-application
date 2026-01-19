@@ -1,5 +1,6 @@
 {
     admin off
+    auto_https off
 }
 
 {$DOMAIN} {
@@ -28,33 +29,11 @@
     }
 
     handle /socket.io/* {
-        reverse_proxy backend:3000 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-            trusted_proxies {$TRUSTED_PROXY_RANGE}
-            transport http {
-                versions 1.1 2
-                read_timeout 86400s
-                write_timeout 86400s
-            }
-        }
+        reverse_proxy backend:3000
     }
 
     handle /api/* {
-        reverse_proxy backend:3000 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-            trusted_proxies {$TRUSTED_PROXY_RANGE}
-            transport http {
-                read_timeout 300s
-                dial_timeout 300s
-                write_timeout 300s
-            }
-        }
+        reverse_proxy backend:3000
     }
 
     handle {

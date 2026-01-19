@@ -17,8 +17,8 @@ A comprehensive web application for Real Estate Management and Professional Prop
 ## Prerequisites
 
 * Docker & Docker Compose
-* Node.js (optional, for local intellisense)
-* Google OAuth2 Credentials (required for login)
+* Node.js
+* Google OAuth2 Credentials
 
 ## Configuration
 
@@ -28,14 +28,14 @@ Create a `.env` file in the root directory.
 
 ## Required Variables
 
-| Variable         | Description                                                                 |
-|------------------|------------------------------------------------------------------------------|
-| `APP_MODE`       | `development` hoặc `production` (Điều khiển logic build trong `run.sh`)     |
-| `DOMAIN`         | Domain dùng cho cookies và CORS (ví dụ: `localhost`)                        |
-| `MONGO_*`        | Thông tin kết nối MongoDB                                                    |
-| `REDIS_PASSWORD` | Khóa bảo mật cho Redis session store                                         |
-| `OCI_*`          | Khóa Oracle Cloud Infrastructure dùng cho lưu trữ file                      |
-| `GOOGLE_*`       | Client ID / Client Secret cho đăng nhập OAuth2                              |
+| Variable         | Description                                                |
+|------------------|------------------------------------------------------------|
+| `APP_MODE`       | `development` or `production`                              |
+| `DOMAIN`         | Domain use for cookies and CORS                            |
+| `MONGO_*`        | MongoDB credentials                                        |
+| `REDIS_PASSWORD` | Secret key for Redis session store                         |
+| `OCI_*`          | Oracle Cloud Infrastructure Credentials for bucket storage |
+| `GOOGLE_*`       | Client ID / Client Secret OAuth2                           |
 
 ## Installation & Usage
 
@@ -72,6 +72,6 @@ sudo docker compose -f docker-compose.development.yml down
 
 ## Access & First Run
 
-* Frontend: http://localhost (or your configured domain).
+* Frontend: http://dev.domain or http://domain (base on your app mode in env).
 * Admin Access: The system automatically assigns Admin role to the first user.
 * Code Server (Dev mode): https://code.<YOUR_DOMAIN>
