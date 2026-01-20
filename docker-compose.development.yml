@@ -11,6 +11,7 @@ services:
       MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
     volumes:
       - mongo_development_data:/data/db
+      - mongo_development_config:/data/configdb
 
   redis-development:
     image: redis:7-alpine
@@ -118,6 +119,7 @@ services:
 
 volumes:
   mongo_development_data:
+  mongo_development_config:
   redis_development_data:
   backend_node_modules:
   frontend_node_modules:

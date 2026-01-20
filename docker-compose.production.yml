@@ -11,6 +11,7 @@ services:
       MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
     volumes:
       - mongo_production_data:/data/db
+      - mongo_production_config:/data/configdb
 
   redis-production:
     image: redis:7-alpine
@@ -109,6 +110,7 @@ services:
 
 volumes:
   mongo_production_data:
+  mongo_production_config:
   redis_production_data:
   caddy_data:
   caddy_config:
