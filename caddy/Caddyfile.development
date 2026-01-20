@@ -3,7 +3,7 @@
     auto_https off
 }
 
-(common) {
+:80 {
     request_body {
         max_size 50MB
     }
@@ -41,14 +41,5 @@
     log {
         output stdout
         format console
-    }
-}
-
-:80 {
-    import common
-
-    @code_host host code.{$DOMAIN}
-    handle @code_host {
-        reverse_proxy code-server:8080
     }
 }
