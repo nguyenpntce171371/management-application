@@ -97,7 +97,6 @@ services:
     depends_on:
       - frontend
       - backend
-      - code-server
 
   code-server:
     image: codercom/code-server:latest
