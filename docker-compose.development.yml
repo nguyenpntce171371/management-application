@@ -98,21 +98,34 @@ services:
       - frontend
       - backend
 
+  code-server-init:
+    image: busybox
+    user: "0:0"
+    volumes:
+      - code_server_data:/data
+    command: >
+      sh -c "chown -R 1000:1000 /data"
+    restart: "no"
+
   code-server:
     image: codercom/code-server:latest
+    user: "1000:1000"
+    depends_on:
+      code-server-init:
+        condition: service_completed_successfully
     container_name: code-server
     restart: unless-stopped
     environment:
       PASSWORD: ${CODE_SERVER_PASSWORD}
       TZ: Asia/Ho_Chi_Minh
     volumes:
-      - .:/home/coder/project
+      - .:/home/coder/project-bds
       - code_server_data:/home/coder/.local/share/code-server
     command: >
       code-server
       --bind-addr 0.0.0.0:8080
       --auth password
-      /home/coder/project
+      /home/coder/project-bds
     networks:
       - web    
 
