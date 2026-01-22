@@ -416,6 +416,11 @@
     font-variant-numeric: tabular-nums;
 }
 
+.option {
+    background: white;
+    color: black;
+}
+
 .dateInputWrapper {
     position: relative;
 }

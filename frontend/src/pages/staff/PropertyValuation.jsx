@@ -213,11 +213,11 @@ function PropertyValuation() {
                                     </td>
                                     <td>
                                         <select value={appraisal.status} onChange={(e) => handleChange(appraisal._id, "status", e.target.value)} className={`${styles.statusSelect} ${statusConfig[appraisal.status]?.className}`}>
-                                            <option value="draft">Nháp</option>
-                                            <option value="pending">Chờ xử lý</option>
-                                            <option value="in-progress">Đang thẩm định</option>
-                                            <option value="completed">Hoàn thành</option>
-                                            <option value="rejected">Từ chối</option>
+                                            <option className={styles.option} value="draft">Nháp</option>
+                                            <option className={styles.option} value="pending">Chờ xử lý</option>
+                                            <option className={styles.option} value="in-progress">Đang thẩm định</option>
+                                            <option className={styles.option} value="completed">Hoàn thành</option>
+                                            <option className={styles.option} value="rejected">Từ chối</option>
                                         </select>
                                     </td>
                                     <td>
