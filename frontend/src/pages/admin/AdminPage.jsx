@@ -57,7 +57,7 @@ function AdminPage() {
                 colorClass: "gold",
                 colorKey: "statCardGold",
                 iconColorKey: "statIconGold",
-                route: "/staff/real-estate",
+                route: "/user/real-estate",
             },
             realEstateTypeStats: (realEstate.propertyTypeDistribution ?? []).map(
                 (item, i) => ({
