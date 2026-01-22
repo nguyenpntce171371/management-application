@@ -99,9 +99,14 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
         );
     }, [searchResults, nearbyProperties, selectedComparisons, appraisal.id]);
 
+    const filteredNearbyProperties = useMemo(() => {
+        const selectedIds = new Set(selectedComparisons[appraisal.id] || []);
+        return nearbyProperties.filter(p => !selectedIds.has(p.id));
+    }, [nearbyProperties, selectedComparisons, appraisal.id]);
+
     const displayProperties = useMemo(
-        () => [...selectedProperties, ...nearbyProperties, ...filteredSearchResults],
-        [selectedProperties, nearbyProperties, filteredSearchResults]
+        () => [...selectedProperties, ...filteredNearbyProperties, ...filteredSearchResults],
+        [selectedProperties, filteredNearbyProperties, filteredSearchResults]
     );
 
     const handleToggle = useCallback(

@@ -683,7 +683,7 @@ function AppraisalWorksheet() {
                                 <select className={styles.formSelect} value={province} onChange={handleProvinceChange}>
                                     <option value="">-- Chọn tỉnh/thành phố --</option>
                                     {provinces.map((p) => (
-                                        <option key={p.code} value={p.name}>{p.name}</option>
+                                        <option key={p.name} value={p.name}>{p.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -693,7 +693,7 @@ function AppraisalWorksheet() {
                                 <select className={styles.formSelect} value={district} onChange={handleDistrictChange}>
                                     <option value="">-- Chọn quận/huyện --</option>
                                     {districtOptions.map((d) => (
-                                        <option key={d.code} value={d.name}>{d.name}</option>
+                                        <option key={d.name} value={d.name}>{d.name}</option>
                                     ))}
                                 </select>
                             </div>)}
@@ -703,7 +703,7 @@ function AppraisalWorksheet() {
                                 <select className={styles.formSelect} value={ward} onChange={handleWardChange}>
                                     <option value="">-- Chọn phường/xã --</option>
                                     {wardOptions.map((w) => (
-                                        <option key={w.code} value={w.name}>{w.name}</option>
+                                        <option key={w.name} value={w.name}>{w.name}</option>
                                     ))}
                                 </select>
                             </div>)}

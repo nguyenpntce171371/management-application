@@ -101,7 +101,26 @@ function AddRealEstate() {
                     title: "Thành công",
                     message: "Bất động sản đã được thêm thành công!",
                 });
-                setFormData({ propertyType: "", price: "", length: "", width: "", usableArea: "", bedrooms: "", bathrooms: "", address: "", province: "", district: "", ward: "", street: "", description: "", lat: "", lng: "", name: "", phone: "" });
+                setFormData({
+                    propertyType: "",
+                    price: "",
+                    length: "",
+                    width: "",
+                    area: "",
+                    usableArea: "",
+                    bedrooms: "",
+                    bathrooms: "",
+                    address: "",
+                    province: "",
+                    district: "",
+                    ward: "",
+                    street: "",
+                    description: "",
+                    lat: "",
+                    lng: "",
+                    name: "",
+                    phone: ""
+                });
                 setImages([]);
                 Navigate("/user/real-estate");
             });
@@ -185,7 +204,7 @@ function AddRealEstate() {
                                 <select id="province" className={styles.select} value={formData.province} onChange={handleProvinceChange} required>
                                     <option value="">Chọn tỉnh/thành phố</option>
                                     {provinces.map((province) => (
-                                        <option key={province.code} value={province.name}>{province.name}</option>
+                                        <option key={province.name} value={province.name}>{province.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -194,7 +213,7 @@ function AddRealEstate() {
                                 <select id="district" className={styles.select} value={formData.district} onChange={handleDistrictChange} required>
                                     <option value="">Chọn quận/huyện</option>
                                     {districts.map((district) => (
-                                        <option key={district.code} value={district.name}>{district.name}</option>
+                                        <option key={district.name} value={district.name}>{district.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -203,7 +222,7 @@ function AddRealEstate() {
                                 <select id="ward" className={styles.select} value={formData.ward} onChange={(e) => setFormData({ ...formData, ward: e.target.value })} required>
                                     <option value="">Chọn phường/xã</option>
                                     {wards.map((ward) => (
-                                        <option key={ward.code} value={ward.name}>{ward.name}</option>
+                                        <option key={ward.name} value={ward.name}>{ward.name}</option>
                                     ))}
                                 </select>
                             </div>

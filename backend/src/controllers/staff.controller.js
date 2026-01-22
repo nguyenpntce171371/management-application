@@ -2,6 +2,44 @@ import RealEstate from "../models/RealEstate.js";
 import Appraisal from "../models/Appraisal.js";
 import { io } from "../index.js";
 import convert from "../services/address.service.js";
+import NodeCache from "node-cache";
+import { generateReadPAR } from "../services/oci.service.js";
+
+const imageUrlCache = new NodeCache({
+    stdTTL: 1800,
+    checkperiod: 600,
+    useClones: false,
+    maxKeys: 10000
+});
+
+const getCachedImageUrl = async (imagePath) => {
+    if (!(imagePath && !imagePath.startsWith("http"))) return imagePath;
+
+    const cachedUrl = imageUrlCache.get(imagePath);
+    if (cachedUrl) return cachedUrl;
+
+    try {
+        const url = await generateReadPAR(imagePath, 30);
+        imageUrlCache.set(imagePath, url);
+        return url;
+    } catch (error) {
+        console.error(`Failed to generate URL for ${imagePath}:`, error);
+        return null;
+    }
+};
+
+const removePrefix = (str) => {
+    return str?.replace(/^(Tỉnh|Thành phố|Quận|Huyện|Thị xã|Phường|Xã|Thị trấn|Đường|Đ\.|Đg|Street)\s+/i, "").trim() || "";
+};
+
+const normalize = (str) => {
+    const cleaned = removePrefix(str);
+    return cleaned?.normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D")
+        .toLowerCase() || "";
+};
 
 export const getRealEstateStats = async (req, res) => {
     try {

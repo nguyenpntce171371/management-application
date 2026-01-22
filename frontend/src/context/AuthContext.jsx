@@ -32,8 +32,8 @@ export const AuthProvider = ({ children }) => {
             setIsLoading(true);
 
             try {
-                const response = await axiosInstance.get("/api/user").catch(() => { });
-                setUser(response.data?.data || null);
+                const response = await axiosInstance.get("/api/user");
+                setUser(response.data.data);
             } catch {
                 setUser(null);
             } finally {
