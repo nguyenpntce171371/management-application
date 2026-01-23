@@ -117,7 +117,6 @@ function PropertyValuation() {
     const handleDelete = async (id) => {
         const appraisal = appraisals.find(a => a._id === id);
         if (!appraisal) return;
-        if (!window.confirm(`Xác nhận xóa hồ sơ ${appraisal.code}?`)) return;
         setAppraisals(prev => prev.filter(a => a._id !== id));
         await axiosInstance.delete(`/api/staff/appraisals/${id}`).catch(() => { });
     };
