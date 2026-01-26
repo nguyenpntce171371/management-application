@@ -37,11 +37,7 @@ export const updateUserRole = async (req, res) => {
             });
         }
 
-        const sessions = await Token.find({ userId: updatedUser._id });
-        const sessionIds = sessions.map(s => s._id);
-        await Token.deleteMany({ userId: updatedUser._id });
-
-        io.to(updatedUser._id.toString()).emit("roleUpdated", { sessionIds });
+        io.to(updatedUser._id.toString()).emit("roleUpdated");
         io.to("Admin").emit("userRoleChanged", {
             userId: updatedUser._id.toString(),
             email: updatedUser.email,
@@ -82,7 +78,11 @@ export const getUsers = async (req, res) => {
 
         if (search) {
             const normalizedSearch = normalize(search);
-            query.$text = { $search: normalizedSearch };
+            query.$or = [
+                { fullNameSearch: { $regex: normalizedSearch, $options: "i" } },
+                { addressSearch: { $regex: normalizedSearch, $options: "i" } },
+                { email: { $regex: search, $options: "i" } },
+            ];
         }
 
         if (role !== "all") {

@@ -66,6 +66,14 @@ function AddRealEstate() {
     const handleImageUpload = (e) => {
         const files = e.target.files;
         if (files) {
+            if (images.length + files.length > 10) {
+                notify({
+                    type: "error",
+                    title: "Quá số lượng",
+                    message: "Chỉ được upload tối đa 10 ảnh",
+                });
+                return;
+            }
             const newImages = Array.from(files).map(file => URL.createObjectURL(file));
             setImages([...images, ...newImages]);
         }

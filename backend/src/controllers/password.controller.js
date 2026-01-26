@@ -4,6 +4,31 @@ import { OTPService } from "../services/otp.service.js";
 import crypto from "crypto";
 import { io } from "../index.js";
 import Token from "../models/Token.js";
+import NodeCache from "node-cache";
+import { generateReadPAR } from "../services/oci.service.js";
+
+const imageUrlCache = new NodeCache({
+    stdTTL: 1800,
+    checkperiod: 600,
+    useClones: false,
+    maxKeys: 10000
+});
+
+const getCachedImageUrl = async (imagePath) => {
+    if (!(imagePath && !imagePath.startsWith("http"))) return imagePath;
+
+    const cachedUrl = imageUrlCache.get(imagePath);
+    if (cachedUrl) return cachedUrl;
+
+    try {
+        const url = await generateReadPAR(imagePath, 30);
+        imageUrlCache.set(imagePath, url);
+        return url;
+    } catch (error) {
+        console.error(`Failed to generate URL for ${imagePath}:`, error);
+        return null;
+    }
+};
 
 export const changePassword = async (req, res) => {
     try {
@@ -34,28 +59,29 @@ export const changePassword = async (req, res) => {
             });
         }
 
-        if (user.provider === "local" && !oldPassword) {
-            return res.status(400).json({
-                success: false,
-                code: "MISSING_FIELDS",
-                message: "Các trường bắt buộc bị thiếu",
-            });
-        }
+        if (user.provider === "local") {
+            if (!oldPassword) {
+                return res.status(400).json({
+                    success: false,
+                    code: "MISSING_FIELDS",
+                    message: "Các trường bắt buộc bị thiếu",
+                });
+            }
 
-        const isMatch = await user.comparePassword(oldPassword);
-        if (!isMatch) {
-            return res.status(400).json({
-                success: false,
-                code: "INVALID_CREDENTIALS",
-                message: "Thông tin đăng nhập không hợp lệ",
-            });
-        }
+            const isMatch = await user.comparePassword(oldPassword);
+            if (!isMatch) {
+                return res.status(400).json({
+                    success: false,
+                    code: "INVALID_CREDENTIALS",
+                    message: "Thông tin đăng nhập không hợp lệ",
+                });
+            }
 
-        await user.setPassword(newPassword);
-        if (user.provider !== "local") {
+        } else {
+            await user.setPassword(newPassword);
             user.provider = "local";
+            await user.save();
         }
-        await user.save();
 
         const deviceId = req.cookies.deviceId;
         const hashedDeviceId = crypto.createHash("sha256").update(deviceId).digest("hex");
@@ -68,10 +94,25 @@ export const changePassword = async (req, res) => {
 
         await sendPasswordChangedEmail(email, user.fullName);
 
+        let avatarUrl = user.avatar;
+
+        if (user.avatar && !user.avatar.startsWith("http")) {
+            avatarUrl = await getCachedImageUrl(user.avatar);
+        }
+
         return res.status(200).json({
             success: true,
             code: "PASSWORD_CHANGED",
             message: "Mật khẩu đã được thay đổi thành công",
+            data: {
+                id: user.userId,
+                email: user.email,
+                role: user.role,
+                fullName: user.fullName,
+                address: user.address,
+                avatar: avatarUrl,
+                provider: user.provider
+            }
         });
     } catch (error) {
         console.error("Change password error:", error);

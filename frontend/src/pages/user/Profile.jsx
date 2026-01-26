@@ -266,14 +266,14 @@ export default function Profile() {
 
     const handleChangePassword = async (e) => {
         e.preventDefault();
-        // if ((user.provider !== "local" && !formData.currentPassword) || !formData.newPassword || !formData.confirmPassword) {
-        //     notify({
-        //         type: "error",
-        //         title: "Thiếu thông tin",
-        //         message: "Vui lòng nhập đầy đủ thông tin!",
-        //     });
-        //     return;
-        // }
+        if ((user.provider === "local" && !formData.currentPassword) || !formData.newPassword || !formData.confirmPassword) {
+            notify({
+                type: "error",
+                title: "Thiếu thông tin",
+                message: "Vui lòng nhập đầy đủ thông tin!",
+            });
+            return;
+        }
         if (formData.newPassword !== formData.confirmPassword) {
             notify({
                 type: "error",
@@ -282,12 +282,13 @@ export default function Profile() {
             });
             return;
         }
-        await axiosInstance.post("/api/password/change-password", {
+        const res = await axiosInstance.post("/api/password/change-password", {
             email: user.email,
             oldPassword: formData.currentPassword,
             newPassword: formData.newPassword,
             confirm: formData.confirmPassword
         }).catch(() => { });
+        setUser(res.data.data);
         notify({
             type: "success",
             title: "Thành công",

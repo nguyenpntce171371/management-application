@@ -4,7 +4,7 @@ import styles from "./UserManagement.module.css";
 import { Role } from "../../config/role.js";
 import PageHeader from "../../components/layout/PageHeader";
 import axiosInstance from "../../services/axiosInstance";
-import { Trash2, Search } from "lucide-react";
+import { Trash2, Search, ChevronDown } from "lucide-react";
 import { useSocket } from "../../context/SocketContext.jsx";
 
 function UserManagement() {
@@ -19,7 +19,6 @@ function UserManagement() {
     const [selectedFilter, setSelectedFilter] = useState(roleFromUrl);
     const [users, setUsers] = useState([]);
     const [totalPages, setTotalPages] = useState(1);
-    const [totalItems, setTotalItems] = useState(0);
     const socket = useSocket();
     const [limit] = useState(20);
 
@@ -64,7 +63,6 @@ function UserManagement() {
 
         setUsers(newData);
         setTotalPages(pagination?.totalPages ?? 1);
-        setTotalItems(pagination?.total ?? 0);
     }, [page, selectedFilter, debouncedSearchTerm, limit]);
 
     useEffect(() => {
@@ -127,6 +125,23 @@ function UserManagement() {
         await axiosInstance.delete(`/api/admin/delete-user`, { data: { email } });
     };
 
+    const handleRoleChange = async (email, newRole, userId) => {
+        const response = await axiosInstance.post("/api/admin/modify-role", {
+            email,
+            role: newRole
+        });
+
+        if (response.data?.success) {
+            setUsers(prev => prev.map(u => (u.email === email ? { ...u, role: newRole } : u)));
+        }
+    };
+
+    const availableRoles = [
+        { value: "User", label: "User" },
+        { value: "Staff", label: "Staff" },
+        { value: "Admin", label: "Admin" }
+    ];
+
     return (
         <div className={styles.container}>
             <main className={styles.main}>
@@ -165,9 +180,16 @@ function UserManagement() {
                                         <td className={styles.tableCell}>{user.address}</td>
                                         <td className={styles.tableCell}>
                                             <div className={styles.userActions}>
-                                                <span className={`${styles.roleBadge} ${styles[`role${getRoleInfo(user.role).class.charAt(0).toUpperCase() + getRoleInfo(user.role).class.slice(1)}`]}`}>
-                                                    {getRoleInfo(user.role).label}
-                                                </span>
+                                                <div className={styles.roleSelectWrapper}>
+                                                    <select value={user.role} onChange={(e) => handleRoleChange(user.email, e.target.value, user._id)} className={`${styles.roleSelect} ${styles[`role${user.role}`]}`}>
+                                                        {availableRoles.map(role => (
+                                                            <option key={role.value} value={role.value}>
+                                                                {role.label}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <ChevronDown className={styles.roleSelectIcon} />
+                                                </div>
                                             </div>
                                         </td>
                                         <td className={styles.tableCell}>
