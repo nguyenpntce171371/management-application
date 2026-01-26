@@ -321,13 +321,17 @@ function AppraisalWorksheet() {
     const handleToggleComparison = useCallback(async (appraisalId, comparisonId) => {
         const currentList = selectedComparisons[appraisalId] || [];
         const isAdding = !currentList.includes(comparisonId);
-        const updatedList = isAdding ? [...currentList, comparisonId] : currentList.filter(id => id !== comparisonId);
+        const updatedList = isAdding
+            ? [...currentList, comparisonId]
+            : currentList.filter(id => id !== comparisonId);
 
         if (isAdding) {
             let property = await indexedDBService.getPropertyById(comparisonId);
 
             if (!property) {
                 const res = await axiosInstance.get(`/api/real-estate/${comparisonId}`).catch(() => { });
+                if (!res?.data?.data) return;
+
                 property = {
                     ...res.data.data,
                     id: res.data.data._id,
@@ -341,24 +345,20 @@ function AppraisalWorksheet() {
 
             setProperties(prev => {
                 const exists = prev.find(p => p.id === comparisonId || p._id === comparisonId);
-                if (exists) {
-                    return prev.map(p =>
+                return exists
+                    ? prev.map(p =>
                         (p.id === comparisonId || p._id === comparisonId) ? normalized : p
-                    );
-                }
-                return [...prev, normalized];
+                    )
+                    : [...prev, normalized];
             });
         }
 
-        setSelectedComparisons(prev => ({ ...prev, [appraisalId]: updatedList }));
+        setSelectedComparisons(prev => ({
+            ...prev,
+            [appraisalId]: updatedList
+        }));
 
-        const appraisal = appraisalProperties.find(a => a.id === appraisalId);
-        if (appraisal) {
-            const updatedAppraisal = { ...appraisal, selectedComparisons: updatedList };
-            await indexedDBService.saveProperty(updatedAppraisal);
-            setAppraisalProperties(prev => prev.map(a => a.id === appraisalId ? updatedAppraisal : a));
-        }
-    }, [selectedComparisons, appraisalProperties, normalizeProperty]);
+    }, [selectedComparisons, normalizeProperty]);
 
     const handleSaveName = useCallback(async (ap, newName) => {
         const updated = { ...ap, name: newName.trim() };

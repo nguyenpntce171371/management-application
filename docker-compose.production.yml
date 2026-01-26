@@ -35,7 +35,6 @@ services:
     environment:
       - APP_MODE=${APP_MODE:-production}
       - DOMAIN=${DOMAIN}
-      - TRUSTED_PROXY_RANGE=${TRUSTED_PROXY_RANGE}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
@@ -97,7 +96,6 @@ services:
     networks:
       - web
     environment:
-      - TRUSTED_PROXY_RANGE=${TRUSTED_PROXY_RANGE}
       - DOMAIN=${DOMAIN}
     volumes:
       - ./caddy/Caddyfile.production:/etc/caddy/Caddyfile:ro

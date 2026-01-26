@@ -1,10 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Shield } from "lucide-react";
 import styles from "../../pages/auth/AuthForm.module.css";
 import axiosInstance from "../../services/axiosInstance";
 
-function ForgotPasswordStep2({ email, otp, setOtp, currentStep, setCurrentStep }) {
+function ForgotPasswordStep2({ email, otp, setOtp, currentStep, setCurrentStep, setResetToken }) {
     const [isLoading, setIsLoading] = useState(false);
+    const [cooldown, setCooldown] = useState(60);
+
+    useEffect(() => {
+        if (cooldown > 0) {
+            const timer = setTimeout(() => {
+                setCooldown(cooldown - 1);
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [cooldown]);
 
     const handleOtpChange = (index, value) => {
         if (value.length > 1) return;
@@ -52,11 +62,38 @@ function ForgotPasswordStep2({ email, otp, setOtp, currentStep, setCurrentStep }
         }
         setIsLoading(true);
         axiosInstance.post("/api/password/verify-otp-forgot", { email: email, otp: otp.join("") })
-            .then(() => setCurrentStep(3))
+            .then((response) => {
+                setResetToken(response.data.data);
+                setCurrentStep(3);
+            })
             .catch(() => { })
             .finally(() => setIsLoading(false));
     };
 
+    const handleResend = (e) => {
+        e.preventDefault();
+        if (!email) {
+            notify({
+                type: "error",
+                title: "Thiếu thông tin",
+                message: "Vui lòng điền đầy đủ thông tin.",
+            });
+            return;
+        }
+
+        setIsLoading(true);
+        axiosInstance.post("/api/password/send-otp-forgot", { email: email })
+            .then(() => {
+                notify({
+                    type: "success",
+                    title: "Gửi OTP",
+                    message: "Đã gửi lại mã OTP.",
+                });
+                setCooldown(60);
+            })
+            .catch(() => { })
+            .finally(() => { setIsLoading(false) });
+    }
 
     const handleBack = () => {
         if (currentStep > 1) {
@@ -87,8 +124,14 @@ function ForgotPasswordStep2({ email, otp, setOtp, currentStep, setCurrentStep }
 
             <div className={styles.resendSection}>
                 <span className={styles.resendText}>Không nhận được mã?</span>
-                <button type="button" className={styles.resendButton}>
-                    Gửi lại
+                <button type="button" className={styles.resendButton} onClick={handleResend} disabled={cooldown > 0 || isLoading}>
+                    {cooldown > 0 ? (
+                        <span className={styles.resendCooldown}>
+                            Gửi lại ({cooldown}s)
+                        </span>
+                    ) : (
+                        "Gửi lại"
+                    )}
                 </button>
             </div>
 

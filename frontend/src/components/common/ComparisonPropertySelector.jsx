@@ -21,7 +21,6 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
         if (hoveredProperty && tooltipRefs.current[hoveredProperty] && containerRef.current) {
             const tooltipRect = tooltipRefs.current[hoveredProperty].getBoundingClientRect();
             const containerRect = containerRef.current.getBoundingClientRect();
-
             let alignment = "center";
             if (tooltipRect.right > containerRect.right - 8) alignment = "right";
             else if (tooltipRect.left < containerRect.left + 8) alignment = "left";
@@ -156,12 +155,12 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
                             </span>
 
                             {hoveredProperty === property.id && (
-                                <div ref={el => (tooltipRefs.current[property.id] = el)} className={`${styles.tooltip} ${styles[`tooltip${alignment.charAt(0).toUpperCase() + alignment.slice(1)}`]}`}>
-                                    <div className={styles.tooltipRow}><strong>Loại:</strong> {property.propertyType || "Không rõ loại"}</div>
-                                    <div className={styles.tooltipRow}><strong>Địa chỉ:</strong> {property.location?.landParcel || property.address || "Không có địa chỉ"}</div>
-                                    <div className={styles.tooltipRow}><strong>Diện tích:</strong> {property.area || "N/A"}</div>
-                                    <div className={styles.tooltipRow}><strong>DT sử dụng:</strong> {property.usableArea || "N/A"}</div>
-                                    <div className={styles.tooltipRow}><strong>Giá:</strong> {property.price || "N/A"}</div>
+                                <div ref={el => (tooltipRefs.current[property.id] = el)} className={`${styles.tooltip} ${styles.tooltipCenter}`}>
+                                    {property.propertyType && <div className={styles.tooltipRow}><strong>Loại:</strong>{property.propertyType}</div>}
+                                    {(property.location?.landParcel || property.address) && <div className={styles.tooltipRow}><strong>Địa chỉ:</strong> {property.location?.landParcel || property.address}</div>}
+                                    {property.area && <div className={styles.tooltipRow}><strong>Diện tích:</strong>{property.area}</div>}
+                                    {property.usableArea && <div className={styles.tooltipRow}><strong>DT sử dụng:</strong> {property.usableArea}</div>}
+                                    {property.price && <div className={styles.tooltipRow}><strong>Giá:</strong> {property.price}</div>}
                                 </div>
                             )}
                         </div>

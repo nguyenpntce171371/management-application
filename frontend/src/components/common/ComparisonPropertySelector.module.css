@@ -138,7 +138,6 @@
 .propertyChip.realProperty:hover {
     border-color: var(--color-gold-dark);
     box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.2), var(--shadow-sm);
-    transform: translateY(-1px);
 }
 
 .propertyChip.realProperty.selected {
@@ -193,8 +192,7 @@
 .tooltip {
     position: absolute;
     bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
     margin-bottom: 8px;
     background: #1f2937;
     color: white;
@@ -243,7 +241,7 @@
 
 .tooltipLeft {
     left: 0;
-    transform: translateX(0);
+    transform: none;
 }
 
 .tooltipLeft::after {
@@ -251,9 +249,8 @@
 }
 
 .tooltipRight {
-    left: auto;
     right: 0;
-    transform: translateX(0);
+    transform: none;
 }
 
 .tooltipRight::after {

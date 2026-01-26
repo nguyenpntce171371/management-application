@@ -266,14 +266,14 @@ export default function Profile() {
 
     const handleChangePassword = async (e) => {
         e.preventDefault();
-        if ((user.provider !== "local" && !formData.currentPassword) || !formData.newPassword || !formData.confirmPassword) {
-            notify({
-                type: "error",
-                title: "Thiếu thông tin",
-                message: "Vui lòng nhập đầy đủ thông tin!",
-            });
-            return;
-        }
+        // if ((user.provider !== "local" && !formData.currentPassword) || !formData.newPassword || !formData.confirmPassword) {
+        //     notify({
+        //         type: "error",
+        //         title: "Thiếu thông tin",
+        //         message: "Vui lòng nhập đầy đủ thông tin!",
+        //     });
+        //     return;
+        // }
         if (formData.newPassword !== formData.confirmPassword) {
             notify({
                 type: "error",

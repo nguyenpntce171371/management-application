@@ -6,6 +6,7 @@ const MAX_ATTEMPTS = 3;
 const RESEND_COOLDOWN = 60;
 const RATE_LIMIT_WINDOW = 3600;
 const MAX_OTP_PER_HOUR = 5;
+const RESET_TOKEN_EXPIRY = 600;
 
 export class OTPService {
 
@@ -33,7 +34,7 @@ export class OTPService {
         }
     }
 
-    static async create(identifier, purpose = "verify") {
+    static async create(identifier, purpose) {
         const cooldownKey = `otp:${purpose}:${identifier}:cooldown`;
 
         const cooldown = await redis.get(cooldownKey);
@@ -62,7 +63,7 @@ export class OTPService {
         };
     }
 
-    static async verify(identifier, inputCode, purpose = "verify") {
+    static async verify(identifier, inputCode, purpose) {
         const otpKey = `otp:${purpose}:${identifier}:code`;
         const attemptsKey = `otp:${purpose}:${identifier}:attempts`;
 
@@ -95,32 +96,44 @@ export class OTPService {
         await redis.del(attemptsKey);
         await redis.del(`otp:${purpose}:${identifier}:cooldown`);
 
-        if (purpose === "register" || purpose === "reset_password") {
-            await redis.setex(`otp:${purpose}:${identifier}:verified`, 600, "true");
+        const resetToken = crypto.randomBytes(32).toString("hex");
+        const hashedToken = this.hashCode(resetToken);
+
+        await redis.setex(
+            `otp:${purpose}:${identifier}:token`,
+            RESET_TOKEN_EXPIRY,
+            hashedToken
+        );
+
+        return resetToken;
+    }
+
+    static async isVerified(identifier, inputToken = null, purpose) {
+        if (inputToken) {
+            const savedToken = await redis.get(`otp:${purpose}:${identifier}:token`);
+            if (!savedToken) return false;
+
+            return savedToken === this.hashCode(inputToken);
+        } else {
+            const verified = await redis.get(`otp:${purpose}:${identifier}:verified`);
+            return verified === "true";
         }
-
-        return true;
     }
 
-    static async isVerified(identifier, purpose = "register") {
-        const verified = await redis.get(`otp:${purpose}:${identifier}:verified`);
-        return verified === "true";
-    }
-
-    static async clearVerified(identifier, purpose = "register") {
+    static async clearVerified(identifier, purpose) {
+        await redis.del(`otp:${purpose}:${identifier}:token`);
         await redis.del(`otp:${purpose}:${identifier}:verified`);
     }
 
-    static async invalidate(identifier, purpose = "verify") {
-        const keys = [
+    static async invalidate(identifier, purpose) {
+        await redis.del(
             `otp:${purpose}:${identifier}:code`,
             `otp:${purpose}:${identifier}:attempts`,
             `otp:${purpose}:${identifier}:cooldown`
-        ];
-        await redis.del(...keys);
+        );
     }
 
-    static async getInfo(identifier, purpose = "verify") {
+    static async getInfo(identifier, purpose) {
         const otpKey = `otp:${purpose}:${identifier}:code`;
         const attemptsKey = `otp:${purpose}:${identifier}:attempts`;
 

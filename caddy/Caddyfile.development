@@ -27,11 +27,19 @@
     }
 
     handle /socket.io/* {
-        reverse_proxy backend:3000
+        reverse_proxy backend:3000 {
+            header_up X-Forwarded-For {header.X-Forwarded-For}
+            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
+            header_up X-Forwarded-Host {header.X-Forwarded-Host}
+        }
     }
 
     handle /api/* {
-        reverse_proxy backend:3000
+        reverse_proxy backend:3000 {
+            header_up X-Forwarded-For {header.X-Forwarded-For}
+            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
+            header_up X-Forwarded-Host {header.X-Forwarded-Host}
+        }
     }
 
     handle {

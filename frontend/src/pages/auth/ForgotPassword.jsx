@@ -10,6 +10,7 @@ function ForgotPassword() {
     const [currentStep, setCurrentStep] = useState(1);
     const [email, setEmail] = useState("");
     const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+    const [resetToken, setResetToken] = useState("");
 
     const steps = [
         {
@@ -80,11 +81,11 @@ function ForgotPassword() {
                     )}
 
                     {currentStep === 2 && (
-                        <ForgotPasswordStep2 email={email} otp={otp} setOtp={setOtp} currentStep={currentStep} setCurrentStep={setCurrentStep} />
+                        <ForgotPasswordStep2 email={email} otp={otp} setOtp={setOtp} setResetToken={setResetToken} currentStep={currentStep} setCurrentStep={setCurrentStep} />
                     )}
 
                     {currentStep === 3 && (
-                        <ForgotPasswordStep3 email={email} otp={otp} setOtp={setOtp} currentStep={currentStep} setCurrentStep={setCurrentStep} />
+                        <ForgotPasswordStep3 email={email} resetToken={resetToken} currentStep={currentStep} setCurrentStep={setCurrentStep} />
                     )}
                 </div>
 

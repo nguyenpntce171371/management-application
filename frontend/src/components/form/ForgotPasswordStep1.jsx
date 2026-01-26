@@ -22,36 +22,36 @@ function ForgotPasswordStep1({ email, setEmail, setCurrentStep }) {
             .then(() => { setCurrentStep(2) })
             .catch(() => { })
             .finally(() => { setIsLoading(false) });
-};
+    };
 
-return (
-    <form onSubmit={handleEmailSubmit} className={styles.form}>
-        <div className={styles.formGroup}>
-            <label className={styles.label}>
-                <Mail className={styles.labelIcon} />
-                Địa chỉ Email
-            </label>
-            <div className={styles.inputWrapper}>
-                <input type="email" className={styles.input} placeholder="example@email.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} />
-                <Mail className={styles.inputIcon} />
+    return (
+        <form onSubmit={handleEmailSubmit} className={styles.form}>
+            <div className={styles.formGroup}>
+                <label className={styles.label}>
+                    <Mail className={styles.labelIcon} />
+                    Địa chỉ Email
+                </label>
+                <div className={styles.inputWrapper}>
+                    <input type="email" className={styles.input} placeholder="example@email.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} />
+                    <Mail className={styles.inputIcon} />
+                </div>
             </div>
-        </div>
 
-        <div className={styles.infoBox}>
-            <div className={styles.infoIcon}>
-                <Mail />
+            <div className={styles.infoBox}>
+                <div className={styles.infoIcon}>
+                    <Mail />
+                </div>
+                <div className={styles.infoText}>
+                    Chúng tôi sẽ gửi mã OTP đến email của bạn. Vui lòng kiểm tra hộp thư đến hoặc thư spam.
+                </div>
             </div>
-            <div className={styles.infoText}>
-                Chúng tôi sẽ gửi mã OTP đến email của bạn. Vui lòng kiểm tra hộp thư đến hoặc thư spam.
-            </div>
-        </div>
 
-        <button type="submit" className={styles.primaryButton} disabled={isLoading}>
-            Gửi mã OTP
-            <ArrowRight className={styles.buttonIcon} />
-        </button>
-    </form>
-)
+            <button type="submit" className={styles.primaryButton} disabled={isLoading}>
+                Gửi mã OTP
+                <ArrowRight className={styles.buttonIcon} />
+            </button>
+        </form>
+    )
 }
 
 export default ForgotPasswordStep1;

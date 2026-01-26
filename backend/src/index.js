@@ -11,9 +11,9 @@ import { initializeSocket } from "./sockets/index.js";
 import { prototypePollutionMiddleware } from "./middlewares/prototypePollution.js";
 import { sanitizeInputMiddleware } from "./middlewares/sanitizeInput.js";
 
-const { MONGO_INITDB_ROOT_USERNAME, MONGO_INITDB_ROOT_PASSWORD, MONGO_DB_NAME, PORT = 3000, APP_MODE = "development", TRUSTED_PROXY_RANGE } = process.env;
+const { MONGO_INITDB_ROOT_USERNAME, MONGO_INITDB_ROOT_PASSWORD, MONGO_DB_NAME, PORT = 3000, APP_MODE = "development" } = process.env;
 const app = express();
-app.set("trust proxy", TRUSTED_PROXY_RANGE.split(",").map(ip => ip.trim()));
+app.set("trust proxy", true);
 const server = http.createServer(app);
 const io = initializeSocket(server);
 app.set("io", io);

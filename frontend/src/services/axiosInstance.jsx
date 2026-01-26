@@ -60,13 +60,14 @@ axiosInstance.interceptors.response.use(
             return axiosInstance(originalRequest);
         }
 
-        if (
-            (status === 401 &&
-                (code === "REFRESH_EXPIRED" ||
-                    code === "INVALID_TOKEN" ||
-                    code === "NO_TOKEN")) ||
-            (status === 400 && code === "NO_REFRESH_TOKEN")
-        ) {
+        if ((status === 401 &&
+            (
+                code === "INVALID_TOKEN" ||
+                code === "NO_TOKEN" ||
+                code === "REFRESH_TOKEN_EXPIRED" ||
+                code === "INVALID_REFRESH_TOKEN"
+            )
+        ) || (status === 400 && code === "NO_REFRESH_TOKEN")) {
             if (onAuthFailCallback) onAuthFailCallback();
         }
 

@@ -52,6 +52,9 @@ export const changePassword = async (req, res) => {
         }
 
         await user.setPassword(newPassword);
+        if (user.provider !== "local") {
+            user.provider = "local";
+        }
         await user.save();
 
         const deviceId = req.cookies.deviceId;
@@ -147,11 +150,12 @@ export const verifyOTP = async (req, res) => {
             });
         }
 
-        await OTPService.verify(email, otp, "reset_password");
+        const resetToken = await OTPService.verify(email, otp, "reset_password");
 
         return res.status(200).json({
             success: true,
             code: "OTP_VERIFIED",
+            data: resetToken,
             message: "Mã OTP đã được xác minh thành công",
         });
     } catch (error) {
@@ -180,7 +184,7 @@ export const verifyOTP = async (req, res) => {
 
 export const resetPassword = async (req, res) => {
     try {
-        let { email, newPassword, confirm } = req.body;
+        let { email, resetToken, newPassword, confirm } = req.body;
         if (!email || !newPassword || !confirm) {
             return res.status(400).json({
                 success: false,
@@ -206,7 +210,7 @@ export const resetPassword = async (req, res) => {
             });
         }
 
-        const verified = await OTPService.isVerified(email, "reset_password");
+        const verified = await OTPService.isVerified(email, resetToken, "reset_password");
         if (!verified) {
             return res.status(400).json({
                 success: false,
@@ -214,8 +218,12 @@ export const resetPassword = async (req, res) => {
                 message: "Vui lòng xác minh OTP trước",
             });
         }
+        await OTPService.clearVerified(email, "reset_password");
 
         await user.setPassword(newPassword);
+        if (user.provider !== "local") {
+            user.provider = "local";
+        }
         await user.save();
 
         const sessions = await Token.find({ userId: user._id });

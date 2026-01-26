@@ -270,7 +270,7 @@ export const register = async (req, res) => {
                 message: "Hãy xác minh mã OTP trước khi đăng ký",
             });
         }
-
+        OTPService.clearVerified(email, "register");
         const count = await User.countDocuments();
         const role = (count === 0) ? "Admin" : "User";
         const user = new User({ fullName, email, role });
@@ -491,6 +491,7 @@ export const refreshToken = async (req, res) => {
 
     try {
         const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        console.log(decoded);
         const deviceId = req.cookies.deviceId;
         if (!deviceId) {
             return res.status(400).json({
@@ -580,10 +581,35 @@ export const refreshToken = async (req, res) => {
         });
     } catch (error) {
         console.error("Refresh error:", error);
-        res.status(500).json({
+
+        if (error.name === "TokenExpiredError") {
+            res.clearCookie("accessToken", { path: "/" });
+            res.clearCookie("refreshToken", { path: "/" });
+            res.clearCookie("deviceId", { path: "/" });
+
+            return res.status(401).json({
+                success: false,
+                code: "REFRESH_TOKEN_EXPIRED",
+                message: "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại",
+            });
+        }
+
+        if (error.name === "JsonWebTokenError") {
+            res.clearCookie("accessToken", { path: "/" });
+            res.clearCookie("refreshToken", { path: "/" });
+            res.clearCookie("deviceId", { path: "/" });
+
+            return res.status(401).json({
+                success: false,
+                code: "INVALID_REFRESH_TOKEN",
+                message: "Refresh token không hợp lệ",
+            });
+        }
+
+        return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ",
         });
     }
 };

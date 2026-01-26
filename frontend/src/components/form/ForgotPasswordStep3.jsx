@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance";
 import { notify } from "../../context/NotificationContext";
 
-function ForgotPasswordStep3({ email, otp, currentStep, setCurrentStep }) {
+function ForgotPasswordStep3({ email, currentStep, setCurrentStep, resetToken }) {
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -40,7 +40,7 @@ function ForgotPasswordStep3({ email, otp, currentStep, setCurrentStep }) {
         }
 
         setIsLoading(true);
-        axiosInstance.post("/api/password/reset-password", { email: email, otp: otp.join(""), newPassword: newPassword, confirm: confirmPassword })
+        axiosInstance.post("/api/password/reset-password", { email: email, resetToken: resetToken, newPassword: newPassword, confirm: confirmPassword })
             .then(() => {
                 notify({
                     type: "success",
