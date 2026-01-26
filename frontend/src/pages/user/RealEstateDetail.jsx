@@ -51,15 +51,18 @@ function RealEstateDetail() {
         setFormData((prev) => ({ ...prev, contacts: newContacts }));
     };
 
-    const handleSave = () => {
-        axiosInstance.post(`/api/real-estate/${id}`, formData)
-            .then(() => notify({
+    const handleSave = async () => {
+        try {
+            await axiosInstance.post(`/api/real-estate/${id}`, formData);
+            notify({
                 type: "success",
                 title: "Thành công",
-                message: "Cập nhật trạng thái thành công!",
-            }))
-            .catch(() => { })
-            .finally(() => setIsEditMode(false));
+                message: "Cập nhật thành công!",
+            });
+            await loadDetail();
+        } finally {
+            setIsEditMode(false);
+        }
     };
 
     const handleCancel = () => {
@@ -68,13 +71,16 @@ function RealEstateDetail() {
     };
 
     const handleApprove = async (action) => {
-        formData.status = action;
-        axiosInstance.post(`/api/real-estate/${id}`, formData)
-            .then(() => notify({
-                type: "success",
-                title: "Thành công",
-                message: "Cập nhật trạng thái thành công!",
-            })).catch(() => { });
+        await axiosInstance.post(`/api/real-estate/${id}`, {
+            ...property,
+            status: action,
+        });
+        notify({
+            type: "success",
+            title: "Thành công",
+            message: "Cập nhật trạng thái thành công!",
+        });
+        await loadDetail();
     };
 
     const formatDate = (date) => {
@@ -256,136 +262,136 @@ function RealEstateDetail() {
                     </div>
                 </div>
 
-                    <div className={styles.detailsSection}>
-                        <div className={styles.sectionCard}>
-                            <h2 className={styles.sectionTitle}>
-                                <Info />
-                                Thông tin chi tiết
-                            </h2>
-                            <div className={styles.detailsList}>
-                                {(property.length || isEditMode) && (
-                                    <div className={styles.detailRow}>
-                                        <div className={styles.detailLabel}>
-                                            <Ruler />
-                                            Chiều dài
-                                        </div>
-                                        {isEditMode ? (
-                                            <input type="text" value={formData.length} onChange={(e) => handleInputChange("length", e.target.value,)} className={styles.editInputSmall} />
-                                        ) : (
-                                            <div className={styles.detailValue}>
-                                                {property.length}
-                                            </div>
-                                        )}
+                <div className={styles.detailsSection}>
+                    <div className={styles.sectionCard}>
+                        <h2 className={styles.sectionTitle}>
+                            <Info />
+                            Thông tin chi tiết
+                        </h2>
+                        <div className={styles.detailsList}>
+                            {(property.length || isEditMode) && (
+                                <div className={styles.detailRow}>
+                                    <div className={styles.detailLabel}>
+                                        <Ruler />
+                                        Chiều dài
                                     </div>
-                                )}
-
-                                {(property.width || isEditMode) && (
-                                    <div className={styles.detailRow}>
-                                        <div className={styles.detailLabel}>
-                                            <Ruler />
-                                            Chiều rộng
-                                        </div>
-                                        {isEditMode ? (
-                                            <input type="text" value={formData.width} onChange={(e) => handleInputChange("width", e.target.value,)} className={styles.editInputSmall} />
-                                        ) : (
-                                            <div className={styles.detailValue}>
-                                                {property.width}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {(property.usableArea || isEditMode) && (
-                                    <div className={styles.detailRow}>
-                                        <div className={styles.detailLabel}>
-                                            <Maximize />
-                                            Diện tích sử dụng
-                                        </div>
-                                        {isEditMode ? (
-                                            <input type="text" value={formData.usableArea} onChange={(e) => handleInputChange("usableArea", e.target.value,)} className={styles.editInputSmall} />
-                                        ) : (
-                                            <div className={styles.detailValue}>
-                                                {property.usableArea}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {(property.direction || isEditMode) && (
-                                    <div className={styles.detailRow}>
-                                        <div className={styles.detailLabel}>
-                                            <Compass />
-                                            Hướng
-                                        </div>
-                                        {isEditMode ? (
-                                            <input type="text" value={formData.direction} onChange={(e) => handleInputChange("direction", e.target.value,)} className={styles.editInputSmall} />
-                                        ) : (
-                                            <div className={styles.detailValue}>
-                                                {property.direction}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {(property.legalStatus || isEditMode) && (
-                                    <div className={styles.detailRow}>
-                                        <div className={styles.detailLabel}>
-                                            <FileText />
-                                            Tình trạng pháp lý
-                                        </div>
-                                        {isEditMode ? (
-                                            <input type="text" value={formData.legalStatus} onChange={(e) => handleInputChange("legalStatus", e.target.value,)} className={styles.editInputSmall} />
-                                        ) : (
-                                            <div className={styles.detailValue}>
-                                                {property.legalStatus}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {(property.listedAt || isEditMode) && (
-                                    <div className={styles.detailRow}>
-                                        <div className={styles.detailLabel}>
-                                            <Calendar />
-                                            Ngày đăng
-                                        </div>
+                                    {isEditMode ? (
+                                        <input type="text" value={formData.length} onChange={(e) => handleInputChange("length", e.target.value,)} className={styles.editInputSmall} />
+                                    ) : (
                                         <div className={styles.detailValue}>
-                                            {formatDate(property.listedAt)}
+                                            {property.length}
                                         </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                                    )}
+                                </div>
+                            )}
 
-                        <div className={styles.sectionCard}>
-                            <h2 className={styles.sectionTitle}>
-                                <FileText />
-                                Mô tả
-                            </h2>
-                            {isEditMode ? (
-                                <textarea value={formData.description} onChange={(e) => handleInputChange("description", e.target.value,)} className={styles.editTextarea} rows={6} />
-                            ) : (
-                                <p className={styles.description}>
-                                    {property.description}
-                                </p>
+                            {(property.width || isEditMode) && (
+                                <div className={styles.detailRow}>
+                                    <div className={styles.detailLabel}>
+                                        <Ruler />
+                                        Chiều rộng
+                                    </div>
+                                    {isEditMode ? (
+                                        <input type="text" value={formData.width} onChange={(e) => handleInputChange("width", e.target.value,)} className={styles.editInputSmall} />
+                                    ) : (
+                                        <div className={styles.detailValue}>
+                                            {property.width}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {(property.usableArea || isEditMode) && (
+                                <div className={styles.detailRow}>
+                                    <div className={styles.detailLabel}>
+                                        <Maximize />
+                                        Diện tích sử dụng
+                                    </div>
+                                    {isEditMode ? (
+                                        <input type="text" value={formData.usableArea} onChange={(e) => handleInputChange("usableArea", e.target.value,)} className={styles.editInputSmall} />
+                                    ) : (
+                                        <div className={styles.detailValue}>
+                                            {property.usableArea}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {(property.direction || isEditMode) && (
+                                <div className={styles.detailRow}>
+                                    <div className={styles.detailLabel}>
+                                        <Compass />
+                                        Hướng
+                                    </div>
+                                    {isEditMode ? (
+                                        <input type="text" value={formData.direction} onChange={(e) => handleInputChange("direction", e.target.value,)} className={styles.editInputSmall} />
+                                    ) : (
+                                        <div className={styles.detailValue}>
+                                            {property.direction}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {(property.legalStatus || isEditMode) && (
+                                <div className={styles.detailRow}>
+                                    <div className={styles.detailLabel}>
+                                        <FileText />
+                                        Tình trạng pháp lý
+                                    </div>
+                                    {isEditMode ? (
+                                        <input type="text" value={formData.legalStatus} onChange={(e) => handleInputChange("legalStatus", e.target.value,)} className={styles.editInputSmall} />
+                                    ) : (
+                                        <div className={styles.detailValue}>
+                                            {property.legalStatus}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {(property.listedAt || isEditMode) && (
+                                <div className={styles.detailRow}>
+                                    <div className={styles.detailLabel}>
+                                        <Calendar />
+                                        Ngày đăng
+                                    </div>
+                                    <div className={styles.detailValue}>
+                                        {formatDate(property.listedAt)}
+                                    </div>
+                                </div>
                             )}
                         </div>
+                    </div>
 
-                        <div className={styles.sectionCard}>
-                            <h2 className={styles.sectionTitle}>
-                                <Phone />
-                                Thông tin liên hệ
-                            </h2>
-                            <div className={styles.contactRow}>
-                                {isEditMode ? (
-                                    property.contacts.map((c, i) => (<input key={i} type="text" value={formData.contacts[i].phone} onChange={(e) => handleContactChange(i, "phone", e.target.value)} className={styles.editInputSmall} />))
-                                ) : (
-                                    <span>{property.contacts.map(c => c.phone).filter(Boolean).join(", ")}</span>
-                                )}
-                            </div>
+                    <div className={styles.sectionCard}>
+                        <h2 className={styles.sectionTitle}>
+                            <FileText />
+                            Mô tả
+                        </h2>
+                        {isEditMode ? (
+                            <textarea value={formData.description} onChange={(e) => handleInputChange("description", e.target.value,)} className={styles.editTextarea} rows={6} />
+                        ) : (
+                            <p className={styles.description}>
+                                {property.description}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className={styles.sectionCard}>
+                        <h2 className={styles.sectionTitle}>
+                            <Phone />
+                            Thông tin liên hệ
+                        </h2>
+                        <div className={styles.contactRow}>
+                            {isEditMode ? (
+                                property.contacts.map((c, i) => (<input key={i} type="text" value={formData.contacts[i].phone} onChange={(e) => handleContactChange(i, "phone", e.target.value)} className={styles.editInputSmall} />))
+                            ) : (
+                                <span>{property.contacts.map(c => c.phone).filter(Boolean).join(", ")}</span>
+                            )}
                         </div>
                     </div>
                 </div>
+            </div>
 
             {showImageModal && (
                 <div className={styles.modal} onClick={() => setShowImageModal(false)}>
