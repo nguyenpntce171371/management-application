@@ -2,7 +2,7 @@ import { useEffect, useState, Fragment } from "react";
 import axiosInstance from "../../../services/axiosInstance";
 import { ChartBar } from "lucide-react";
 import styles from "../PropertyValuation.module.css";
-import { useParams, Link, Outlet } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { formatNumber } from "../../../hooks/useNumberFormat";
 import { useSocket } from "../../../context/SocketContext";
 import { useNavigate } from "react-router-dom";
@@ -37,10 +37,14 @@ function PropertyValuationDetail() {
         };
     }, [socket, id, navigate]);
 
-    useEffect(async () => {
+    useEffect(() => {
+        loadDetail();
+    }, [id]);
+
+    const loadDetail = async () => {
         const res = await axiosInstance.get(`/api/appraisals/${id}`);
         setAppraisal(res.data.data);
-    }, [id]);
+    };
 
     const [totalLand, setTotalLand] = useState(0);
     const [totalConstruction, setTotalConstruction] = useState(0);
@@ -75,7 +79,7 @@ function PropertyValuationDetail() {
                                 <p className={styles.subtitle}>Thẩm định viên: {appraisal.appraiser}</p>
                             </div>
                         </div>
-                        <Link to={`/appraisals/${id}`} className={styles.viewSheet}>
+                        <Link to={`/appraisals/${id}/worksheet`} className={styles.viewSheet}>
                             <ChartBar size={20} strokeWidth={2.5} />
                             <span>Xem bảng tính</span>
                         </Link>
@@ -204,7 +208,6 @@ function PropertyValuationDetail() {
                     </div>
                 </div>}
             </div>
-            <Outlet />
         </>
     );
 }

@@ -67,18 +67,16 @@ function AppRouter() {
                         <PropertyValuation />
                     </ProtectedRoute>
                 } />
-                <Route path="/appraisals/:id"
-                    element={
-                        <ProtectedRoute role="Staff">
-                            <PropertyValuationDetail />
-                        </ProtectedRoute>
-                    }>
-                    <Route path="worksheet" element={
-                        <ProtectedRoute role="Staff">
-                            <AppraisalWorksheet />
-                        </ProtectedRoute>
-                    } />
-                </Route>
+                <Route path="/appraisals/:id" element={
+                    <ProtectedRoute role="Staff">
+                        <PropertyValuationDetail />
+                    </ProtectedRoute>
+                } />
+                <Route path="/appraisals/:id/worksheet" element={
+                    <ProtectedRoute role="Staff">
+                        <AppraisalWorksheet />
+                    </ProtectedRoute>
+                } />
                 <Route path="/users" element={
                     <ProtectedRoute role="Admin">
                         <UserManagement />
