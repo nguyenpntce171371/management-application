@@ -2,6 +2,7 @@ import { io } from "../index.js";
 import User from "../models/User.js";
 import NodeCache from "node-cache";
 import { uploadMultipleImagesToOCI, deleteMultipleImagesFromOCI, generateReadPAR } from "../services/oci.service.js";
+import { normalize } from "../utils/string.js";
 
 const imageUrlCache = new NodeCache({
     stdTTL: 1800,
@@ -25,17 +26,6 @@ const getCachedImageUrl = async (imagePath) => {
         return null;
     }
 };
-
-function normalize(str) {
-    if (!str) return "";
-    return str
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/đ/g, "d")
-        .replace(/Đ/g, "D")
-        .toLowerCase()
-        .trim();
-}
 
 export const getUser = async (req, res) => {
     try {

@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
 const tokenSchema = new mongoose.Schema({
@@ -14,24 +13,23 @@ const tokenSchema = new mongoose.Schema({
     remember: { type: Boolean, default: false },
 });
 
-tokenSchema.pre("save", async function (next) {
+tokenSchema.pre("save", function (next) {
     if (this.isModified("refreshToken") && this.refreshToken) {
-        const salt = await bcrypt.genSalt(10);
-        this.refreshToken = await bcrypt.hash(this.refreshToken, salt);
+        this.refreshToken = crypto.createHmac("sha256").update(this.refreshToken).digest("hex");
     }
+
     if (this.isModified("deviceId") && this.deviceId) {
         this.deviceId = crypto.createHash("sha256").update(this.deviceId).digest("hex");
     }
+
     next();
 });
-
 tokenSchema.methods.compareRefreshToken = function (plainToken) {
-    return bcrypt.compare(plainToken, this.refreshToken);
+    return this.refreshToken === crypto.createHmac("sha256").update(plainToken).digest("hex");
 };
 
 tokenSchema.methods.compareDeviceId = function (rawDeviceId) {
-    const hashed = crypto.createHash("sha256").update(rawDeviceId).digest("hex");
-    return this.deviceId === hashed;
+    return this.deviceId === crypto.createHash("sha256").update(rawDeviceId).digest("hex");
 };
 
 tokenSchema.index({ refreshTokenExpiresAt: 1 }, { expireAfterSeconds: 0 });

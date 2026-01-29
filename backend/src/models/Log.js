@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { normalize } from "../utils/string";
 
 const logSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
@@ -13,17 +14,6 @@ const logSchema = new mongoose.Schema({
     message: { type: String },
     createdAt: { type: Date, default: Date.now },
 });
-
-function normalize(str) {
-    if (!str) return "";
-    return str
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/đ/g, "d")
-        .replace(/Đ/g, "D")
-        .toLowerCase()
-        .trim();
-}
 
 logSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 30 });
 logSchema.index({

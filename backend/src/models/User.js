@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import { normalize } from "../utils/string";
 
 const userSchema = new mongoose.Schema({
     fullName: { type: String },
@@ -22,17 +23,6 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 userSchema.index({ fullNameSearch: "text", email: "text", addressSearch: "text" });
-
-function normalize(str) {
-    if (!str) return "";
-    return str
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/đ/g, "d")
-        .replace(/Đ/g, "D")
-        .toLowerCase()
-        .trim();
-}
 
 userSchema.pre("save", async function (next) {
     if (this.isModified("fullName") || this.isNew) {

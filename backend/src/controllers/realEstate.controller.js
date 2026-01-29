@@ -2,6 +2,7 @@ import RealEstate from "../models/RealEstate.js";
 import { io } from "../index.js";
 import NodeCache from "node-cache";
 import { uploadMultipleImagesToOCI, deleteMultipleImagesFromOCI, generateReadPAR } from "../services/oci.service.js";
+import { normalize, removePrefix } from "../utils/string.js";
 
 const imageUrlCache = new NodeCache({
     stdTTL: 1800,
@@ -24,19 +25,6 @@ const getCachedImageUrl = async (imagePath) => {
         console.error(`Failed to generate URL for ${imagePath}:`, error);
         return null;
     }
-};
-
-const removePrefix = (str) => {
-    return str?.replace(/^(Tỉnh|Thành phố|Quận|Huyện|Thị xã|Phường|Xã|Thị trấn|Đường|Đ\.|Đg|Street)\s+/i, "").trim() || "";
-};
-
-const normalize = (str) => {
-    const cleaned = removePrefix(str);
-    return cleaned?.normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/đ/g, "d")
-        .replace(/Đ/g, "D")
-        .toLowerCase() || "";
 };
 
 export const getRealEstate = async (req, res) => {

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { normalize } from "../utils/string";
 
 const LandSchema = new mongoose.Schema({
     landType: String,
@@ -80,25 +81,6 @@ RealEstateSchema.index({
     wardSearch: "text"
 });
 
-function removePrefix(str) {
-    if (!str) return "";
-    return str
-        .replace(/^(Tỉnh|Thành phố|Quận|Huyện|Thị xã|Phường|Xã|Thị trấn)\s+/i, "")
-        .trim();
-}
-
-function normalize(str) {
-    if (!str) return "";
-    const cleaned = removePrefix(str);
-    return cleaned
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/đ/g, "d")
-        .replace(/Đ/g, "D")
-        .toLowerCase()
-        .trim();
-}
-
 RealEstateSchema.pre("save", function (next) {
     if (this.propertyType) {
         this.propertyTypeSearch = normalize(this.propertyType);
@@ -150,26 +132,26 @@ RealEstateSchema.pre("findOneAndUpdate", function (next) {
     next();
 });
 
-RealEstateSchema.pre(/^find/, function(next) {
+RealEstateSchema.pre(/^find/, function (next) {
     if (!this.getQuery().hasOwnProperty("deletedAt")) {
         this.where({ deletedAt: null });
     }
     next();
 });
 
-RealEstateSchema.methods.softDelete = async function(deletedBy) {
+RealEstateSchema.methods.softDelete = async function (deletedBy) {
     this.deletedAt = new Date();
     this.deletedBy = deletedBy;
     return await this.save();
 };
 
-RealEstateSchema.methods.restore = async function() {
+RealEstateSchema.methods.restore = async function () {
     this.deletedAt = null;
     this.deletedBy = null;
     return await this.save();
 };
 
-RealEstateSchema.statics.findDeleted = function(conditions = {}) {
+RealEstateSchema.statics.findDeleted = function (conditions = {}) {
     return this.find({ ...conditions, deletedAt: { $ne: null } });
 };
 

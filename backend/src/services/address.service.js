@@ -1,4 +1,5 @@
 import { createRequire } from "module";
+import { normalize } from "../utils/string";
 const require = createRequire(import.meta.url);
 const addressDB = require("../data/address.json");
 
@@ -14,16 +15,6 @@ addressDB.forEach(item => {
     }
 });
 
-function normalizeString(str) {
-    if (!str) return "";
-    return str
-        .replace(/^\s*(Tỉnh|Thành phố|Quận|Huyện|Thị xã|Phường|Xã|Thị trấn)\s+/gi, "")
-        .trim()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase();
-}
-
 function convert(address) {
     try {
         if (!address || typeof address !== "string") {
@@ -37,20 +28,20 @@ function convert(address) {
         }
 
         const [wardPart, districtPart, provincePart] = parts.slice(-3);
-        const normalizedProvince = normalizeString(provincePart);
-        const normalizedDistrict = normalizeString(districtPart);
-        const normalizedWard = normalizeString(wardPart);
+        const normalizedProvince = normalize(provincePart);
+        const normalizedDistrict = normalize(districtPart);
+        const normalizedWard = normalize(wardPart);
 
         const mapping = wardMappings.find(m => {
-            const matchProvince = normalizeString(m.old_province_name) === normalizedProvince;
-            const matchDistrict = normalizeString(m.old_district_name) === normalizedDistrict;
-            const matchWard = normalizeString(m.old_ward_name) === normalizedWard;
+            const matchProvince = normalize(m.old_province_name) === normalizedProvince;
+            const matchDistrict = normalize(m.old_district_name) === normalizedDistrict;
+            const matchWard = normalize(m.old_ward_name) === normalizedWard;
 
             return matchProvince && matchDistrict && matchWard;
         });
 
         if (!mapping) {
-            const province = provinces.find(p => normalizeString(p.name) === normalizedProvince);
+            const province = provinces.find(p => normalize(p.name) === normalizedProvince);
 
             if (!province) {
                 return address;
@@ -58,7 +49,7 @@ function convert(address) {
 
             const ward = wards.find(w =>
                 w.province_code === province.province_code &&
-                normalizeString(w.name) === normalizedWard
+                normalize(w.name) === normalizedWard
             );
 
             if (!ward) {
