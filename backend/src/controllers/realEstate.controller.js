@@ -1,8 +1,7 @@
 import RealEstate from "../models/RealEstate.js";
 import { io } from "../index.js";
 import NodeCache from "node-cache";
-import { createImageFingerprint, uploadMultipleImagesToOCI, deleteMultipleImagesFromOCI, generateReadPAR } from "../services/oci.service.js";
-import { redis } from "../middlewares/rateLimitRedis.js";
+import { uploadMultipleImagesToOCI, deleteMultipleImagesFromOCI, generateReadPAR } from "../services/oci.service.js";
 
 const imageUrlCache = new NodeCache({
     stdTTL: 1800,
@@ -38,16 +37,6 @@ const normalize = (str) => {
         .replace(/đ/g, "d")
         .replace(/Đ/g, "D")
         .toLowerCase() || "";
-};
-
-async function cleanupLocks(locks) {
-    if (!locks?.length) return;
-
-    try {
-        await Promise.all(locks.map(lock => redis.del(lock)));
-    } catch (error) {
-        console.error("Failed to cleanup locks:", error);
-    }
 };
 
 export const getRealEstate = async (req, res) => {
@@ -345,10 +334,6 @@ export const permanentDeleteRealEstate = async (req, res) => {
 };
 
 export const createRealEstate = async (req, res) => {
-    let objectNames = [];
-    let fingerprints = [];
-    let fpLocks = [];
-
     try {
         const {
             propertyType,
@@ -369,6 +354,7 @@ export const createRealEstate = async (req, res) => {
             name,
             phone
         } = req.body;
+        let objectNames = [];
 
         const validationErrors = [];
 
@@ -451,59 +437,7 @@ export const createRealEstate = async (req, res) => {
         }
 
         if (req.files?.length) {
-            const fingerprintPromises = req.files.map(file => createImageFingerprint(file.buffer));
-            const allFingerprints = await Promise.all(fingerprintPromises);
-
-            for (let i = 0; i < allFingerprints.length; i++) {
-                const fp = allFingerprints[i];
-                if (!fp) {
-                    await cleanupLocks(fpLocks);
-                    return res.status(400).json({
-                        success: false,
-                        code: process.env.APP_MODE === "development" ? "FINGERPRINT_ERROR" : "UPLOAD_ERROR",
-                        message: process.env.APP_MODE === "development" ? `Không thể tạo dấu vân tay hình ảnh cho: ${req.files[i].originalname}` : "Không thể tải hình ảnh lên",
-                    });
-                }
-
-                const exist = await redis.get(`imgfp:${fp}`);
-                if (exist) {
-                    await cleanupLocks(fpLocks);
-                    return res.status(400).json({
-                        success: false,
-                        code: process.env.APP_MODE === "development" ? "DUPLICATE_IMAGE" : "UPLOAD_ERROR",
-                        message: process.env.APP_MODE === "development" ? `Hình ảnh trùng lặp được phát hiện: ${req.files[i].originalname}` : "Không thể tải hình ảnh lên",
-                    });
-                }
-
-                fingerprints.push(fp);
-            }
-
-            const lockPromises = fingerprints.map(fp => {
-                const lockKey = `imgfp_lock:${fp}`;
-                fpLocks.push(lockKey);
-                return redis.setex(lockKey, 600, "pending");
-            });
-            await Promise.all(lockPromises);
-
-            try {
-                objectNames = await uploadMultipleImagesToOCI(req.files, "real-estate");
-
-                await Promise.all([
-                    ...fingerprints.map(fp => redis.del(`imgfp:${fp}`)),
-                    cleanupLocks(fpLocks)
-                ]);
-                fpLocks = [];
-
-            } catch (uploadError) {
-                console.error("Upload error:", uploadError);
-                await cleanupLocks(fpLocks);
-
-                return res.status(500).json({
-                    success: false,
-                    code: "UPLOAD_ERROR",
-                    message: process.env.APP_MODE === "development" ? uploadError.message : "Không thể tải hình ảnh lên",
-                });
-            }
+            objectNames = await uploadMultipleImagesToOCI(req.files, "real-estate");
         }
 
         const location = {
@@ -518,7 +452,7 @@ export const createRealEstate = async (req, res) => {
             note: ""
         }];
 
-        const postedBy = req.user.id ;
+        const postedBy = req.user.id;
 
         const newRealEstate = new RealEstate({
             propertyType,
@@ -563,12 +497,6 @@ export const createRealEstate = async (req, res) => {
         });
     } catch (error) {
         console.error("Create Real Estate Error:", error);
-
-        await Promise.all([
-            objectNames.length ? deleteMultipleImagesFromOCI(objectNames) : Promise.resolve(),
-            cleanupLocks(fpLocks)
-        ]);
-
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
