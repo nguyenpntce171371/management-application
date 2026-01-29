@@ -7,12 +7,14 @@
     "dev": "nodemon src/index.js"
   },
   "dependencies": {
+    "archiver": "^7.0.1",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
     "cookie": "^1.1.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "cron-parser": "^5.5.0",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "google-auth-library": "^10.5.0",
@@ -23,6 +25,7 @@
     "mongoose": "^8.19.2",
     "multer": "^2.0.2",
     "node-cache": "^5.1.2",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.10",
     "oci-common": "^2.122.2",
     "oci-objectstorage": "^2.122.2",

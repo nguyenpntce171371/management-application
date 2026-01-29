@@ -1,6 +1,5 @@
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
-import crypto from "crypto";
 import Token from "../models/Token.js";
 
 export const socketAuthMiddleware = () => {
@@ -31,33 +30,26 @@ export const socketAuthMiddleware = () => {
                 return next(new Error("DEVICE_ID_MISSING"));
             }
 
-            const hashedDeviceId = crypto.createHash("sha256").update(deviceId).digest("hex");
+            const sessions = await Token.find({ userId: decoded.id });
+            const session = sessions.find(s => s.compareDeviceId(deviceId));
 
-            const tokenRecord = await Token.findOne({
-                userId: decoded.userId,
-                deviceId: hashedDeviceId,
-            });
-
-            if (!tokenRecord) {
+            if (!session) {
                 return next(new Error("TOKEN_NOT_FOUND"));
             }
 
-            if (!tokenRecord.compareDeviceId(deviceId)) {
-                return next(new Error("INVALID_DEVICE"));
-            }
-
-            if (new Date() > tokenRecord.accessTokenExpiresAt) {
+            if (new Date() > session.accessTokenExpiresAt) {
                 return next(new Error("TOKEN_EXPIRED"));
             }
 
             socket.user = {
-                userId: decoded.userId,
+                id: decoded.id,
                 role: decoded.role
             };
-            socket.deviceId = hashedDeviceId;
+            socket.deviceId = deviceId;
 
             next();
         } catch (err) {
+            console.log(err);
             return next(new Error("SERVER_ERROR"));
         }
     };

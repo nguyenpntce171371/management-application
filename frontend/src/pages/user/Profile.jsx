@@ -9,7 +9,6 @@ import { useSocket } from "../../context/SocketContext";
 export default function Profile() {
     const socket = useSocket();
     const [activeTab, setActiveTab] = useState("info");
-    const [deleteConfirm, setDeleteConfirm] = useState("");
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     const [showPasswordForm, setShowPasswordForm] = useState(false);
     const [tabIndicator, setTabIndicator] = useState({ left: 0, width: 0 });
@@ -39,19 +38,20 @@ export default function Profile() {
         }));
     }, [user]);
 
+    const fetchSessions = async () => {
+        const res = await axiosInstance.get("/api/sessions");
+        setSessions(res.data.data);
+    };
+
     useEffect(() => {
-        axiosInstance.get("/api/auth/sessions").then(res => setSessions(res.data.data)).catch(() => { });
+        fetchSessions();
     }, []);
 
     useEffect(() => {
         if (!socket || !user) return;
-        
-        const handleLoggedInElsewhere = (data) => {
-            if (data._id) {
-                axiosInstance.get("/api/auth/sessions").then(res => {
-                    setSessions(res.data.data);
-                }).catch(() => { });
-            }
+
+        const handleLoggedInElsewhere = async (data) => {
+            fetchSessions();
         };
 
         const handleSessionLoggedOut = (data) => {
@@ -79,7 +79,7 @@ export default function Profile() {
             socket.off("sessionLoggedOut", handleSessionLoggedOut);
             socket.off("profileUpdated", handleProfileUpdated);
         };
-    }, [socket, user, sessions, setUser]);
+    }, [socket, user, setUser]);
 
     useEffect(() => {
         const activeTabElement = tabRefs.current[activeTab];
@@ -160,7 +160,7 @@ export default function Profile() {
 
             const res = await axiosInstance.post("/api/user", formData, {
                 headers: { "Content-Type": "multipart/form-data" }
-            }).catch(() => { });
+            });
 
             setUser(res.data.data);
             setAvatarFile(null);
@@ -187,35 +187,29 @@ export default function Profile() {
     const handleDeleteAvatar = async () => {
         try {
             setIsUploadingAvatar(true);
-            const res = await axiosInstance.delete("/api/user/avatar").catch(() => { });
+            const res = await axiosInstance.delete("/api/user/avatar");
             setUser(res.data.data);
             setAvatarFile(null);
             setAvatarPreview(null);
-            notify({
-                type: "success",
-                title: "Thành công",
-                message: "Đã xóa ảnh đại diện",
-            });
         } finally {
             setIsUploadingAvatar(false);
         }
     };
 
     const handleLogoutAllDevices = async () => {
-        if (!confirm("Bạn có chắc muốn đăng xuất khỏi tất cả thiết bị?")) return;
-        await axiosInstance.post("/api/auth/logout-all-device").catch(() => { });
+        await axiosInstance.delete("/api/sessions/all");
         setUser(null);
     };
 
     const handleLogoutSession = async (sessionId) => {
-        const res = await axiosInstance.post("/api/auth/logout-sessions", { sessionId }).catch(() => { });
+        const res = await axiosInstance.delete(`/api/sessions/${sessionId}`);
         if (res.data.success) {
             setSessions(prev => prev.filter(s => s.id !== sessionId));
         }
     };
 
     const handleLogout = async () => {
-        await axiosInstance.post("/api/auth/logout").catch(() => { });
+        await axiosInstance.post("/api/auth/logout");
         setUser(null);
     };
 
@@ -244,7 +238,7 @@ export default function Profile() {
             const res = await axiosInstance.post("/api/user", {
                 fullName: formData.fullName,
                 address: formData.address,
-            }).catch(() => { });
+            });
             setUser(res.data.data);
             notify({
                 type: "success",
@@ -287,13 +281,8 @@ export default function Profile() {
             oldPassword: formData.currentPassword,
             newPassword: formData.newPassword,
             confirm: formData.confirmPassword
-        }).catch(() => { });
-        setUser(res.data.data);
-        notify({
-            type: "success",
-            title: "Thành công",
-            message: "Mật khẩu đã được thay đổi!",
         });
+        setUser(res.data.data);
         setShowPasswordForm(false);
         setFormData(prev => ({
             ...prev,
@@ -308,7 +297,7 @@ export default function Profile() {
         { id: "security", label: "Bảo mật" },
         { id: "sessions", label: "Quản lý Session" }
     ];
-    
+
     return (
         <div className={styles.container}>
             <div className={styles.tabs}>

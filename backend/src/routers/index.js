@@ -1,17 +1,25 @@
 import express from "express";
-import authRouter from "./authen.js";
+import authRouter from "./auth.js";
 import passwordRouter from "./password.js"
 import userRouter from "./user.js";
-import adminRouter from "./admin.js";
-import staffRouter from "./staff.js";
-import realEstateRouter from "./realEstate.js";
+import usersRouter from "./users.js";
+import sessionsRouter from "./sessions.js";
+import realEstateRouter from "./real-estates.js";
+import appraisalRouter from "./appraisals.js";
+import backupRouter from "./backups.js";
+import logRouter from "./logs.js";
+import addressesRouter from "./addresses.js";
 
 const router = express.Router();
 router.use("/auth", authRouter);
 router.use("/password", passwordRouter);
-router.use("/user", userRouter);
-router.use("/admin", adminRouter);
-router.use("/staff", staffRouter);
-router.use("/real-estate", realEstateRouter);
+router.use("/user", userRouter)
+router.use("/users", usersRouter);
+router.use("/sessions", sessionsRouter);
+router.use("/real-estates", realEstateRouter);
+router.use("/appraisals", appraisalRouter);
+router.use("/backups", backupRouter);
+router.use("/logs", logRouter);
+router.use("/addresses", addressesRouter);
 
 export default router;

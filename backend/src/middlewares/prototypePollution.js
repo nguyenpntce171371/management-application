@@ -5,9 +5,7 @@ export const prototypePollutionMiddleware = (req, res, next) => {
         const dangerousKeys = ["__proto__", "constructor", "prototype"];
         for (const key of Object.keys(obj)) {
             if (dangerousKeys.includes(key)) {
-                console.error(
-                    `🚨 [Security] Prototype pollution attempt detected from ${req.ip} at ${path}.${key}`
-                );
+                console.error(`[Security] Prototype pollution attempt detected from ${req.ip} at ${path}.${key}`);
                 return true;
             }
             if (typeof obj[key] === "object" && obj[key] !== null) {

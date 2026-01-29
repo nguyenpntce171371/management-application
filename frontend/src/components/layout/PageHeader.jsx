@@ -1,4 +1,4 @@
-import { Bell, Calendar, Search, Settings, ChevronLeft } from "lucide-react";
+import { Calendar, ChevronLeft } from "lucide-react";
 import styles from "./PageHeader.module.css";
 import { useNavigate } from "react-router-dom";
 

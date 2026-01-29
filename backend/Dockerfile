@@ -8,6 +8,8 @@ ENV APP_MODE=$APP_MODE
 
 WORKDIR /app
 
+RUN apk add --no-cache mongodb-tools redis tar gzip
+
 COPY package*.json ./
 
 RUN if [ "$APP_MODE" = "development" ]; then \

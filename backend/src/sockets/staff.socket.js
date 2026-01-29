@@ -12,7 +12,7 @@ export const setupAppraisalSocketHandlers = (io, socket) => {
             if (!id || !field) return;
 
             const deviceId = socket.deviceId;
-            const redisKey = `socket:update:${socket.user.userId}:${deviceId}:${id}:${field}`;
+            const redisKey = `socket:update:${socket.user.id}:${deviceId}:${id}:${field}`;
 
             const allowed = await redis.set(redisKey, 1, "PX", 300, "NX");
 

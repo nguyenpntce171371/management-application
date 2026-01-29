@@ -1,5 +1,6 @@
-import styles from "./AppraisalWorksheet.module.css";
+import styles from "../../pages/apprisals/detail/worksheet/AppraisalWorksheet.module.css";
 import { formatNumber, formatPercent, PercentInput } from "../../hooks/useNumberFormat";
+import { Link } from "react-router-dom";
 
 function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChange }) {
     return (
@@ -12,7 +13,11 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <th>Đơn vị</th>
                         <th>TSTĐ</th>
                         {comparisonsData.map((comp, i) => (
-                            <th key={comp._id}>TSSS{i + 1}</th>
+                            <th key={comp._id}>
+                                <Link to={`/real-estates/${comp.id}`} className={styles.TSSS} target="_blank">
+                                    TSSS{i + 1}
+                                </Link>
+                            </th>
                         ))}
                     </tr>
                 </thead>

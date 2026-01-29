@@ -28,14 +28,11 @@ export const verify = (requiredRole) => {
                     message: "Thiết bị không được nhận dạng.",
                 });
             }
-            const hashedDeviceId = crypto.createHash("sha256").update(deviceId).digest("hex");
 
-            const tokenRecord = await Token.findOne({
-                userId: decoded.userId,
-                deviceId: hashedDeviceId,
-            });
+            const sessions = await Token.find({ userId: req.user.id });
+            const session = sessions.find(s => s.compareDeviceId(deviceId));
 
-            if (!tokenRecord) {
+            if (!session) {
                 return res.status(401).json({
                     success: false,
                     code: "TOKEN_NOT_FOUND",
@@ -43,15 +40,7 @@ export const verify = (requiredRole) => {
                 });
             }
 
-            if (!tokenRecord.compareDeviceId(deviceId)) {
-                return res.status(401).json({
-                    success: false,
-                    code: "INVALID_DEVICE",
-                    message: "Truy cập bị từ chối: thiết bị không khớp.",
-                });
-            }
-
-            if (new Date() > tokenRecord.accessTokenExpiresAt) {
+            if (new Date() > session.accessTokenExpiresAt) {
                 return res.status(401).json({
                     success: false,
                     code: "TOKEN_EXPIRED",

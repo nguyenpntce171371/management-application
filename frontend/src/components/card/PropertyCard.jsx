@@ -7,7 +7,7 @@ import { useAuth } from "../../context/AuthContext";
 import { Role } from "../../config/role";
 import { notify } from "../../context/NotificationContext";
 
-function PropertyCard({ property, viewMode, detailLink, onDelete, selected, onClick, onApprove }) {
+function PropertyCard({ property, viewMode, detailLink, selected, onClick, onApprove }) {
     const [isStaff, setIsStaff] = useState(false);
     const { user } = useAuth();
 
@@ -30,23 +30,13 @@ function PropertyCard({ property, viewMode, detailLink, onDelete, selected, onCl
     };
     const handleApprove = async (id, action) => {
         property.status = action;
-        await axiosInstance.post(`/api/real-estate/${id}`, property)
+        await axiosInstance.post(`/api/real-estates/${id}`, property)
             .then(() => notify({
                 type: "success",
                 title: "Thành công",
                 message: "Cập nhật trạng thái thành công!",
             })).catch(() => { });
     }
-
-    const handleDelete = async (id) => {
-        await axiosInstance
-            .delete(`/api/real-estate/${id}`)
-            .then(() => notify({
-                type: "success",
-                title: "Thành công",
-                message: "Xóa bất động sản thành công!",
-            }));
-    };
 
     return (
         <div className={`${viewMode === "list" ? styles.propertyCardList : styles.propertyCard} ${selected ? styles.propertyCardHover : ""}`} onClick={onClick}>
@@ -80,9 +70,6 @@ function PropertyCard({ property, viewMode, detailLink, onDelete, selected, onCl
                         <Link to={detailLink} className={styles.actionBtn}>
                             <Eye className={styles.actionBtnIcon} />
                         </Link>
-                        {onDelete && (<button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} onClick={() => handleDelete(property._id)} title="Xóa">
-                            <Trash2 className={styles.actionBtnIcon} />
-                        </button>)}
                     </div>
                 </div>
             </div>

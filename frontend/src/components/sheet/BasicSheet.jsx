@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import styles from "./AppraisalWorksheet.module.css";
+import styles from "../../pages/apprisals/detail/worksheet/AppraisalWorksheet.module.css";
 import { LAND_TYPE } from "../../config/landTypeConfig";
 import MultiSelectLandType from "../common/MultiSelectLandType";
 import { NumberInput, PercentInput, formatNumber } from "../../hooks/useNumberFormat";
@@ -20,7 +20,7 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                         <th>TSTĐ</th>
                         {comparisonsData.map((comp, i) => (
                             <th key={comp._id}>
-                                <Link to={`/user/real-estate/${comp.id}`} className={styles.TSSS} target="_blank">
+                                <Link to={`/real-estates/${comp.id}`} className={styles.TSSS} target="_blank">
                                     TSSS{i + 1}
                                 </Link>
                             </th>

@@ -54,7 +54,7 @@ function resolveIdentity(req, type) {
     const ip = req.ip || req.headers["x-real-ip"];
     const deviceId = req.headers["x-device-id"] || req.body?.deviceId;
     const email = req.body?.email;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
 
     switch (type) {
         case "email":

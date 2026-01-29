@@ -920,50 +920,6 @@
     gap: 1.5rem;
 }
 
-.passwordRequirements {
-    background: linear-gradient(135deg, rgba(212, 175, 55, 0.05) 0%, rgba(244, 208, 63, 0.05) 100%);
-    border: 1px solid rgba(212, 175, 55, 0.15);
-    border-radius: 12px;
-    padding: 1.25rem;
-}
-
-.requirementTitle {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #0f172a;
-    margin-bottom: 0.75rem;
-}
-
-.requirementList {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-}
-
-.requirement {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.8125rem;
-    color: #64748b;
-    transition: all 0.3s ease;
-}
-
-.requirementMet {
-    color: #059669;
-}
-
-.requirementIcon {
-    width: 16px;
-    height: 16px;
-    color: #cbd5e1;
-    transition: all 0.3s ease;
-}
-
-.requirementMet .requirementIcon {
-    color: #059669;
-}
-
 .backToLoginButton {
     text-decoration: none;
     display: inline-flex;

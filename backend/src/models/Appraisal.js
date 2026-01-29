@@ -63,6 +63,7 @@ const ConstructionSchema = new mongoose.Schema({
 const AppraisalSchema = new mongoose.Schema({
     code: { type: String, required: true, index: true },
     customerName: { type: String },
+    customerNameSearch: { type: String },
     propertyType: { type: String },
     appraiser: { type: String },
     createdDate: { type: Date },
@@ -70,7 +71,9 @@ const AppraisalSchema = new mongoose.Schema({
     status: { type: String },
     notes: String,
     assets: [AssetSchema],
-    constructions: [ConstructionSchema]
+    constructions: [ConstructionSchema],
+    deletedAt: { type: Date, default: null, index: true },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null }
 }, { timestamps: true });
 
 AppraisalSchema.index({
@@ -84,5 +87,28 @@ AppraisalSchema.index({
     "assets.ward": "text",
     "assets.street": "text"
 });
+
+AppraisalSchema.pre(/^find/, function(next) {
+    if (!this.getQuery().hasOwnProperty("deletedAt")) {
+        this.where({ deletedAt: null });
+    }
+    next();
+});
+
+AppraisalSchema.methods.softDelete = async function(deletedBy) {
+    this.deletedAt = new Date();
+    this.deletedBy = deletedBy;
+    return await this.save();
+};
+
+AppraisalSchema.methods.restore = async function() {
+    this.deletedAt = null;
+    this.deletedBy = null;
+    return await this.save();
+};
+
+AppraisalSchema.statics.findDeleted = function(conditions = {}) {
+    return this.find({ ...conditions, deletedAt: { $ne: null } });
+};
 
 export default mongoose.model("Appraisal", AppraisalSchema);

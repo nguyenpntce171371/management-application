@@ -4,7 +4,7 @@ import { redis } from "./rateLimitRedis.js";
 export const singleFlightLock = (ttlSeconds = 5) => {
     return async (req, res, next) => {
         try {
-            const identity = req.user?.userId || hashIdentity(`ip:${req.ip}`);
+            const identity = req.user?.id || hashIdentity(`ip:${req.ip}`);
             const lockKey = `lock:${identity}`;
 
             const ttlMs = Math.ceil(ttlSeconds * 1000);

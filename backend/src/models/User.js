@@ -17,6 +17,8 @@ const userSchema = new mongoose.Schema({
     address: { type: String, default: "" },
     addressSearch: { type: String, index: true },
     phone: { type: String, default: "" },
+    deletedAt: { type: Date, default: null, index: true },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null }
 }, { timestamps: true });
 
 userSchema.index({ fullNameSearch: "text", email: "text", addressSearch: "text" });
@@ -41,6 +43,29 @@ userSchema.pre("save", async function (next) {
     }
     next();
 });
+
+userSchema.pre(/^find/, function (next) {
+    if (!this.getQuery().hasOwnProperty("deletedAt")) {
+        this.where({ deletedAt: null });
+    }
+    next();
+});
+
+userSchema.methods.softDelete = async function (deletedBy) {
+    this.deletedAt = new Date();
+    this.deletedBy = deletedBy;
+    return await this.save();
+};
+
+userSchema.methods.restore = async function () {
+    this.deletedAt = null;
+    this.deletedBy = null;
+    return await this.save();
+};
+
+userSchema.statics.findDeleted = function (conditions = {}) {
+    return this.find({ ...conditions, deletedAt: { $ne: null } });
+};
 
 userSchema.methods.comparePassword = async function (password) {
     return bcrypt.compare(password, this.password);

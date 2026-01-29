@@ -45,7 +45,7 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
 
     const fetchNearby = useCallback(async () => {
         if (!appraisal) return [];
-        const res = await axiosInstance.get("/api/real-estate/nearby", {
+        const res = await axiosInstance.get("/real-estates/nearby", {
             params: {
                 province: appraisal.province,
                 district: appraisal.district,
@@ -85,7 +85,7 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
     const handleMouseDown = useCallback((e, propertyId) => {
         if (e.button === 1) {
             e.preventDefault();
-            window.open(`/user/real-estate/${propertyId}`, "_blank", "noopener,noreferrer");
+            window.open(`/real-estates/${propertyId}`, "_blank", "noopener,noreferrer");
         }
     }, []);
 

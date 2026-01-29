@@ -1,6 +1,7 @@
+
 export const joinBaseRooms = (socket) => {
-    const { userId, role } = socket.user;
-    socket.join(userId);
+    const { id, role } = socket.user;
+    socket.join(id);
     switch (role) {
         case "Admin":
             socket.join("Admin");

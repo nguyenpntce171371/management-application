@@ -28,7 +28,7 @@ export const sendEmail = async ({ to, subject, html, text }) => {
 const getMinimalStyles = () => `
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
         line-height: 1.6; 
         color: #1f2937;
         background-color: #f9fafb;
@@ -95,7 +95,7 @@ const getMinimalStyles = () => `
         font-weight: 700;
         color: #111827;
         letter-spacing: 8px;
-        font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+        font-family: "SF Mono", "Monaco", "Courier New", monospace;
         margin: 12px 0;
     }
     .otp-expiry {
@@ -329,7 +329,7 @@ export const sendWelcomeEmail = async (email, fullName) => {
                         </p>
                         
                         <div style="text-align: center;">
-                            <a href="https://${process.env.DOMAIN || 'yourapp.com'}" class="button">
+                            <a href="https://${process.env.DOMAIN}" class="button">
                                 Bắt đầu
                             </a>
                         </div>
@@ -357,11 +357,11 @@ export const sendWelcomeEmail = async (email, fullName) => {
 
 export const sendPasswordChangedEmail = async (email, fullName) => {
     const currentTime = new Date().toLocaleString("vi-VN", {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
     });
     
     return await sendEmail({

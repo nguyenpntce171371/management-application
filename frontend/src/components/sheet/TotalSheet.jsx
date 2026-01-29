@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatNumber, NumberInput, PercentInput } from "../../hooks/useNumberFormat";
-import styles from "./AppraisalWorksheet.module.css";
+import styles from "../../pages/apprisals/detail/worksheet/AppraisalWorksheet.module.css";
 import { Plus, X } from 'lucide-react';
 
 function TotalSheet({ appraisalProperties, constructionWorks, addConstruction, deleteConstruction, handleConstructionChange }) {

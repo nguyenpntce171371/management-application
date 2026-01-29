@@ -17,7 +17,7 @@ export const loggingMiddleware = (req, res, next) => {
             if (responseBody?.code === "TOKEN_EXPIRED") return;
             const user = req.user || {};
             await logEvent({
-                userId: user.userId,
+                userId: user.id,
                 email: user.email,
                 role: user.role,
                 userAgent: req.headers["user-agent"] || "Unknown",

@@ -39,7 +39,7 @@ function SearchFilterBar({ searchTerm, setSearchTerm, viewMode, setViewMode, sel
                         </button>
                     </div>
 
-                    <Link className={styles.addButton} to="/user/add-real-estate">
+                    <Link className={styles.addButton} to="/real-estates/add">
                         <PlusCircle />
                         Thêm BĐS
                     </Link>

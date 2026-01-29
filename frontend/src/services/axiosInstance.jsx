@@ -65,7 +65,12 @@ axiosInstance.interceptors.response.use(
                 code === "INVALID_TOKEN" ||
                 code === "NO_TOKEN" ||
                 code === "REFRESH_TOKEN_EXPIRED" ||
-                code === "INVALID_REFRESH_TOKEN"
+                code === "INVALID_REFRESH_TOKEN" ||
+                code === "TOKEN_NOT_FOUND" ||
+                code === "DEVICE_ID_MISSING" ||
+                code === "CURRENT_SESSION_NOT_FOUND" ||
+                code === "REUSED_TOKEN_DETECTED" ||
+                code === "INVALID_DEVICEID"
             )
         ) || (status === 400 && code === "NO_REFRESH_TOKEN")) {
             if (onAuthFailCallback) onAuthFailCallback();

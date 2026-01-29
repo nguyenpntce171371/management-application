@@ -25,14 +25,12 @@ const RealEstateSchema = new mongoose.Schema({
     district: { type: String, index: true },
     ward: { type: String, index: true },
     street: { type: String, index: true },
-
     propertyTypeSearch: { type: String, index: true },
     addressSearch: { type: String, index: true },
     provinceSearch: { type: String, index: true },
     districtSearch: { type: String, index: true },
     wardSearch: { type: String, index: true },
     streetSearch: { type: String, index: true },
-
     addressNote: { type: String, index: true },
     description: { type: String, index: true },
     images: [String],
@@ -69,7 +67,9 @@ const RealEstateSchema = new mongoose.Schema({
     source: String,
     transactionTime: String,
     convertibleAreaLimit: String,
-});
+    deletedAt: { type: Date, default: null, index: true },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null }
+}, { timestamps: true });
 
 RealEstateSchema.index({
     propertyTypeSearch: "text",
@@ -123,9 +123,7 @@ RealEstateSchema.pre("save", function (next) {
 
 RealEstateSchema.pre("findOneAndUpdate", function (next) {
     const update = this.getUpdate();
-
     const fields = update.$set || update;
-
     if (fields.propertyType) {
         fields.propertyTypeSearch = normalize(fields.propertyType);
     }
@@ -144,14 +142,35 @@ RealEstateSchema.pre("findOneAndUpdate", function (next) {
     if (fields.province) {
         fields.provinceSearch = normalize(fields.province);
     }
-
     if (update.$set) {
         this.setUpdate({ ...update, $set: fields });
     } else {
         this.setUpdate(fields);
     }
-
     next();
 });
+
+RealEstateSchema.pre(/^find/, function(next) {
+    if (!this.getQuery().hasOwnProperty("deletedAt")) {
+        this.where({ deletedAt: null });
+    }
+    next();
+});
+
+RealEstateSchema.methods.softDelete = async function(deletedBy) {
+    this.deletedAt = new Date();
+    this.deletedBy = deletedBy;
+    return await this.save();
+};
+
+RealEstateSchema.methods.restore = async function() {
+    this.deletedAt = null;
+    this.deletedBy = null;
+    return await this.save();
+};
+
+RealEstateSchema.statics.findDeleted = function(conditions = {}) {
+    return this.find({ ...conditions, deletedAt: { $ne: null } });
+};
 
 export default mongoose.model("RealEstate", RealEstateSchema);

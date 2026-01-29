@@ -348,13 +348,13 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
                 });
             });
         }
-
         setTimeout(() => {
             const currentAppraisals = latestDataRef.current.appraisals;
             const currentComparisons = latestDataRef.current.comparisons;
 
             const { appraisals: recalcAppraisals, comparisons: recalcComparisons } = recalculateAll(currentAppraisals, currentComparisons);
-
+            console.log(currentAppraisals);
+            console.log(currentComparisons);
             setComparisonsData(recalcComparisons);
             setAppraisalPropertiesData(recalcAppraisals);
 
