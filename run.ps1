@@ -7,7 +7,7 @@ function Write-ColorOutput($ForegroundColor) {
     $fc = $host.UI.RawUI.ForegroundColor
     $host.UI.RawUI.ForegroundColor = $ForegroundColor
     if ($args) {
-        Write-Output $args
+        Write-Host $args
     }
     $host.UI.RawUI.ForegroundColor = $fc
 }
@@ -632,16 +632,7 @@ function Show-TunnelLogs {
     }
 }
 
-function Start-Deployment {
-    Write-Host ""
-    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Blue
-    Write-Host "║                                                            ║" -ForegroundColor Blue
-    Write-Host "║              MANAGEMENT APPLICATION DEPLOYMENT             ║" -ForegroundColor Yellow
-    Write-Host "║              with Dockerized Cloudflare Tunnel             ║" -ForegroundColor Yellow
-    Write-Host "║                                                            ║" -ForegroundColor Blue
-    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Blue
-    Write-Host ""
-    
+function Start-Deployment {    
     Load-Environment
     Initialize-Variables
     
@@ -692,15 +683,7 @@ function Start-Deployment {
     Show-DeploymentSummary
 }
 
-function Show-DeploymentSummary {
-    Write-Host ""
-    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "║                                                            ║" -ForegroundColor Green
-    Write-Host "║                DEPLOYMENT COMPLETED                        ║" -ForegroundColor Green
-    Write-Host "║                                                            ║" -ForegroundColor Green
-    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Green
-    Write-Host ""
-    
+function Show-DeploymentSummary {    
     Write-ColorOutput Cyan "Deployment Information:"
     Write-Host "   CACHEBUST: $script:CACHEBUST"
     Write-Host "   APP_MODE: $script:APP_MODE"
@@ -713,7 +696,7 @@ function Show-DeploymentSummary {
     Write-ColorOutput Cyan "   http://localhost (local access)"
     Write-Host ""
     
-    Write-ColorOutput Yellow "📋 Useful Commands:"
+    Write-ColorOutput Yellow "ðŸ“‹ Useful Commands:"
     Write-Host ""
     Write-Host "   View All Logs:" -ForegroundColor White
     Write-Host "   docker compose -f $script:COMPOSE_FILE logs -f" -ForegroundColor Gray
@@ -738,7 +721,7 @@ function Show-DeploymentSummary {
     Write-Host "   docker compose -f $script:COMPOSE_FILE down -v" -ForegroundColor Gray
     Write-Host ""
     
-    Write-ColorOutput Cyan "🔧 Troubleshooting:"
+    Write-ColorOutput Cyan "Troubleshooting:"
     Write-Host ""
     Write-Host "   If tunnel is not working:" -ForegroundColor White
     Write-Host "   1. Check tunnel logs: docker logs cloudflared" -ForegroundColor Gray
