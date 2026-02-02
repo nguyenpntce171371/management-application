@@ -7,7 +7,7 @@ function Write-ColorOutput($ForegroundColor) {
     $fc = $host.UI.RawUI.ForegroundColor
     $host.UI.RawUI.ForegroundColor = $ForegroundColor
     if ($args) {
-        Write-Output $args
+        Write-Host $args
     }
     $host.UI.RawUI.ForegroundColor = $fc
 }
@@ -571,7 +571,6 @@ function Clean-Docker {
         
         docker image prune -f 2>&1 | Out-Null
         docker container prune -f 2>&1 | Out-Null
-        docker network prune -f 2>&1 | Out-Null
         Print-Success "Docker cleanup completed"
         
         return $true
