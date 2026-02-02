@@ -528,7 +528,6 @@ function Clean-Docker {
         Print-Info "Running general cleanup..."
         docker image prune -f 2>&1 | Out-Null
         docker container prune -f 2>&1 | Out-Null
-        docker network prune -f 2>&1 | Out-Null
         Print-Success "Docker cleanup completed"
         
         return $true
