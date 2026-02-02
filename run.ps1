@@ -7,7 +7,7 @@ function Write-ColorOutput($ForegroundColor) {
     $fc = $host.UI.RawUI.ForegroundColor
     $host.UI.RawUI.ForegroundColor = $ForegroundColor
     if ($args) {
-        Write-Host $args
+        Write-Output $args
     }
     $host.UI.RawUI.ForegroundColor = $fc
 }
@@ -133,6 +133,26 @@ function Check-EnvVars {
     return $true
 }
 
+function Test-DockerRunning {
+    Print-Step "Checking Docker Status"
+    
+    try {
+        $dockerVersion = docker version --format '{{.Server.Version}}' 2>$null
+        
+        if ($LASTEXITCODE -eq 0 -and $dockerVersion) {
+            Print-Success "Docker is running (version: $dockerVersion)"
+            return $true
+        } else {
+            Print-Error "Docker is not running or not responding"
+            Print-Info "Please start Docker Desktop and try again"
+            return $false
+        }
+    } catch {
+        Print-Error "Cannot connect to Docker: $_"
+        return $false
+    }
+}
+
 function Ensure-DockerNetwork {
     param (
         [string]$NetworkName = "web"
@@ -161,96 +181,62 @@ function Ensure-DockerNetwork {
     }
 }
 
-function Test-DockerRunning {
-    Print-Step "Checking Docker Status"
+function Setup-CloudflareDirectory {
+    Print-Step "Setting up Cloudflare Configuration Directory"
+    
+    $cloudflaredDir = "$env:USERPROFILE\.cloudflared"
     
     try {
-        $dockerVersion = docker version --format '{{.Server.Version}}' 2>$null
-        
-        if ($LASTEXITCODE -eq 0 -and $dockerVersion) {
-            Print-Success "Docker is running (version: $dockerVersion)"
-            return $true
+        if (-not (Test-Path $cloudflaredDir)) {
+            New-Item -ItemType Directory -Path $cloudflaredDir -Force | Out-Null
+            Print-Success "Created .cloudflared directory at: $cloudflaredDir"
         } else {
-            Print-Error "Docker is not running or not responding"
-            Print-Info "Please start Docker Desktop and try again"
-            return $false
+            Print-Success ".cloudflared directory exists at: $cloudflaredDir"
         }
+        
+        return $cloudflaredDir
     } catch {
-        Print-Error "Cannot connect to Docker: $_"
-        return $false
-    }
-}
-
-function Install-Cloudflared {
-    Print-Step "Installing Cloudflared"
-    
-    $cloudflaredPath = "C:\Program Files\cloudflared\cloudflared.exe"
-    
-    if (Test-Path $cloudflaredPath) {
-        Print-Success "cloudflared already installed at $cloudflaredPath"
-        return $cloudflaredPath
-    }
-    
-    Print-Info "Downloading cloudflared..."
-    
-    $downloadUrl = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
-    $installerPath = "$env:TEMP\cloudflared.exe"
-    $installDir = "C:\Program Files\cloudflared"
-    
-    try {
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $installerPath -ErrorAction Stop
-        Print-Success "Downloaded cloudflared"
-        
-        if (-not (Test-Path $installDir)) {
-            New-Item -ItemType Directory -Path $installDir -Force | Out-Null
-        }
-        
-        Move-Item -Path $installerPath -Destination $cloudflaredPath -Force
-        Print-Success "Installed to $cloudflaredPath"
-        
-        $currentPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-        if ($currentPath -notlike "*$installDir*") {
-            try {
-                [Environment]::SetEnvironmentVariable("Path", "$currentPath;$installDir", "Machine")
-                $env:Path = "$env:Path;$installDir"
-                Print-Success "Added to system PATH"
-            } catch {
-                Print-Warning "Could not add to system PATH: $_"
-                Print-Info "You may need to run as Administrator"
-            }
-        }
-        
-        return $cloudflaredPath
-        
-    } catch {
-        Print-Error "Failed to install cloudflared: $_"
-        Print-Info "Please install manually from: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/"
+        Print-Error "Failed to create .cloudflared directory: $_"
         return $null
     }
 }
 
-function Authenticate-Cloudflare {
-    param($cloudflaredPath)
+function Test-CloudflareCredentials {
+    param([string]$CloudflaredDir)
     
-    Print-Step "Authenticating with Cloudflare"
+    Print-Step "Checking Cloudflare Credentials"
     
-    $credentialsPath = "$env:USERPROFILE\.cloudflared\cert.pem"
+    $certPath = "$CloudflaredDir\cert.pem"
     
-    if (Test-Path $credentialsPath) {
+    if (Test-Path $certPath) {
         Print-Success "Cloudflare credentials found"
         return $true
+    } else {
+        Print-Warning "Cloudflare credentials not found"
+        return $false
     }
+}
+
+function Invoke-CloudflareLogin {
+    param([string]$CloudflaredDir)
     
-    Print-Warning "Cloudflare authentication required"
-    Print-Info "A browser window will open for authentication..."
-    Print-Info "Please login and authorize the connection"
+    Print-Step "Cloudflare Authentication Required"
+    Print-Info "Starting temporary cloudflared container for login..."
+    Print-Warning "A browser window will open - please login to Cloudflare"
     
     try {
-        & $cloudflaredPath tunnel login
+        $loginCommand = @(
+            "run", "--rm", "-it",
+            "-v", "${CloudflaredDir}:/home/nonroot/.cloudflared",
+            "cloudflare/cloudflared:latest",
+            "tunnel", "login"
+        )
         
-        if ($LASTEXITCODE -eq 0) {
+        $process = Start-Process -FilePath "docker" -ArgumentList $loginCommand -NoNewWindow -Wait -PassThru
+        
+        if ($process.ExitCode -eq 0) {
             Start-Sleep -Seconds 2
-            if (Test-Path $credentialsPath) {
+            if (Test-Path "$CloudflaredDir\cert.pem") {
                 Print-Success "Authentication successful"
                 return $true
             }
@@ -265,16 +251,25 @@ function Authenticate-Cloudflare {
     }
 }
 
-function Get-OrCreate-Tunnel {
+function Get-OrCreateTunnel {
     param(
-        $cloudflaredPath,
+        [string]$CloudflaredDir,
         [string]$TunnelName = "management-app-tunnel"
     )
     
-    Print-Step "Setting up Tunnel '$TunnelName'"
+    Print-Step "Managing Cloudflare Tunnel '$TunnelName'"
     
     try {
-        $tunnelsJson = & $cloudflaredPath tunnel list --output json 2>$null
+        Print-Info "Checking for existing tunnels..."
+        
+        $listCommand = @(
+            "run", "--rm",
+            "-v", "${CloudflaredDir}:/home/nonroot/.cloudflared",
+            "cloudflare/cloudflared:latest",
+            "tunnel", "list", "--output", "json"
+        )
+        
+        $tunnelsJson = docker $listCommand 2>$null
         
         if ($LASTEXITCODE -eq 0 -and $tunnelsJson) {
             $tunnels = $tunnelsJson | ConvertFrom-Json
@@ -288,23 +283,29 @@ function Get-OrCreate-Tunnel {
         }
         
         Print-Info "Creating new tunnel '$TunnelName'..."
-        & $cloudflaredPath tunnel create $TunnelName 2>&1 | Out-Null
         
-        if ($LASTEXITCODE -ne 0) {
-            Print-Warning "Tunnel creation returned non-zero exit code"
-        }
+        $createCommand = @(
+            "run", "--rm",
+            "-v", "${CloudflaredDir}:/home/nonroot/.cloudflared",
+            "cloudflare/cloudflared:latest",
+            "tunnel", "create", $TunnelName
+        )
         
-        Start-Sleep -Seconds 2
-        $tunnelsJson = & $cloudflaredPath tunnel list --output json 2>$null
+        docker $createCommand 2>&1 | Out-Null
         
-        if ($tunnelsJson) {
-            $tunnels = $tunnelsJson | ConvertFrom-Json
-            $newTunnel = $tunnels | Where-Object { $_.name -eq $TunnelName }
+        if ($LASTEXITCODE -eq 0) {
+            Start-Sleep -Seconds 2
             
-            if ($newTunnel) {
-                Print-Success "Tunnel created successfully"
-                Print-Info "Tunnel ID: $($newTunnel.id)"
-                return $newTunnel.id
+            $tunnelsJson = docker $listCommand 2>$null
+            if ($tunnelsJson) {
+                $tunnels = $tunnelsJson | ConvertFrom-Json
+                $newTunnel = $tunnels | Where-Object { $_.name -eq $TunnelName }
+                
+                if ($newTunnel) {
+                    Print-Success "Tunnel created successfully"
+                    Print-Info "Tunnel ID: $($newTunnel.id)"
+                    return $newTunnel.id
+                }
             }
         }
         
@@ -312,40 +313,37 @@ function Get-OrCreate-Tunnel {
         return $null
         
     } catch {
-        Print-Error "Tunnel setup error: $_"
+        Print-Error "Tunnel management error: $_"
         return $null
     }
 }
 
 function Create-TunnelConfig {
     param(
+        [string]$CloudflaredDir,
         [string]$TunnelId,
         [string]$Domain
     )
     
     Print-Step "Creating Tunnel Configuration"
     
-    $configDir = "$env:USERPROFILE\.cloudflared"
-    
     try {
-        if (-not (Test-Path $configDir)) {
-            New-Item -ItemType Directory -Path $configDir -Force | Out-Null
-        }
-        
         $configContent = @"
 tunnel: $TunnelId
-credentials-file: $configDir\$TunnelId.json
+credentials-file: /home/nonroot/.cloudflared/$TunnelId.json
 
 ingress:
   - hostname: $Domain
-    service: http://localhost:80
+    service: http://bds-caddy:80
   - service: http_status:404
 "@
         
-        $configPath = "$configDir\config.yml"
+        $configPath = "$CloudflaredDir\config.yml"
         $configContent | Out-File -FilePath $configPath -Encoding UTF8 -Force
         
-        Print-Success "Configuration created at $configPath"
+        Print-Success "Configuration created at: $configPath"
+        Print-Info "Tunnel will route to: bds-caddy:80 (Caddy container)"
+        
         return $configPath
         
     } catch {
@@ -354,9 +352,9 @@ ingress:
     }
 }
 
-function Configure-DNS {
+function Configure-TunnelDNS {
     param(
-        $cloudflaredPath,
+        [string]$CloudflaredDir,
         [string]$TunnelName,
         [string]$Domain
     )
@@ -364,7 +362,14 @@ function Configure-DNS {
     Print-Step "Configuring DNS for $Domain"
     
     try {
-        $output = & $cloudflaredPath tunnel route dns $TunnelName $Domain 2>&1
+        $routeCommand = @(
+            "run", "--rm",
+            "-v", "${CloudflaredDir}:/home/nonroot/.cloudflared",
+            "cloudflare/cloudflared:latest",
+            "tunnel", "route", "dns", $TunnelName, $Domain
+        )
+        
+        $output = docker $routeCommand 2>&1
         $outputString = $output | Out-String
         
         if ($outputString -match "already exists" -or 
@@ -385,107 +390,55 @@ function Configure-DNS {
     }
 }
 
-function Start-CloudflareTunnel {
-    param(
-        $cloudflaredPath,
-        [string]$ConfigPath
-    )
+function Setup-CloudflareTunnel {
+    Print-Step "Cloudflare Tunnel Setup (Docker Mode)"
     
-    Print-Step "Starting Cloudflare Tunnel"
-    
-    $existingProcesses = Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue
-    if ($existingProcesses) {
-        Print-Info "Stopping $($existingProcesses.Count) existing tunnel process(es)..."
-        $existingProcesses | Stop-Process -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 3
+    $cloudflaredDir = Setup-CloudflareDirectory
+    if (-not $cloudflaredDir) {
+        Print-Error "Cannot proceed without .cloudflared directory"
+        return $null
     }
     
-    $oldJobs = Get-Job -Name "CloudflareTunnel*" -ErrorAction SilentlyContinue
-    if ($oldJobs) {
-        Print-Info "Cleaning up old tunnel jobs..."
-        $oldJobs | Stop-Job -ErrorAction SilentlyContinue
-        $oldJobs | Remove-Job -Force -ErrorAction SilentlyContinue
-    }
-    
-    Print-Info "Starting tunnel in background..."
-    
-    try {
-        $job = Start-Job -Name "CloudflareTunnel-$(Get-Date -Format 'yyyyMMdd-HHmmss')" -ScriptBlock {
-            param($exe, $config)
-            & $exe tunnel --config $config run 2>&1
-        } -ArgumentList $cloudflaredPath, $ConfigPath
+    $hasCredentials = Test-CloudflareCredentials -CloudflaredDir $cloudflaredDir
+    if (-not $hasCredentials) {
+        Print-Info "Cloudflare login required..."
+        $loginSuccess = Invoke-CloudflareLogin -CloudflaredDir $cloudflaredDir
         
-        Start-Sleep -Seconds 5
-        
-        $jobState = Get-Job -Id $job.Id | Select-Object -ExpandProperty State
-        
-        if ($jobState -eq "Running") {
-            Print-Success "Tunnel is running (Job ID: $($job.Id), Name: $($job.Name))"
-            Print-Info "Access your app at: https://$env:DOMAIN"
-            
-            $output = Receive-Job -Id $job.Id -ErrorAction SilentlyContinue
-            if ($output) {
-                Print-Info "Tunnel output:"
-                $output | Select-Object -First 10 | ForEach-Object { 
-                    Write-Host "  $_" -ForegroundColor Gray 
-                }
-            }
-            
-            return $job.Id
-        } else {
-            Print-Error "Tunnel failed to start"
-            $output = Receive-Job -Id $job.Id -ErrorAction SilentlyContinue
-            if ($output) {
-                Print-Info "Job output:"
-                $output | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
-            }
+        if (-not $loginSuccess) {
+            Print-Error "Cannot proceed without Cloudflare authentication"
+            Print-Info "Please run this command manually to login:"
+            Print-Info "docker run --rm -it -v `"${cloudflaredDir}:/home/nonroot/.cloudflared`" cloudflare/cloudflared:latest tunnel login"
             return $null
         }
-        
-    } catch {
-        Print-Error "Failed to start tunnel: $_"
-        return $null
-    }
-}
-
-function Setup-CloudflareTunnel {
-    Print-Step "Cloudflare Tunnel Setup"
-    
-    $cloudflaredPath = Install-Cloudflared
-    if (-not $cloudflaredPath) {
-        Print-Error "Cannot proceed without cloudflared"
-        return $null
     }
     
-    $authenticated = Authenticate-Cloudflare $cloudflaredPath
-    if (-not $authenticated) {
-        Print-Error "Cannot proceed without authentication"
-        return $null
-    }
-    
-    $tunnelId = Get-OrCreate-Tunnel -cloudflaredPath $cloudflaredPath
+    $tunnelId = Get-OrCreateTunnel -CloudflaredDir $cloudflaredDir
     if (-not $tunnelId) {
         Print-Error "Cannot proceed without tunnel"
         return $null
     }
     
-    $configPath = Create-TunnelConfig -TunnelId $tunnelId -Domain $env:DOMAIN
+    $configPath = Create-TunnelConfig -CloudflaredDir $cloudflaredDir -TunnelId $tunnelId -Domain $env:DOMAIN
     if (-not $configPath) {
         Print-Error "Cannot proceed without config"
         return $null
     }
     
-    Configure-DNS -cloudflaredPath $cloudflaredPath -TunnelName "management-app-tunnel" -Domain $env:DOMAIN
+    Configure-TunnelDNS -CloudflaredDir $cloudflaredDir -TunnelName "management-app-tunnel" -Domain $env:DOMAIN
+    
+    Print-Success "Cloudflare Tunnel setup complete"
+    Print-Info "Tunnel will be started via docker-compose with other services"
     
     return @{
-        Path = $cloudflaredPath
-        ConfigPath = $configPath
+        CloudflaredDir = $cloudflaredDir
         TunnelId = $tunnelId
+        ConfigPath = $configPath
     }
 }
 
 function Build-Frontend {
     if ($script:APP_MODE -ne "production") {
+        Print-Info "Development mode - skipping frontend build"
         return $true
     }
     
@@ -543,25 +496,28 @@ function Clean-Docker {
     Print-Step "Cleaning Docker Resources"
     
     try {
-        docker builder prune -a -f 2>&1 | Out-Null
-        Print-Success "Build cache cleaned"
-        
+        Print-Info "Stopping all containers..."
         docker compose -f $script:COMPOSE_FILE down 2>&1 | Out-Null
         Print-Success "$script:APP_MODE containers stopped"
         
         docker compose -f $script:OTHER_COMPOSE_FILE down 2>&1 | Out-Null
         Print-Success "Other environment stopped"
         
+        Print-Info "Cleaning build cache..."
+        docker builder prune -a -f 2>&1 | Out-Null
+        Print-Success "Build cache cleaned"
+        
         if ($script:APP_MODE -eq "production") {
             docker volume rm managementapplication_frontend_dist -f 2>&1 | Out-Null
             Print-Info "Frontend volume removed"
         }
         
+        Print-Info "Removing old project images..."
         $oldImages = docker images --format "{{.ID}} {{.Repository}}" | 
             Select-String "managementapplication"
         
         if ($oldImages) {
-            Print-Info "Removing $($oldImages.Count) old image(s)..."
+            Print-Info "Found $($oldImages.Count) old image(s) to remove..."
             $oldImages | ForEach-Object {
                 $imageId = ($_ -split ' ')[0]
                 docker rmi -f $imageId 2>&1 | Out-Null
@@ -569,8 +525,10 @@ function Clean-Docker {
             Print-Success "Old images removed"
         }
         
+        Print-Info "Running general cleanup..."
         docker image prune -f 2>&1 | Out-Null
         docker container prune -f 2>&1 | Out-Null
+        docker network prune -f 2>&1 | Out-Null
         Print-Success "Docker cleanup completed"
         
         return $true
@@ -595,6 +553,7 @@ function Build-DockerImages {
             "--build-arg", "CACHEBUST=$script:CACHEBUST"
         )
         
+        Print-Info "Running docker build..."
         $buildProcess = Start-Process -FilePath "docker" -ArgumentList $buildArgs -NoNewWindow -Wait -PassThru
         
         if ($buildProcess.ExitCode -eq 0) {
@@ -612,25 +571,37 @@ function Build-DockerImages {
 }
 
 function Start-DockerContainers {
-    Print-Step "Starting Docker Containers"
+    Print-Step "Starting Docker Containers (including Cloudflare Tunnel)"
     
     try {
         $upArgs = @(
             "compose",
+            "--profile", "tunnel",
             "-f", $script:COMPOSE_FILE,
             "up", "-d"
         )
         
+        Print-Info "Starting all services..."
         $upProcess = Start-Process -FilePath "docker" -ArgumentList $upArgs -NoNewWindow -Wait -PassThru
         
         if ($upProcess.ExitCode -eq 0) {
             Print-Success "Containers started"
             
             Print-Info "Waiting for containers to stabilize..."
-            Start-Sleep -Seconds 5
+            Start-Sleep -Seconds 8
             
             Print-Info "Container status:"
             docker compose -f $script:COMPOSE_FILE ps
+            
+            Print-Info "Checking Cloudflare Tunnel status..."
+            $cloudflaredStatus = docker ps --filter "name=cloudflared" --format "{{.Status}}" 2>$null
+            
+            if ($cloudflaredStatus -match "Up") {
+                Print-Success "Cloudflare Tunnel container is running"
+            } else {
+                Print-Warning "Cloudflare Tunnel container status unclear"
+                Print-Info "Check logs: docker logs cloudflared"
+            }
             
             return $true
         } else {
@@ -644,7 +615,33 @@ function Start-DockerContainers {
     }
 }
 
+function Show-TunnelLogs {
+    Print-Step "Cloudflare Tunnel Logs (Last 20 lines)"
+    
+    try {
+        $logs = docker logs cloudflared --tail 20 2>&1
+        if ($logs) {
+            $logs | ForEach-Object { 
+                Write-Host "  $_" -ForegroundColor Gray 
+            }
+        } else {
+            Print-Info "No logs available yet"
+        }
+    } catch {
+        Print-Warning "Could not retrieve tunnel logs: $_"
+    }
+}
+
 function Start-Deployment {
+    Write-Host ""
+    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Blue
+    Write-Host "║                                                            ║" -ForegroundColor Blue
+    Write-Host "║              MANAGEMENT APPLICATION DEPLOYMENT             ║" -ForegroundColor Yellow
+    Write-Host "║              with Dockerized Cloudflare Tunnel             ║" -ForegroundColor Yellow
+    Write-Host "║                                                            ║" -ForegroundColor Blue
+    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Blue
+    Write-Host ""
+    
     Load-Environment
     Initialize-Variables
     
@@ -662,12 +659,13 @@ function Start-Deployment {
     
     $tunnelInfo = Setup-CloudflareTunnel
     if (-not $tunnelInfo) {
-        Print-Warning "Cloudflare Tunnel setup incomplete, but continuing with Docker deployment..."
+        Print-Warning "Cloudflare Tunnel setup incomplete"
+        Print-Warning "You can configure it later or access the app locally"
     }
     
     $frontendBuilt = Build-Frontend
     if (-not $frontendBuilt -and $script:APP_MODE -eq "production") {
-        Print-Warning "Frontend build failed, but continuing..."
+        Print-Warning "Frontend build had issues, but continuing..."
     }
     
     Clean-Docker
@@ -687,16 +685,22 @@ function Start-Deployment {
     }
     
     if ($tunnelInfo) {
-        $tunnelJobId = Start-CloudflareTunnel -cloudflaredPath $tunnelInfo.Path -ConfigPath $tunnelInfo.ConfigPath
-        if (-not $tunnelJobId) {
-            Print-Warning "Tunnel failed to start, but application is still accessible locally"
-        }
+        Start-Sleep -Seconds 3
+        Show-TunnelLogs
     }
     
     Show-DeploymentSummary
 }
 
-function Show-DeploymentSummary {    
+function Show-DeploymentSummary {
+    Write-Host ""
+    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
+    Write-Host "║                                                            ║" -ForegroundColor Green
+    Write-Host "║                DEPLOYMENT COMPLETED                        ║" -ForegroundColor Green
+    Write-Host "║                                                            ║" -ForegroundColor Green
+    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+    Write-Host ""
+    
     Write-ColorOutput Cyan "Deployment Information:"
     Write-Host "   CACHEBUST: $script:CACHEBUST"
     Write-Host "   APP_MODE: $script:APP_MODE"
@@ -705,25 +709,47 @@ function Show-DeploymentSummary {
     Write-Host ""
     
     Write-ColorOutput Green "Access Your Application:"
-    Write-ColorOutput Blue "   https://$env:DOMAIN"
-    Write-ColorOutput Cyan "   http://localhost (if tunnel fails)"
+    Write-ColorOutput Blue "   https://$env:DOMAIN (via Cloudflare Tunnel)"
+    Write-ColorOutput Cyan "   http://localhost (local access)"
     Write-Host ""
     
-    Write-ColorOutput Yellow "Useful Commands:"
+    Write-ColorOutput Yellow "📋 Useful Commands:"
     Write-Host ""
-    Write-Host "   View App Logs:" -ForegroundColor White
+    Write-Host "   View All Logs:" -ForegroundColor White
     Write-Host "   docker compose -f $script:COMPOSE_FILE logs -f" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "   View Tunnel Logs:" -ForegroundColor White
-    Write-Host "   Get-Job | Receive-Job" -ForegroundColor Gray
+    Write-Host "   View Specific Service Logs:" -ForegroundColor White
+    Write-Host "   docker logs cloudflared -f    # Tunnel logs" -ForegroundColor Gray
+    Write-Host "   docker logs bds-caddy -f      # Caddy logs" -ForegroundColor Gray
+    Write-Host "   docker logs backend -f        # Backend logs" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "   Check Status:" -ForegroundColor White
+    Write-Host "   Check Container Status:" -ForegroundColor White
     Write-Host "   docker compose -f $script:COMPOSE_FILE ps" -ForegroundColor Gray
-    Write-Host "   Get-Job" -ForegroundColor Gray
+    Write-Host "   docker ps" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "   Stop Everything:" -ForegroundColor White
+    Write-Host "   Restart Specific Service:" -ForegroundColor White
+    Write-Host "   docker compose -f $script:COMPOSE_FILE restart cloudflared" -ForegroundColor Gray
+    Write-Host "   docker compose -f $script:COMPOSE_FILE restart bds-caddy" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "   Stop All Services:" -ForegroundColor White
     Write-Host "   docker compose -f $script:COMPOSE_FILE down" -ForegroundColor Gray
-    Write-Host "   Get-Job | Stop-Job; Get-Job | Remove-Job" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "   Stop and Remove Volumes:" -ForegroundColor White
+    Write-Host "   docker compose -f $script:COMPOSE_FILE down -v" -ForegroundColor Gray
+    Write-Host ""
+    
+    Write-ColorOutput Cyan "🔧 Troubleshooting:"
+    Write-Host ""
+    Write-Host "   If tunnel is not working:" -ForegroundColor White
+    Write-Host "   1. Check tunnel logs: docker logs cloudflared" -ForegroundColor Gray
+    Write-Host "   2. Verify Caddy is running: docker ps | findstr bds-caddy" -ForegroundColor Gray
+    Write-Host "   3. Check network: docker network inspect web" -ForegroundColor Gray
+    Write-Host "   4. Restart tunnel: docker compose -f $script:COMPOSE_FILE restart cloudflared" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "   If website shows error:" -ForegroundColor White
+    Write-Host "   1. Check backend: docker logs backend" -ForegroundColor Gray
+    Write-Host "   2. Check Caddy config: docker exec bds-caddy cat /etc/caddy/Caddyfile" -ForegroundColor Gray
+    Write-Host "   3. Test backend directly: curl http://localhost:5000/api/health" -ForegroundColor Gray
     Write-Host ""
     
     if ($global:HasErrors) {
@@ -733,12 +759,11 @@ function Show-DeploymentSummary {
     }
     
     Write-Host ""
-    Write-ColorOutput Yellow "IMPORTANT: Keep this PowerShell window open to maintain the tunnel!"
-    Write-Host ""
-    Write-ColorOutput Cyan "Press Ctrl+C to stop the tunnel and exit"
+    Write-ColorOutput Green "Your application is now running!"
+    Write-ColorOutput Cyan "   All services (including Cloudflare Tunnel) are running in Docker"
+    Write-ColorOutput Cyan "   No need to keep this window open - everything runs in background"
     Write-Host ""
 }
-
 
 try {
     Start-Deployment
@@ -746,22 +771,4 @@ try {
     Print-Error "Unexpected error in deployment: $_"
     Show-ErrorSummary
     exit 1
-} finally {
-    $tunnelJobs = Get-Job -Name "CloudflareTunnel*" -ErrorAction SilentlyContinue
-    if ($tunnelJobs) {
-        Print-Info "Tunnel is running. Waiting... (Press Ctrl+C to exit)"
-        try {
-            while ($true) {
-                Start-Sleep -Seconds 60
-                
-                $runningJobs = Get-Job -Name "CloudflareTunnel*" -State Running -ErrorAction SilentlyContinue
-                if (-not $runningJobs) {
-                    Print-Warning "Tunnel job ended unexpectedly"
-                    break
-                }
-            }
-        } catch {
-            Print-Info "Exiting..."
-        }
-    }
 }

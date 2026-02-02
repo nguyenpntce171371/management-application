@@ -82,7 +82,6 @@ services:
         ls -lah /workspace/output/assets/
         echo ''
         echo 'Keeping container alive...'
-        tail -f /dev/null
 
   caddy:
     image: caddy:2-alpine
@@ -100,6 +99,17 @@ services:
     depends_on:
       - backend
       - frontend
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    volumes:
+      - C:/Users/ADMIN/.cloudflared:/etc/cloudflared
+    networks:
+      - web
+    restart: unless-stopped
+    profiles:
+      - tunnel
 
 volumes:
   mongo_production_data:

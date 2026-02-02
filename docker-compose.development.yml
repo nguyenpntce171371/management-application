@@ -127,7 +127,18 @@ services:
       --auth password
       /home/coder/project-bds
     networks:
-      - web    
+      - web
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    volumes:
+      - C:/Users/ADMIN/.cloudflared:/etc/cloudflared
+    networks:
+      - web
+    restart: unless-stopped
+    profiles:
+      - tunnel
 
 volumes:
   mongo_development_data:
