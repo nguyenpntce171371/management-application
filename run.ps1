@@ -211,13 +211,12 @@ ingress:
     Print-Success "Tunnel config created"
     
     Print-Info "Configuring DNS routing..."
-    & $cloudflared tunnel route dns $TUNNEL_NAME $env:DOMAIN 2>&1 | Out-Null
+    & $cloudflared tunnel route dns $TUNNEL_NAME $env:DOMAIN 2>$null
     
     if ($LASTEXITCODE -eq 0) {
         Print-Success "DNS configured for $env:DOMAIN"
     } else {
         Print-Warning "DNS routing might already exist or failed"
-        Print-Info "Please verify DNS settings in Cloudflare Dashboard"
     }
     
     return $cloudflared
