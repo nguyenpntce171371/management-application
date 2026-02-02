@@ -1,3 +1,4 @@
+Set-Location -Path $PSScriptRoot
 $ErrorActionPreference = "Stop"
 
 function Write-ColorOutput($ForegroundColor) {
