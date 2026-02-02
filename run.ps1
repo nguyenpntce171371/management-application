@@ -67,6 +67,32 @@ function Check-EnvVars {
     Print-Success "DOMAIN: $env:DOMAIN"
 }
 
+function Ensure-DockerNetwork {
+    param (
+        [string]$NetworkName = "web"
+    )
+
+    Print-Step "Checking Docker Network '$NetworkName'"
+
+    $networkExists = docker network ls --format "{{.Name}}" |
+        Where-Object { $_ -eq $NetworkName }
+
+    if (-not $networkExists) {
+        Print-Warning "Docker network '$NetworkName' not found"
+        Print-Info "Creating docker network '$NetworkName'..."
+
+        try {
+            docker network create $NetworkName | Out-Null
+            Print-Success "Docker network '$NetworkName' created"
+        } catch {
+            Print-Error "Failed to create docker network '$NetworkName'"
+            exit 1
+        }
+    } else {
+        Print-Success "Docker network '$NetworkName' already exists"
+    }
+}
+
 function Setup-CloudflareTunnel {
     Print-Step "Setting up Cloudflare Tunnel"
     
@@ -227,6 +253,7 @@ Print-Info "Compose file: $COMPOSE_FILE"
 Print-Info "Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
 
 Check-EnvVars
+Ensure-DockerNetwork "web"
 
 $cloudflaredExe = Setup-CloudflareTunnel
 
