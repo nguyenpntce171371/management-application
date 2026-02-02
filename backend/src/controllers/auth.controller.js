@@ -34,7 +34,7 @@ const getCachedImageUrl = async (imagePath) => {
 };
 
 export const googleCallback = async (req, res) => {
-    const DOMAIN = `https://${process.env.APP_MODE === "development" ? "dev." : ""}${process.env.DOMAIN}`
+    const DOMAIN = `https://${process.env.DOMAIN}`;
     try {
         const code = req.query.code;
         if (!code) {
@@ -169,7 +169,7 @@ export const googleCallback = async (req, res) => {
 };
 
 export const googleLogin = (req, res) => {
-    const DOMAIN = `https://${process.env.APP_MODE === "development" ? "dev." : ""}${process.env.DOMAIN}`
+    const DOMAIN = `https://${process.env.DOMAIN}`;
     const redirectUri = encodeURIComponent(`${DOMAIN}/api/auth/google/callback`);
     const scope = encodeURIComponent("openid email profile");
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
