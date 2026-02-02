@@ -328,7 +328,7 @@ function Create-TunnelConfig {
     Print-Step "Creating Tunnel Configuration"
     
     try {
-        $configContent = @"
+$configContent = @"
 tunnel: $TunnelId
 credentials-file: /home/nonroot/.cloudflared/$TunnelId.json
 
