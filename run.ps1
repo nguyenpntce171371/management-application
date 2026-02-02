@@ -646,15 +646,6 @@ function Start-DockerContainers {
 }
 
 function Start-Deployment {
-    Write-Host ""
-    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Blue
-    Write-Host "║                                                            ║" -ForegroundColor Blue
-    Write-Host "║             MANAGEMENT APPLICATION DEPLOYMENT              ║" -ForegroundColor Yellow
-    Write-Host "║                   with Cloudflare Tunnel                   ║" -ForegroundColor Yellow
-    Write-Host "║                                                            ║" -ForegroundColor Blue
-    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Blue
-    Write-Host ""
-    
     Load-Environment
     Initialize-Variables
     
@@ -706,15 +697,7 @@ function Start-Deployment {
     Show-DeploymentSummary
 }
 
-function Show-DeploymentSummary {
-    Write-Host ""
-    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "║                                                            ║" -ForegroundColor Green
-    Write-Host "║                  DEPLOYMENT COMPLETED                      ║" -ForegroundColor Green
-    Write-Host "║                                                            ║" -ForegroundColor Green
-    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Green
-    Write-Host ""
-    
+function Show-DeploymentSummary {    
     Write-ColorOutput Cyan "Deployment Information:"
     Write-Host "   CACHEBUST: $script:CACHEBUST"
     Write-Host "   APP_MODE: $script:APP_MODE"
