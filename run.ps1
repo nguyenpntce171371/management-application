@@ -151,31 +151,45 @@ function Setup-CloudflareTunnel {
     }
     
     $TUNNEL_NAME = "management-app-tunnel"
-    
-    $tunnelInfo = & $cloudflared tunnel info $TUNNEL_NAME 2>&1
-    
-    if ($LASTEXITCODE -ne 0) {
+
+    $tunnelsJson = & $cloudflared tunnel list --output json 2>$null
+    $tunnels = @()
+
+    if ($tunnelsJson) {
+        $tunnels = $tunnelsJson | ConvertFrom-Json
+    }
+
+    $existingTunnel = $tunnels | Where-Object { $_.name -eq $TUNNEL_NAME }
+
+    if (-not $existingTunnel) {
+        Print-Warning "Tunnel '$TUNNEL_NAME' not found"
         Print-Info "Creating tunnel '$TUNNEL_NAME'..."
+
         & $cloudflared tunnel create $TUNNEL_NAME
-        
+
         if ($LASTEXITCODE -ne 0) {
-            Print-Error "Failed to create tunnel"
+            Print-Error "Failed to create tunnel '$TUNNEL_NAME'"
             exit 1
         }
-        
-        Print-Success "Tunnel created"
+
+        Print-Success "Tunnel '$TUNNEL_NAME' created"
+
+        $existingTunnel = (
+            & $cloudflared tunnel list --output json |
+            ConvertFrom-Json |
+            Where-Object { $_.name -eq $TUNNEL_NAME }
+        )
     } else {
-        Print-Info "Tunnel '$TUNNEL_NAME' already exists"
+        Print-Success "Tunnel '$TUNNEL_NAME' already exists"
     }
-    
-    $tunnelInfoJson = & $cloudflared tunnel info $TUNNEL_NAME -o json 2>&1
-    $TUNNEL_ID = ($tunnelInfoJson | ConvertFrom-Json).id
-    
+
+    $TUNNEL_ID = $existingTunnel.id
+
     if (-not $TUNNEL_ID) {
-        Print-Error "Failed to get tunnel ID"
+        Print-Error "Unable to determine tunnel ID"
         exit 1
     }
-    
+
     Print-Success "Tunnel ID: $TUNNEL_ID"
     
     $configDir = "$env:USERPROFILE\.cloudflared"
