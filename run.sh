@@ -154,7 +154,6 @@ if sudo docker compose -f $COMPOSE_FILE up -d; then
     print_success "Containers started successfully"
     if [ "$APP_MODE" = "development" ]; then
         print_step "Development Tools"
-        echo -e "${GREEN}👉 Code Server: https://code.${DOMAIN}${NC}"
     fi
 else
     print_error "Failed to start containers"
@@ -193,12 +192,12 @@ if [ "$APP_MODE" = "production" ]; then
 fi
 
 print_step "Deployment Summary"
-echo -e "${GREEN}✅ Deployment completed successfully!${NC}"
-echo -e "${BLUE}ℹ️  CACHEBUST: $CACHEBUST${NC}"
-echo -e "${BLUE}ℹ️  APP_MODE: ${APP_MODE:-development}${NC}"
-echo -e "${BLUE}ℹ️  Time: $(date "+%Y-%m-%d %H:%M:%S")${NC}"
+echo -e "${GREEN}Deployment completed successfully!${NC}"
+echo -e "${BLUE}CACHEBUST: $CACHEBUST${NC}"
+echo -e "${BLUE}APP_MODE: ${APP_MODE:-development}${NC}"
+echo -e "${BLUE}Time: $(date "+%Y-%m-%d %H:%M:%S")${NC}"
 echo ""
-echo -e "${YELLOW}📋 View logs: sudo docker compose -f $COMPOSE_FILE logs -f${NC}"
-echo -e "${YELLOW}📊 Check status: sudo docker compose -f $COMPOSE_FILE ps${NC}"
-echo -e "${YELLOW}⏹️  Stop: sudo docker compose -f $COMPOSE_FILE down${NC}"
+echo -e "${YELLOW}View logs: sudo docker compose -f $COMPOSE_FILE logs -f${NC}"
+echo -e "${YELLOW}Check status: sudo docker compose -f $COMPOSE_FILE ps${NC}"
+echo -e "${YELLOW}Stop: sudo docker compose -f $COMPOSE_FILE down${NC}"
 echo ""

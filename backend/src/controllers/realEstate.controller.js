@@ -1,7 +1,7 @@
 import RealEstate from "../models/RealEstate.js";
 import { io } from "../index.js";
 import NodeCache from "node-cache";
-import { uploadMultipleImagesToOCI, deleteMultipleImagesFromOCI, generateReadPAR } from "../services/oci.service.js";
+import { uploadMultipleImages, deleteMultipleImages, generatePresignedUrl } from "../services/storage.service.js";
 import { normalize, removePrefix } from "../utils/string.js";
 
 const imageUrlCache = new NodeCache({
@@ -18,7 +18,7 @@ const getCachedImageUrl = async (imagePath) => {
     if (cachedUrl) return cachedUrl;
 
     try {
-        const url = await generateReadPAR(imagePath, 30);
+        const url = await generatePresignedUrl(imagePath, 30);
         imageUrlCache.set(imagePath, url);
         return url;
     } catch (error) {
@@ -300,7 +300,7 @@ export const permanentDeleteRealEstate = async (req, res) => {
         }
 
         if (item.images?.length) {
-            await deleteMultipleImagesFromOCI(item.images);
+            await deleteMultipleImages(item.images);
         }
 
         await item.deleteOne();
@@ -425,7 +425,7 @@ export const createRealEstate = async (req, res) => {
         }
 
         if (req.files?.length) {
-            objectNames = await uploadMultipleImagesToOCI(req.files, "real-estate");
+            objectNames = await uploadMultipleImages(req.files, "real-estate");
         }
 
         const location = {

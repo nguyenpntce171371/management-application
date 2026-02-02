@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { normalize } from "../utils/string";
+import { normalize } from "../utils/string.js";
 
 const logSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },

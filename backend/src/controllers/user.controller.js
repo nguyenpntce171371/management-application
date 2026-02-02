@@ -1,8 +1,8 @@
 import { io } from "../index.js";
 import User from "../models/User.js";
 import NodeCache from "node-cache";
-import { uploadMultipleImagesToOCI, deleteMultipleImagesFromOCI, generateReadPAR } from "../services/oci.service.js";
 import { normalize } from "../utils/string.js";
+import { uploadMultipleImages, deleteMultipleImages, generatePresignedUrl } from "../services/storage.service.js";
 
 const imageUrlCache = new NodeCache({
     stdTTL: 1800,
@@ -18,7 +18,7 @@ const getCachedImageUrl = async (imagePath) => {
     if (cachedUrl) return cachedUrl;
 
     try {
-        const url = await generateReadPAR(imagePath, 30);
+        const url = await generatePresignedUrl(imagePath, 30);
         imageUrlCache.set(imagePath, url);
         return url;
     } catch (error) {
@@ -86,10 +86,10 @@ export const updateUserProfile = async (req, res) => {
         }
 
         if (req.file) {
-            const [avatarPath] = await uploadMultipleImagesToOCI([req.file], "avatars");
+            const [avatarPath] = await uploadMultipleImages([req.file], "avatars");
 
             if (user.avatar) {
-                await deleteMultipleImagesFromOCI([user.avatar]);
+                await deleteMultipleImages([user.avatar]);
             }
 
             updateData.avatar = avatarPath;
@@ -178,7 +178,7 @@ export const deleteUserAvatar = async (req, res) => {
         const avatarPath = user.avatar;
 
         if (avatarPath && !avatarPath.startsWith("http")) {
-            await deleteMultipleImagesFromOCI([avatarPath]);
+            await deleteMultipleImages([avatarPath]);
             imageUrlCache.del(avatarPath);
         }
 

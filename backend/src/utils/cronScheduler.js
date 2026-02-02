@@ -4,9 +4,11 @@ const { CronExpressionParser } = pkg;
 import BackupConfig from "../models/BackupConfig.js";
 import { backupMongoDB, cleanupOldBackups } from "../services/backup.service.js";
 import { runSoftDeleteCleanup } from "../services/softDelete.service.js";
+import { cleanupExpiredTokens } from "../services/storage.service.js";
 
 let backupJob = null;
 let cleanupJob = null;
+let tokenCleanupJob = null;
 
 export const initializeBackupCronJob = async () => {
     try {
@@ -51,9 +53,7 @@ export const initializeBackupCronJob = async () => {
             }
         }, { timezone: "Asia/Ho_Chi_Minh" });
 
-        const interval = CronExpressionParser.parse(config.schedule, {
-            tz: "Asia/Ho_Chi_Minh"
-        });
+        const interval = CronExpressionParser.parse(config.schedule, { tz: "Asia/Ho_Chi_Minh" });
         const nextRun = interval.next().toDate();
         config.nextBackupAt = nextRun;
         await config.save();
@@ -89,10 +89,35 @@ export const initializeSoftDeleteCleanupJob = () => {
     }
 };
 
+export const initializeTempTokenCleanupJob = () => {
+    try {
+        if (tokenCleanupJob) {
+            tokenCleanupJob.stop();
+        }
+
+        tokenCleanupJob = cron.schedule("0 * * * *", () => {
+            console.log("Cleaning up expired temporary tokens...");
+            
+            try {
+                cleanupExpiredTokens();
+                console.log("Temporary tokens cleanup completed");
+            } catch (error) {
+                console.error("Temporary tokens cleanup failed:", error);
+            }
+        }, { timezone: "Asia/Ho_Chi_Minh" });
+
+        console.log("Temp token cleanup scheduler initialized");
+        console.log("Cleanup runs every hour");
+    } catch (error) {
+        console.error("Failed to initialize temp token cleanup job:", error);
+    }
+};
+
 export const initializeCronJobs = async () => {
     console.log("Initializing cron jobs...");
     await initializeBackupCronJob();
     initializeSoftDeleteCleanupJob();
+    initializeTempTokenCleanupJob();
     console.log("All cron jobs initialized");
 };
 

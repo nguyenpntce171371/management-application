@@ -9,6 +9,7 @@ import appraisalRouter from "./appraisals.js";
 import backupRouter from "./backups.js";
 import logRouter from "./logs.js";
 import addressesRouter from "./addresses.js";
+import filesRouter from "./files.js";
 
 const router = express.Router();
 router.use("/auth", authRouter);
@@ -21,5 +22,6 @@ router.use("/appraisals", appraisalRouter);
 router.use("/backups", backupRouter);
 router.use("/logs", logRouter);
 router.use("/addresses", addressesRouter);
+router.use("/files", filesRouter);
 
 export default router;

@@ -28,7 +28,7 @@ export const getBackups = async (req, res) => {
         }
 
         const data = await Backup.find(query)
-            .select("type filename size ociPath source status error mongoVersion metadata createdAt")
+            .select("type filename size path source status error mongoVersion metadata createdAt")
             .sort({ [sortBy]: sortOrder, _id: sortOrder })
             .skip(skip)
             .limit(limit)

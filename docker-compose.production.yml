@@ -32,6 +32,8 @@ services:
         - CACHEBUST=${CACHEBUST:-1}
     container_name: backend
     restart: unless-stopped
+    volumes:
+      - ./uploads:/app/uploads
     environment:
       - APP_MODE=${APP_MODE:-production}
       - DOMAIN=${DOMAIN}
@@ -45,13 +47,6 @@ services:
       - EMAIL_PASS=${EMAIL_PASS}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - OCI_TENANCY_OCID=${OCI_TENANCY_OCID}
-      - OCI_USER_OCID=${OCI_USER_OCID}
-      - OCI_FINGERPRINT=${OCI_FINGERPRINT}
-      - OCI_PRIVATE_KEY=${OCI_PRIVATE_KEY}
-      - OCI_REGION=${OCI_REGION}
-      - OCI_NAMESPACE=${OCI_NAMESPACE}
-      - OCI_BUCKET_NAME=${OCI_BUCKET_NAME}
     depends_on:
       - mongo-production
       - redis-production

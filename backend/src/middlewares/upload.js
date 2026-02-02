@@ -24,12 +24,6 @@ if (!fs.existsSync(BACKUP_CONFIG.UPLOAD_DIR)) {
     fs.mkdirSync(BACKUP_CONFIG.UPLOAD_DIR, { recursive: true });
 }
 
-export const OCI_CONFIG = {
-    ALLOWED_TYPES: IMAGE_CONFIG.ALLOWED_TYPES,
-    MAX_FILE_SIZE: IMAGE_CONFIG.MAX_FILE_SIZE,
-    MAX_FILES: IMAGE_CONFIG.MAX_FILES
-};
-
 const memoryStorage = multer.memoryStorage();
 
 const diskStorage = multer.diskStorage({
@@ -56,7 +50,7 @@ const backupFileFilter = (req, file, cb) => {
     if (BACKUP_CONFIG.ALLOWED_EXTENSIONS.includes(ext) || file.originalname.endsWith(".tar.gz")) {
         cb(null, true);
     } else {
-        cb(new Error("Chỉ chấp nhận file .tar.gz hoặc .tgz"), false);
+        cb(new Error("Invalid file type. Only .tar.gz or .tgz are allowed."), false);
     }
 };
 

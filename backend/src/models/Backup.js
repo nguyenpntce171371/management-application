@@ -1,41 +1,41 @@
 import mongoose from "mongoose";
 
 const backupSchema = new mongoose.Schema({
-    type: { 
-        type: String, 
+    type: {
+        type: String,
         enum: ["mongodb"],
         required: true,
         index: true
     },
-    filename: { 
-        type: String, 
-        required: true 
-    },
-    size: { 
-        type: Number, 
+    filename: {
+        type: String,
         required: true
     },
-    ociPath: { 
-        type: String, 
+    size: {
+        type: Number,
         required: true
     },
-    source: { 
-        type: String, 
+    path: {
+        type: String,
+        required: true
+    },
+    source: {
+        type: String,
         enum: ["auto", "manual", "imported"],
         default: "manual",
         index: true
     },
-    status: { 
-        type: String, 
+    status: {
+        type: String,
         enum: ["completed", "failed", "in_progress"],
         default: "in_progress",
         index: true
     },
-    error: { 
-        type: String 
+    error: {
+        type: String
     },
-    mongoVersion: { 
-        type: String 
+    mongoVersion: {
+        type: String
     },
     metadata: {
         dbName: String,
@@ -48,7 +48,7 @@ const backupSchema = new mongoose.Schema({
         originalFilename: String,
         importedAt: Date
     },
-    
+
     deletedAt: { type: Date, default: null, index: true },
     deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     deletionReason: { type: String }
@@ -58,39 +58,39 @@ backupSchema.index({ createdAt: -1 });
 backupSchema.index({ type: 1, status: 1, createdAt: -1 });
 backupSchema.index({ deletedAt: 1, createdAt: -1 });
 
-backupSchema.pre(/^find/, function(next) {
+backupSchema.pre(/^find/, function (next) {
     if (!this.getQuery().deletedAt) {
         this.where({ deletedAt: null });
     }
     next();
 });
 
-backupSchema.methods.softDelete = async function(deletedBy, reason) {
+backupSchema.methods.softDelete = async function (deletedBy, reason) {
     this.deletedAt = new Date();
     this.deletedBy = deletedBy;
     if (reason) this.deletionReason = reason;
     return await this.save();
 };
 
-backupSchema.methods.restore = async function() {
+backupSchema.methods.restore = async function () {
     this.deletedAt = null;
     this.deletedBy = null;
     this.deletionReason = null;
     return await this.save();
 };
 
-backupSchema.statics.findDeleted = function(conditions = {}) {
+backupSchema.statics.findDeleted = function (conditions = {}) {
     return this.find({ ...conditions, deletedAt: { $ne: null } });
 };
 
-backupSchema.statics.permanentDeleteExpired = async function(daysOld = 7) {
+backupSchema.statics.permanentDeleteExpired = async function (daysOld = 7) {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() - daysOld);
-    
+
     const result = await this.deleteMany({
         deletedAt: { $ne: null, $lte: expiryDate }
     });
-    
+
     return result;
 };
 

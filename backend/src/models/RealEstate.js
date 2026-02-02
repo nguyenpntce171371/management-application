@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { normalize } from "../utils/string";
+import { normalize } from "../utils/string.js";
 
 const LandSchema = new mongoose.Schema({
     landType: String,

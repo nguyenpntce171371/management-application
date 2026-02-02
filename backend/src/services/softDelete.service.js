@@ -2,7 +2,7 @@ import User from "../models/User.js";
 import RealEstate from "../models/RealEstate.js";
 import Appraisal from "../models/Appraisal.js";
 import Backup from "../models/Backup.js";
-import { deleteMultipleImagesFromOCI, deleteFileFromOCI } from "./oci.service.js";
+import { deleteMultipleImages, deleteFile } from "./storage.service.js";
 
 const RETENTION_DAYS = 7;
 
@@ -18,11 +18,11 @@ export const cleanupDeletedUsers = async () => {
         let deletedCount = 0;
 
         for (const user of expiredUsers) {
-            await User.permanentDelete(user._id);
+            await User.findByIdAndDelete(user._id);
             deletedCount++;
         }
 
-        console.log(`Cleaned up ${deletedCount} expired users`);
+        console.log(`✅ Cleaned up ${deletedCount} expired users`);
 
         return {
             success: true,
@@ -51,18 +51,18 @@ export const cleanupDeletedRealEstates = async () => {
         for (const item of expiredRealEstates) {
             if (item.images?.length) {
                 try {
-                    await deleteMultipleImagesFromOCI(item.images);
+                    await deleteMultipleImages(item.images);
                     imagesDeletedCount += item.images.length;
                 } catch (imageError) {
                     console.error(`Failed to delete images for RealEstate ${item._id}:`, imageError);
                 }
             }
 
-            await RealEstate.permanentDelete(item._id);
+            await RealEstate.findByIdAndDelete(item._id);
             deletedCount++;
         }
 
-        console.log(`Cleaned up ${deletedCount} expired real estates (${imagesDeletedCount} images)`);
+        console.log(`✅ Cleaned up ${deletedCount} expired real estates (${imagesDeletedCount} images)`);
 
         return {
             success: true,
@@ -89,11 +89,11 @@ export const cleanupDeletedAppraisals = async () => {
         let deletedCount = 0;
 
         for (const appraisal of expiredAppraisals) {
-            await Appraisal.permanentDelete(appraisal._id);
+            await Appraisal.findByIdAndDelete(appraisal._id);
             deletedCount++;
         }
 
-        console.log(`Cleaned up ${deletedCount} expired appraisals`);
+        console.log(`✅ Cleaned up ${deletedCount} expired appraisals`);
 
         return {
             success: true,
@@ -120,12 +120,12 @@ export const cleanupDeletedBackups = async () => {
         let filesDeletedCount = 0;
 
         for (const backup of expiredBackups) {
-            if (backup.ociPath) {
+            if (backup.path) {
                 try {
-                    await deleteFileFromOCI(backup.ociPath);
+                    await deleteFile(backup.path);
                     filesDeletedCount++;
                 } catch (fileError) {
-                    console.error(`Failed to delete OCI file for Backup ${backup._id}:`, fileError);
+                    console.error(`Failed to delete file for Backup ${backup._id}:`, fileError);
                 }
             }
 
@@ -133,7 +133,7 @@ export const cleanupDeletedBackups = async () => {
             deletedCount++;
         }
 
-        console.log(`✅ Cleaned up ${deletedCount} expired backups (${filesDeletedCount} OCI files)`);
+        console.log(`✅ Cleaned up ${deletedCount} expired backups (${filesDeletedCount} files)`);
 
         return {
             success: true,
@@ -149,7 +149,7 @@ export const cleanupDeletedBackups = async () => {
 };
 
 export const runSoftDeleteCleanup = async () => {
-    console.log("Starting soft delete cleanup...");
+    console.log("🔄 Starting soft delete cleanup...");
 
     const startTime = Date.now();
     const results = {
@@ -189,12 +189,17 @@ export const runSoftDeleteCleanup = async () => {
 
         const duration = Date.now() - startTime;
 
-        console.log(`Soft delete cleanup completed in ${duration}ms`);
-        console.log(`Summary:`, results);
+        console.log(`✅ Soft delete cleanup completed in ${duration}ms`);
+        
+        const summary = results.results.map(r => 
+            `${r.model}: ${r.deletedCount} deleted${r.imagesDeletedCount ? ` (${r.imagesDeletedCount} images)` : ""}${r.filesDeletedCount ? ` (${r.filesDeletedCount} files)` : ""}`
+        ).join(", ");
+        
+        console.log(`📊 Summary: ${summary}`);
 
         return results;
     } catch (error) {
-        console.error("Soft delete cleanup failed:", error);
+        console.error("❌ Soft delete cleanup failed:", error);
         throw error;
     }
 };

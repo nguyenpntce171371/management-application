@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import archiver from "archiver";
 import mongoose from "mongoose";
-import { uploadFileToOCI, downloadFileFromOCI, deleteFileFromOCI, generatePresignedUrl } from "./oci.service.js";
+import { uploadFile, downloadFile, deleteFile, generatePresignedUrl } from "./storage.service.js";
 import Backup from "../models/Backup.js";
 import BackupConfig from "../models/BackupConfig.js";
 
@@ -74,7 +74,7 @@ export const backupMongoDB = async (source = "manual") => {
             type: "mongodb",
             filename,
             size: 0,
-            ociPath: `backups/mongodb/${filename}`,
+            path: `backups/mongodb/${filename}`,
             source,
             status: "in_progress"
         });
@@ -85,13 +85,13 @@ export const backupMongoDB = async (source = "manual") => {
 
         const dumpCommand = `mongodump --uri="${MONGO_URI}" --out="${dumpDir}" --gzip ${excludeParams}`;
 
-        console.log(`Creating MongoDB backup (excluding: ${EXCLUDED_COLLECTIONS.join(", ")})`);
+        console.log(`📦 Creating MongoDB backup (excluding: ${EXCLUDED_COLLECTIONS.join(", ")})`);
         await execPromise(dumpCommand);
 
         const { size } = await compressDirectory(dumpDir, archivePath);
 
-        const ociPath = `backups/mongodb/${filename}`;
-        await uploadFileToOCI(archivePath, ociPath);
+        const storagePath = `backups/mongodb/${filename}`;
+        await uploadFile(archivePath, storagePath);
 
         const db = mongoose.connection.db;
         const allCollections = await db.listCollections().toArray();
@@ -126,7 +126,7 @@ export const backupMongoDB = async (source = "manual") => {
         fs.rmSync(dumpDir, { recursive: true, force: true });
         fs.unlinkSync(archivePath);
 
-        console.log(`MongoDB backup completed: ${includedCollections.length} collections, ${totalDocuments} documents`);
+        console.log(`✅ MongoDB backup completed: ${includedCollections.length} collections, ${totalDocuments} documents`);
 
         return {
             success: true,
@@ -153,15 +153,37 @@ export const backupMongoDB = async (source = "manual") => {
     }
 };
 
+export const createFullBackup = async (source = "manual") => {
+    console.log("🔄 Starting MongoDB backup");
+    
+    try {
+        const mongoResult = await backupMongoDB(source);
+
+        return {
+            success: true,
+            results: {
+                mongodb: mongoResult.backup
+            }
+        };
+    } catch (error) {
+        console.error("Backup error:", error);
+        throw error;
+    }
+};
+
 export const restoreMongoDB = async (backupId) => {
-    const backup = await Backup.findById(backupId);
+    const backup = await Backup.findOne({ _id: backupId, deletedAt: null });
 
     if (!backup) {
-        throw new Error("Backup not found");
+        throw new Error("Backup not found or has been deleted");
     }
 
     if (backup.type !== "mongodb") {
         throw new Error("Invalid backup type for MongoDB restore");
+    }
+
+    if (backup.status !== "completed") {
+        throw new Error("Cannot restore incomplete backup");
     }
 
     const timestamp = getTimestamp();
@@ -169,7 +191,7 @@ export const restoreMongoDB = async (backupId) => {
     const extractDir = path.join(BACKUP_DIR, `restore_mongo_${timestamp}`);
 
     try {
-        await downloadFileFromOCI(backup.ociPath, archivePath);
+        await downloadFile(backup.path, archivePath);
         await extractTarGz(archivePath, extractDir);
 
         const restoreCommand = `mongorestore --uri="${MONGO_URI}" --drop --gzip "${extractDir}/${process.env.MONGO_DB_NAME}"`;
@@ -180,7 +202,7 @@ export const restoreMongoDB = async (backupId) => {
         fs.rmSync(extractDir, { recursive: true, force: true });
         fs.unlinkSync(archivePath);
 
-        console.log(`MongoDB restored successfully (${EXCLUDED_COLLECTIONS.join(", ")} preserved)`);
+        console.log(`✅ MongoDB restored successfully (${EXCLUDED_COLLECTIONS.join(", ")} preserved)`);
 
         return {
             success: true,
@@ -201,7 +223,7 @@ export const restoreMongoDB = async (backupId) => {
     }
 };
 
-export const importBackup = async (filePath, type, originalFilename) => {
+export const importBackup = async (path, type, originalFilename) => {
     const timestamp = getTimestamp();
     const filename = `${type}_imported_${timestamp}.tar.gz`;
     const verifyDir = path.join(BACKUP_DIR, `verify_${timestamp}`);
@@ -209,28 +231,30 @@ export const importBackup = async (filePath, type, originalFilename) => {
     let backupRecord = null;
 
     try {
-        await extractTarGz(filePath, verifyDir);
+        await extractTarGz(path, verifyDir);
 
         if (type === "mongodb") {
             const dbDir = path.join(verifyDir, process.env.MONGO_DB_NAME);
             if (!fs.existsSync(dbDir)) {
                 throw new Error("Invalid MongoDB backup: database directory not found");
             }
+        } else {
+            throw new Error("Only MongoDB backups are supported");
         }
 
-        const stats = fs.statSync(filePath);
+        const stats = fs.statSync(path);
 
         backupRecord = await Backup.create({
             type,
             filename,
             size: stats.size,
-            ociPath: `backups/${type}/${filename}`,
+            path: `backups/${type}/${filename}`,
             source: "imported",
             status: "in_progress"
         });
 
-        const ociPath = `backups/${type}/${filename}`;
-        await uploadFileToOCI(filePath, ociPath);
+        const storagePath = `backups/${type}/${filename}`;
+        await uploadFile(path, storagePath);
 
         backupRecord.status = "completed";
         backupRecord.metadata = {
@@ -267,7 +291,6 @@ export const importBackup = async (filePath, type, originalFilename) => {
 
 export const deleteBackup = async (backupId, deletedBy = null) => {
     const backup = await Backup.findOne({ _id: backupId, deletedAt: null });
-
     if (!backup) {
         throw new Error("Backup not found");
     }
@@ -281,7 +304,6 @@ export const deleteBackup = async (backupId, deletedBy = null) => {
         };
     } catch (error) {
         console.error("Delete backup error:", error);
-        throw error;
     }
 };
 
@@ -293,8 +315,8 @@ export const permanentDeleteBackup = async (backupId) => {
     }
 
     try {
-        await deleteFileFromOCI(backup.ociPath);
-
+        await deleteFile(backup.path);
+        
         await backup.deleteOne();
 
         return {
@@ -303,7 +325,6 @@ export const permanentDeleteBackup = async (backupId) => {
         };
     } catch (error) {
         console.error("Permanent delete backup error:", error);
-        throw error;
     }
 };
 
@@ -339,7 +360,7 @@ export const cleanupOldBackups = async () => {
 
                 for (const backup of toDelete) {
                     try {
-                        await deleteBackup(backup._id);
+                        await backup.softDelete(null, "Automatic cleanup");
                         deletedBackups.push(backup);
                     } catch (error) {
                         console.error(`Failed to delete backup ${backup._id}:`, error);
@@ -360,7 +381,7 @@ export const cleanupOldBackups = async () => {
 };
 
 export const getBackupDownloadUrl = async (backupId) => {
-    const backup = await Backup.findById(backupId);
+    const backup = await Backup.findOne({ _id: backupId, deletedAt: null });
 
     if (!backup) {
         throw new Error("Backup not found");
@@ -370,7 +391,7 @@ export const getBackupDownloadUrl = async (backupId) => {
         throw new Error("Backup is not completed");
     }
 
-    const url = await generatePresignedUrl(backup.ociPath, 3600);
+    const url = await generatePresignedUrl(backup.path, 3600);
 
     return {
         success: true,

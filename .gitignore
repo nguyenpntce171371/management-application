@@ -11,3 +11,8 @@ frontend/dist/
 
 # Environment files
 .env
+
+# Ignore file in uploads
+uploads/**
+!uploads/
+!uploads/**/

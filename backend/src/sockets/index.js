@@ -1,7 +1,7 @@
 import { Server } from "socket.io";
-import { setupAppraisalSocketHandlers } from "./staff.socket.js";
-import { socketAuthMiddleware } from "./auth.middleware.js";
-import { joinBaseRooms } from "./rooms.js";
+import { setupAppraisalSocketHandlers } from "./realEstate.controllers.js";
+import { socketAuthMiddleware } from "./auth.middlewares.js";
+import { joinBaseRooms } from "./rooms.utils.js";
 
 export const initializeSocket = (server) => {
   const io = new Server(server, {
@@ -14,8 +14,8 @@ export const initializeSocket = (server) => {
 
   io.use(socketAuthMiddleware());
 
-  io.engine.on("connection_error", (err) => {
-    console.error("Socket connection error:", err.message);
+  io.engine.on("connection_error", (error) => {
+    console.error("Socket connection error:", error.message);
   });
 
   io.on("connection", (socket) => {

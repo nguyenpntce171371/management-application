@@ -15,7 +15,7 @@ const tokenSchema = new mongoose.Schema({
 
 tokenSchema.pre("save", function (next) {
     if (this.isModified("refreshToken") && this.refreshToken) {
-        this.refreshToken = crypto.createHmac("sha256").update(this.refreshToken).digest("hex");
+        this.refreshToken = crypto.createHash("sha256").update(this.refreshToken).digest("hex");
     }
 
     if (this.isModified("deviceId") && this.deviceId) {
@@ -25,7 +25,7 @@ tokenSchema.pre("save", function (next) {
     next();
 });
 tokenSchema.methods.compareRefreshToken = function (plainToken) {
-    return this.refreshToken === crypto.createHmac("sha256").update(plainToken).digest("hex");
+    return this.refreshToken === crypto.createHash("sha256").update(plainToken).digest("hex");
 };
 
 tokenSchema.methods.compareDeviceId = function (rawDeviceId) {

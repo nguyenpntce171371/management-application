@@ -1,5 +1,5 @@
 import { createRequire } from "module";
-import { normalize } from "../utils/string";
+import { normalize } from "../utils/string.js";
 const require = createRequire(import.meta.url);
 const addressDB = require("../data/address.json");
 

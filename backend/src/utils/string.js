@@ -6,10 +6,5 @@ export function removePrefix(str) {
 export function normalize(str) {
     if (!str) return "";
     const cleaned = removePrefix(str);
-    return cleaned?.normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/đ/g, "d")
-        .replace(/Đ/g, "D")
-        .toLowerCase()
-        .trim() || "";
+    return cleaned?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim() || "";
 }

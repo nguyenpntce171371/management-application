@@ -8,7 +8,7 @@ import { io } from "../index.js";
 import { OAuth2Client } from "google-auth-library";
 import { OTPService } from "../services/otp.service.js";
 import NodeCache from "node-cache";
-import { generateReadPAR } from "../services/oci.service.js";
+import { generatePresignedUrl } from "../services/storage.service.js";
 
 const imageUrlCache = new NodeCache({
     stdTTL: 1800,
@@ -24,7 +24,7 @@ const getCachedImageUrl = async (imagePath) => {
     if (cachedUrl) return cachedUrl;
 
     try {
-        const url = await generateReadPAR(imagePath, 30);
+        const url = await generatePresignedUrl(imagePath, 30);
         imageUrlCache.set(imagePath, url);
         return url;
     } catch (error) {
