@@ -102,9 +102,10 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
+    container_name: cloudflared
     command: tunnel run
     volumes:
-      - C:/Users/ADMIN/.cloudflared:/etc/cloudflared
+      - ${USERPROFILE}/.cloudflared:/home/nonroot/.cloudflared
     networks:
       - web
     restart: unless-stopped
