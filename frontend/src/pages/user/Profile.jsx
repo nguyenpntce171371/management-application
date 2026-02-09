@@ -55,8 +55,9 @@ export default function Profile() {
         };
 
         const handleSessionLoggedOut = (data) => {
-            if (data.sessionId) {
-                setSessions(prev => prev.filter(s => s.id !== data.sessionId));
+            if (data) {
+                const idSet = new Set(data);
+                setSessions(prev => prev.filter(session => !idSet.has(session.id)));
             }
         };
 

@@ -1,71 +1,123 @@
+import { io } from "../index.js";
+import { redis } from "../middlewares/rateLimitRedis.js";
 import Backup from "../models/Backup.js";
 import BackupConfig from "../models/BackupConfig.js";
-import { backupMongoDB, restoreMongoDB, deleteBackup, permanentDeleteBackup, importBackup, cleanupOldBackups, getBackupDownloadUrl } from "../services/backup.service.js";
+import { backupMongoDB, restoreMongoDB } from "../services/backup.service.js";
+import { deleteFile } from "../services/storage.service.js";
+import { updateBackupCronJob } from "../utils/cronScheduler.js";
+import cron from "node-cron";
+import { executeCursorPaginatedQuery } from "../utils/query.js";
+import { transformIds } from "../utils/normalizeMongoIds.js";
 
 export const getBackups = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
-        const skip = (page - 1) * limit;
-        const type = req.query.type || "all";
-        const source = req.query.source || "all";
-        const status = req.query.status || "all";
-        const sortBy = req.query.sortBy || "createdAt";
-        const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
-
-        const query = {};
-
-        if (type !== "all") {
-            query.type = type;
+        const baseQuery = {};
+        const options = {
+            select: "type filename size source createdAt",
+            cursor: req.query.cursor,
+            direction: req.query.direction,
+            limit: req.query.limit,
+            lean: true
         }
 
-        if (source !== "all") {
-            query.source = source;
-        }
-
-        if (status !== "all") {
-            query.status = status;
-        }
-
-        const data = await Backup.find(query)
-            .select("type filename size path source status error mongoVersion metadata createdAt")
-            .sort({ [sortBy]: sortOrder, _id: sortOrder })
-            .skip(skip)
-            .limit(limit)
-            .lean();
-
-        const total = await Backup.countDocuments(query);
-
-        const dataWithUrls = await Promise.all(
-            data.map(async (backup) => {
-                if (backup.status === "completed") {
-                    try {
-                        const { url } = await getBackupDownloadUrl(backup._id);
-                        return { ...backup, downloadUrl: url };
-                    } catch (error) {
-                        console.error(`Failed to generate URL for backup ${backup._id}:`, error);
-                        return backup;
-                    }
-                }
-                return backup;
-            })
-        );
+        const { data, hasMore, hasPrev, nextCursor, prevCursor } = await executeCursorPaginatedQuery(Backup, baseQuery, options);
 
         return res.status(200).json({
             success: true,
-            code: "BACKUPS_FETCHED",
+            code: "BACKUP_LIST",
             pagination: {
-                page,
-                limit,
-                total,
-                totalPages: Math.ceil(total / limit),
-                hasMore: page * limit < total,
+                hasMore,
+                hasPrev,
+                nextCursor,
+                prevCursor
             },
-            data: dataWithUrls,
+            data: transformIds(data)
         });
     } catch (error) {
-        console.error("Error fetching backups:", error);
-        res.status(500).json({
+        console.error("Get User Error:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+        });
+    }
+};
+
+export const getDeletedBackups = async (req, res) => {
+    try {
+        const baseQuery = { deletedAt: { $ne: null } };
+
+        const options = {
+            select: "filename size source deletedAt",
+            cursor: req.query.cursor,
+            direction: req.query.direction,
+            limit: req.query.limit,
+            populate: {
+                path: "deletedBy",
+                select: "fullName"
+            },
+            lean: true
+        }
+
+        const { data, hasMore, hasPrev, nextCursor, prevCursor } = await executeCursorPaginatedQuery(Backup, baseQuery, options);
+
+        return res.status(200).json({
+            success: true,
+            code: "DELETED_BACKUP_LIST",
+            pagination: {
+                hasMore,
+                hasPrev,
+                nextCursor,
+                prevCursor
+            },
+            data: transformIds(data)
+        });
+    } catch (error) {
+        console.error("Get User Error:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+        });
+    }
+};
+
+export const getBackupById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_BACKUP_ID",
+                message: "Thiếu Backup Id"
+            });
+        }
+
+        const backup = await Backup.findById(id).lean();
+
+        if (!backup) {
+            return res.status(404).json({
+                success: false,
+                code: "BACKUP_NOT_FOUND",
+                message: "Không tìm thấy bản ghi"
+            });
+        }
+        
+        return res.status(200).json({
+            success: true,
+            code: "BACKUP_FOUND",
+            data: transformIds(backup)
+        });
+    } catch (error) {
+        console.error("Error fetching backup:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "BACKUP_NOT_FOUND",
+                message: "Không tìm thấy bản ghi"
+            });
+        }
+        return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
             message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
@@ -76,13 +128,11 @@ export const getBackups = async (req, res) => {
 export const createBackup = async (req, res) => {
     try {
         const mongoResult = await backupMongoDB("manual");
-        const result = { success: true, results: { mongodb: mongoResult.backup } };
-
         return res.status(200).json({
             success: true,
             code: "BACKUP_CREATED",
             message: "Backup đã được tạo thành công",
-            data: result.results
+            data: transformIds(mongoResult)
         });
     } catch (error) {
         console.error("Error creating backup:", error);
@@ -95,38 +145,85 @@ export const createBackup = async (req, res) => {
 };
 
 export const restoreBackup = async (req, res) => {
+    let backupId = null;
     try {
-        const { backupId } = req.body;
+        const locked = await redis.set("system:lock:mongo_restore", "1", "NX", "PX", 30 * 60 * 1000);
 
-        if (!backupId) {
-            return res.status(400).json({
+        if (!locked) {
+            return res.status(409).json({
                 success: false,
-                code: "MISSING_BACKUP_ID",
-                message: "Thiếu backupId"
+                code: "RESTORE_LOCKED",
+                message: "Hệ thống đang restore dữ liệu"
             });
         }
 
-        const result = await restoreMongoDB(backupId);
+        const { id } = req.body;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_BACKUP_ID",
+                message: "Thiếu Backup Id"
+            });
+        }
+
+        const backup = await Backup.findOneAndUpdate(
+            { _id: id, type: "mongodb", status: "completed", deletedAt: null },
+            { $set: { status: "in_progress" } },
+            { new: true }
+        ).select({ path: 1 }).lean();
+        if (!backup) {
+            return res.status(404).json({
+                success: false,
+                code: "BACKUP_NOT_FOUND",
+                message: "Không tìm thấy bản ghi backup"
+            });
+        }
+        backupId = id;
+
+        await restoreMongoDB(backup.path);
+
+        await Backup.updateOne(
+            { _id: id },
+            { $set: { status: "completed" } }
+        );
+
+        io.to("Admin").emit("appraisalUpdated");
+        io.to("Admin").emit("realEstateUpdated");
+        io.to("Admin").emit("userUpdated");
 
         return res.status(200).json({
             success: true,
             code: "RESTORE_COMPLETED",
-            message: result.message
+            message: "Khôi phục bản ghi backup thành công"
         });
     } catch (error) {
         console.error("Error restoring backup:", error);
-        res.status(500).json({
+        if (backupId) {
+            await Backup.updateOne(
+                { _id: backupId },
+                { $set: { status: "completed" } }
+            );
+        }
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "BACKUP_NOT_FOUND",
+                message: "Không tìm thấy bản ghi backup"
+            });
+        }
+        return res.status(500).json({
             success: false,
             code: "RESTORE_FAILED",
             message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
+    } finally {
+        await redis.del("system:lock:mongo_restore");
     }
 };
 
-export const deleteBackupById = async (req, res) => {
+export const deleteBackup = async (req, res) => {
     try {
         const { id } = req.params;
-
         if (!id) {
             return res.status(400).json({
                 success: false,
@@ -135,16 +232,36 @@ export const deleteBackupById = async (req, res) => {
             });
         }
 
-        await deleteBackup(id, req.user.id);
+        const backup = await Backup.updateOne(
+            { _id: id, deletedAt: null },
+            { $set: { deletedAt: new Date(), deletedBy: req.user.id } }
+        );
+
+        if (!backup.matchedCount) {
+            return res.status(404).json({
+                success: false,
+                code: "BACKUP_NOT_FOUND",
+                message: "Không tìm thấy bản ghi backup"
+            });
+        }
+
+        io.to("Admin").emit("backupDeleted");
 
         return res.status(200).json({
             success: true,
             code: "BACKUP_DELETED",
-            message: "Backup đã được xóa thành công"
+            message: "Backup đã được xóa thành công",
+            data: { id }
         });
-
     } catch (error) {
         console.error("Error deleting backup:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "BACKUP_NOT_FOUND",
+                message: "Không tìm thấy bản ghi backup"
+            });
+        }
         res.status(500).json({
             success: false,
             code: "DELETE_FAILED",
@@ -153,50 +270,23 @@ export const deleteBackupById = async (req, res) => {
     }
 };
 
-export const getDeletedBackups = async (req, res) => {
-    try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
-        const skip = (page - 1) * limit;
-
-        const deletedBackups = await Backup.findDeleted()
-            .select("type filename size source status deletedAt deletedBy createdAt metadata")
-            .populate("deletedBy", "fullName email")
-            .sort({ deletedAt: -1 })
-            .skip(skip)
-            .limit(limit);
-
-        const total = await Backup.countDocuments({ deletedAt: { $ne: null } });
-
-        return res.status(200).json({
-            success: true,
-            code: "DELETED_BACKUPS_FETCHED",
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages: Math.ceil(total / limit),
-                hasMore: page * limit < total,
-            },
-            data: deletedBackups,
-        });
-    } catch (error) {
-        console.error("Error fetching deleted backups:", error);
-        res.status(500).json({
-            success: false,
-            code: "SERVER_ERROR",
-            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
-        });
-    }
-};
-
 export const restoreDeletedBackup = async (req, res) => {
     try {
         const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_BACKUP_ID",
+                message: "Thiếu Backup Id"
+            });
+        }
 
-        const backup = await Backup.findOne({ _id: id, deletedAt: { $ne: null } });
+        const result = await Backup.updateOne(
+            { _id: id, deletedAt: { $ne: null } },
+            { $set: { deletedAt: null, deletedBy: null } }
+        );
 
-        if (!backup) {
+        if (!result.matchedCount) {
             return res.status(404).json({
                 success: false,
                 code: "BACKUP_NOT_FOUND",
@@ -204,16 +294,23 @@ export const restoreDeletedBackup = async (req, res) => {
             });
         }
 
-        await backup.restore();
+        io.to("Admin").emit("backupRestored");
 
         return res.status(200).json({
             success: true,
             code: "BACKUP_RESTORED",
             message: "Khôi phục backup thành công",
-            data: { id: backup._id, filename: backup.filename },
+            data: { id }
         });
     } catch (error) {
         console.error("Error restoring backup:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "BACKUP_NOT_FOUND",
+                message: "Không tìm thấy backup đã xóa",
+            });
+        }
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -222,60 +319,52 @@ export const restoreDeletedBackup = async (req, res) => {
     }
 };
 
-export const permanentDeleteBackupById = async (req, res) => {
+export const permanentDeleteBackup = async (req, res) => {
     try {
         const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_BACKUP_ID",
+                message: "Thiếu Backup Id"
+            });
+        }
 
-        await permanentDeleteBackup(id);
+        const backup = await Backup.findOneAndDelete({
+            _id: id,
+            deletedAt: { $ne: null }
+        }).select({ path: 1 }).lean();
+
+        if (!backup) {
+            return res.status(404).json({
+                success: false,
+                code: "BACKUP_NOT_FOUND",
+                message: "Không tìm thấy backup đã xóa",
+            });
+        };
+
+        await deleteFile(backup.path);
+
+        io.to("Admin").emit("backupPermanentlyDeleted");
 
         return res.status(200).json({
             success: true,
             code: "BACKUP_PERMANENTLY_DELETED",
             message: "Xóa vĩnh viễn backup thành công",
-            data: { id },
+            data: { id }
         });
     } catch (error) {
         console.error("Error permanently deleting backup:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "BACKUP_NOT_FOUND",
+                message: "Không tìm thấy backup đã xóa",
+            });
+        }
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
-            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
-        });
-    }
-};
-
-export const importBackupFile = async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({
-                success: false,
-                code: "NO_FILE",
-                message: "Không có file được upload"
-            });
-        }
-
-        if (!req.file.originalname.endsWith(".tar.gz") && !req.file.originalname.endsWith(".tgz")) {
-            return res.status(400).json({
-                success: false,
-                code: "INVALID_FILE_FORMAT",
-                message: "File phải có định dạng .tar.gz hoặc .tgz"
-            });
-        }
-
-        const result = await importBackup(req.file.path, "mongodb", req.file.originalname);
-
-        return res.status(200).json({
-            success: true,
-            code: "IMPORT_SUCCESS",
-            message: "Import backup thành công",
-            data: result.backup
-        });
-
-    } catch (error) {
-        console.error("Error importing backup:", error);
-        res.status(500).json({
-            success: false,
-            code: "IMPORT_FAILED",
             message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
         });
     }
@@ -283,21 +372,23 @@ export const importBackupFile = async (req, res) => {
 
 export const getBackupConfig = async (req, res) => {
     try {
-        const config = await BackupConfig.getConfig();
+        const config = await BackupConfig.findOneAndUpdate(
+            {},
+            {
+                $setOnInsert: {
+                    schedule: "0 0 * * *",
+                    enabled: true,
+                    retention: 7,
+                }
+            },
+            { new: true, upsert: true }
+        ).select({ schedule: 1, enabled: 1, retention: 1, lastBackupAt: 1, nextBackupAt: 1, lastBackupStatus: 1 }).lean();
 
         return res.status(200).json({
             success: true,
             code: "CONFIG_FETCHED",
-            data: {
-                schedule: config.schedule,
-                enabled: config.enabled,
-                retention: config.retention,
-                lastBackupAt: config.lastBackupAt,
-                nextBackupAt: config.nextBackupAt,
-                lastBackupStatus: config.lastBackupStatus
-            }
+            data: transformIds(config)
         });
-
     } catch (error) {
         console.error("Error fetching config:", error);
         res.status(500).json({
@@ -311,23 +402,24 @@ export const getBackupConfig = async (req, res) => {
 export const updateBackupConfig = async (req, res) => {
     try {
         const { schedule, enabled, retention } = req.body;
-
-        const config = await BackupConfig.getConfig();
+        const update = {};
+        let shouldRestartCron = false;
 
         if (schedule !== undefined) {
-            const cronRegex = /^(\*|([0-5]?\d)) (\*|([01]?\d|2[0-3])) (\*|([01]?\d|2\d|3[01])) (\*|([1-9]|1[0-2])) (\*|([0-6]))$/;
-            if (!cronRegex.test(schedule)) {
+            if (!cron.validate(schedule)) {
                 return res.status(400).json({
                     success: false,
                     code: "INVALID_SCHEDULE",
                     message: "Cron expression không hợp lệ"
                 });
             }
-            config.schedule = schedule;
+            update.schedule = schedule;
+            shouldRestartCron = true;
         }
 
         if (enabled !== undefined) {
-            config.enabled = enabled;
+            update.enabled = enabled;
+            shouldRestartCron = true;
         }
 
         if (retention !== undefined) {
@@ -338,23 +430,26 @@ export const updateBackupConfig = async (req, res) => {
                     message: "Retention phải từ 1 đến 365 ngày"
                 });
             }
-            config.retention = retention;
+            update.retention = retention;
         }
 
-        await config.save();
+        const config = await BackupConfig.findOneAndUpdate(
+            {},
+            { $set: update },
+            { upsert: true, new: true }
+        ).select({ schedule: 1, enabled: 1, retention: 1, lastBackupAt: 1, nextBackupAt: 1, lastBackupStatus: 1 }).lean();
 
-        const { updateCronJob } = await import("../utils/cronScheduler.js");
-        await updateCronJob();
+        if (shouldRestartCron) {
+            await updateBackupCronJob();
+        }
+
+        io.to("Admin").emit("backupUpdated");
 
         return res.status(200).json({
             success: true,
             code: "CONFIG_UPDATED",
             message: "Cấu hình đã được cập nhật",
-            data: {
-                schedule: config.schedule,
-                enabled: config.enabled,
-                retention: config.retention
-            }
+            data: transformIds(config)
         });
     } catch (error) {
         console.error("Error updating config:", error);
@@ -366,63 +461,32 @@ export const updateBackupConfig = async (req, res) => {
     }
 };
 
-export const cleanupBackups = async (req, res) => {
-    try {
-        const result = await cleanupOldBackups();
-
-        return res.status(200).json({
-            success: true,
-            code: "CLEANUP_COMPLETED",
-            message: `Đã xóa ${result.deletedCount} backup cũ`,
-            data: {
-                deletedCount: result.deletedCount
-            }
-        });
-    } catch (error) {
-        console.error("Error cleaning up backups:", error);
-        res.status(500).json({
-            success: false,
-            code: "CLEANUP_FAILED",
-            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
-        });
-    }
-};
-
 export const getBackupStats = async (req, res) => {
     try {
-        const totalBackups = await Backup.countDocuments({ status: "completed", deletedAt: null });
-        const totalSize = await Backup.aggregate([
-            { $match: { status: "completed", deletedAt: null } },
-            { $group: { _id: null, totalSize: { $sum: "$size" } } }
+        const [stats] = await Backup.aggregate([
+            {
+                $match: {
+                    status: "completed",
+                    deletedAt: null
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalBackups: { $sum: 1 },
+                    totalSize: { $sum: "$size" }
+                }
+            }
         ]);
-
-        const byType = await Backup.aggregate([
-            { $match: { status: "completed", deletedAt: null } },
-            { $group: { _id: "$type", count: { $sum: 1 }, size: { $sum: "$size" } } }
-        ]);
-
-        const bySource = await Backup.aggregate([
-            { $match: { status: "completed", deletedAt: null } },
-            { $group: { _id: "$source", count: { $sum: 1 } } }
-        ]);
-
-        const recentBackups = await Backup.find({ status: "completed", deletedAt: null })
-            .sort({ createdAt: -1 })
-            .limit(5)
-            .select("type filename size createdAt source");
 
         return res.status(200).json({
             success: true,
             code: "STATS_FETCHED",
             data: {
-                totalBackups,
-                totalSize: totalSize[0]?.totalSize || 0,
-                byType,
-                bySource,
-                recentBackups
+                totalBackups: stats?.totalBackups || 0,
+                totalSize: stats?.totalSize || 0
             }
         });
-
     } catch (error) {
         console.error("Error fetching stats:", error);
         res.status(500).json({

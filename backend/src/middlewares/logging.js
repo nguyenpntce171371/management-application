@@ -12,7 +12,6 @@ export const loggingMiddleware = (req, res, next) => {
         try {
             if (req.originalUrl.split("?")[0] === "/api/user") return;
             if (req.originalUrl.split("?")[0] === "/api/auth/refresh-token") return;
-            if (req.originalUrl.split("?")[0] === "/api/staff/convert-address") return;
             if (req.method === "GET" && (res.statusCode === 200 || res.statusCode === 304)) return;
             if (responseBody?.code === "TOKEN_EXPIRED") return;
             const user = req.user || {};

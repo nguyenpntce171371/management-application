@@ -1,126 +1,91 @@
-import { useEffect, useRef, useState } from "react";
-import { User, Search, Clock, CheckCircle, XCircle, Info, Shield, Download, Calendar, AlertTriangle, Code } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { User, Clock, Info, Shield, Calendar, Code } from "lucide-react";
 import styles from "./LogPage.module.css";
 import PageHeader from "../../components/layout/PageHeader";
 import axiosInstance from "../../services/axiosInstance";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
+import SearchField from "../../components/common/SearchField";
+import Pagination from "../../components/common/Pagination";
 
 function LogPage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const searchFromUrl = searchParams.get("search") || "";
-    const [page, setPage] = useState(1);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
-    const [logs, setLogs] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [hasMore, setHasMore] = useState(true);
-    const loadingRef = useRef(loading);
-    const hasMoreRef = useRef(hasMore);
-    const observerTarget = useRef(null);
     const socket = useSocket();
-    const [limit] = useState(20);
+
+    const searchFromUrl = searchParams.get("search") || "";
+
+    const [searchTerm, setSearchTerm] = useState(searchFromUrl);
+    const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
+
+    const [items, setItems] = useState([]);
+    const [cursor, setCursor] = useState(null);
+    const [direction, setDirection] = useState("next");
+    const [nextCursor, setNextCursor] = useState(null);
+    const [prevCursor, setPrevCursor] = useState(null);
+    const [hasMore, setHasMore] = useState(false);
+    const [hasPrev, setHasPrev] = useState(false);
+    const limit = 21;
 
     useEffect(() => {
         setSearchTerm(searchFromUrl);
         setDebouncedSearch(searchFromUrl);
     }, [searchFromUrl]);
 
-    useEffect(() => { loadingRef.current = loading }, [loading]);
-    useEffect(() => { hasMoreRef.current = hasMore }, [hasMore]);
-
-    const fetchData = async (reset = false) => {
-        if (loadingRef.current) return;
-
-        setLoading(true);
-
-        const currentPage = reset ? 1 : page;
-
-        const res = await axiosInstance.get("/api/logs", {
-            params: {
-                page: currentPage,
-                limit,
-                search: debouncedSearch,
-                sortBy: "createdAt",
-                sortOrder: "desc",
-            },
-        }).catch(() => { });
-
-        const newData = res.data?.data ?? [];
-        const pagination = res.data?.pagination;
-
-        setLogs(prev =>
-            reset ? newData : [...prev, ...newData]
-        );
-
-        setHasMore(pagination?.hasMore);
-        setLoading(false);
-    };
-
-    useEffect(() => {
-        setPage(1);
-        fetchData(true);
-    }, [debouncedSearch]);
-
-    useEffect(() => {
-        if (page === 1) return;
-        fetchData(false);
-    }, [page]);
-
-    useEffect(() => {
-        if (!socket) return;
-
-        const onLogCreated = (log) => {
-            if (page !== 1) return;
-            if (loadingRef.current) return;
-            if (debouncedSearch) return;
-
-            setLogs(prev => {
-                if (prev.some(l => l._id === log._id)) return prev;
-                return [log, ...prev].slice(0, limit);
-            });
-        };
-
-        socket.on("logCreated", onLogCreated);
-        return () => socket.off("logCreated", onLogCreated);
-    }, [socket, page, debouncedSearch, limit]);
-
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearch(searchTerm);
             updateParams({ search: searchTerm });
         }, 400);
-
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    const updateParams = (newParams) => {
-        const params = new URLSearchParams(searchParams);
-
-        Object.entries(newParams).forEach(([key, value]) => {
-            if (!value || value === "all") params.delete(key);
-            else params.set(key, value);
-        });
-
-        navigate(`?${params.toString()}`);
-    };
-
     useEffect(() => {
-        const observer = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting) {
-                if (!loadingRef.current && hasMoreRef.current) {
-                    setPage(prev => prev + 1);
-                }
+        setCursor(null);
+        setDirection("next");
+    }, [debouncedSearch]);
+
+    const fetchData = useCallback(async () => {
+        const res = await axiosInstance.get("/api/logs", {
+            params: {
+                limit,
+                cursor,
+                direction,
+                search: debouncedSearch
             }
         });
+        const { data, pagination } = res.data;
+        setItems(data || []);
+        setHasMore(!!pagination?.hasMore);
+        setHasPrev(!!pagination?.hasPrev);
+        setNextCursor(pagination?.nextCursor || null);
+        setPrevCursor(pagination?.prevCursor || null);
+    }, [limit, cursor, direction, debouncedSearch]);
 
-        if (observerTarget.current) {
-            observer.observe(observerTarget.current);
-        }
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
-        return () => observer.disconnect();
-    }, []);
+    useEffect(() => {
+        if (!socket) return;
+
+        const refresh = () => fetchData();
+
+        socket.on("logCreated", refresh);
+
+        return () => {
+            socket.off("logCreated", refresh);
+        };
+    }, [socket, fetchData]);
+
+    const updateParams = (newParams) => {
+        const params = new URLSearchParams(searchParams);
+        Object.entries(newParams).forEach(([key, value]) => {
+            if (value === "" || value === "all") params.delete(key);
+            else params.set(key, value);
+        });
+        navigate(`?${params.toString()}`);
+    };
 
     const getLogType = (statusCode) => {
         if (statusCode >= 100 && statusCode < 400) return "success";
@@ -154,30 +119,12 @@ function LogPage() {
         return date.toLocaleDateString("vi-VN");
     };
 
-    const getMethodIcon = (method) => {
-        const icons = {
-            GET: Search,
-            POST: CheckCircle,
-            PUT: AlertTriangle,
-            DELETE: XCircle,
-        };
-        return icons[method] || Code;
-    };
-
     const getLogTypeClass = (type) => {
         const types = {
             success: "success",
             error: "error"
         };
         return types[type] || "info";
-    };
-
-    const getLogIcon = (type) => {
-        const icons = {
-            success: CheckCircle,
-            error: XCircle,
-        };
-        return icons[type] || Info;
     };
 
     const parseUserAgent = (userAgent = "") => {
@@ -214,34 +161,19 @@ function LogPage() {
             <PageHeader title="Quản lý Log hệ thống" />
             <div className={styles.content}>
                 <div className={styles.searchFilterBar}>
-                    <div className={styles.searchWrapper}>
-                        <Search className={styles.searchIcon} />
-                        <input type="text" placeholder="Tìm kiếm logs..." className={styles.searchInput} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                    </div>
+                    <SearchField searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Tìm kiếm logs..." />
                 </div>
 
                 <div className={styles.logsTimeline}>
-                    {logs.map((log) => {
+                    {(items ?? []).map((log) => {
                         const logType = getLogType(log.statusCode);
-                        const LogIcon = getMethodIcon(log.method);
-                        const StatusIcon = getLogIcon(logType);
 
                         return (
-                            <div key={log._id} className={`${styles.logItem} ${styles[`logItem${getLogTypeClass(logType).charAt(0).toUpperCase() + getLogTypeClass(logType).slice(1)}`]}`}>
-                                <div className={styles.logIconWrapper}>
-                                    <div className={`${styles.logIconBg} ${styles[`logIcon${getLogTypeClass(logType).charAt(0).toUpperCase() + getLogTypeClass(logType).slice(1)}`]}`}>
-                                        <LogIcon className={styles.logIcon} />
-                                    </div>
-                                    <div className={styles.logLine} />
-                                </div>
-
+                            <div key={log.id} className={`${styles.logItem} ${styles[`logItem${getLogTypeClass(logType).charAt(0).toUpperCase() + getLogTypeClass(logType).slice(1)}`]}`}>
                                 <div className={styles.logContent}>
                                     <div className={styles.logHeader}>
                                         <div className={styles.logHeaderLeft}>
-                                            <StatusIcon className={`${styles.statusIcon} ${styles[`statusIcon${getLogTypeClass(logType).charAt(0).toUpperCase() + getLogTypeClass(logType).slice(1)}`]}`} />
-                                            <h4 className={styles.logAction}>
-                                                {log.method} {log.endpoint}
-                                            </h4>
+                                            <h4 className={styles.logAction}>{log.method} {log.endpoint}</h4>
                                             <span className={`${styles.logType} ${styles[`logType${getLogTypeClass(logType).charAt(0).toUpperCase() + getLogTypeClass(logType).slice(1)}`]}`}>
                                                 {log.statusCode}
                                             </span>
@@ -253,7 +185,7 @@ function LogPage() {
 
                                     <p className={styles.logDescription}>{log.message}</p>
 
-                                    <div className={styles.logMeta} style={{ paddingBottom: "0.25rem", borderBottomLeftRadius: "0px", borderBottomRightRadius: "0px"}}>
+                                    <div className={styles.logMeta} style={{ paddingBottom: "0.25rem", borderBottomLeftRadius: "0px", borderBottomRightRadius: "0px" }}>
                                         {log.email && (
                                             <div className={styles.logMetaItem}>
                                                 <User className={styles.metaIcon} />
@@ -287,7 +219,7 @@ function LogPage() {
                                     </div>
 
                                     {log.referrer && (
-                                        <div className={styles.logMeta} style={{ paddingTop: "0.25rem", borderTopLeftRadius: "0px", borderTopRightRadius: "0px"}}>
+                                        <div className={styles.logMeta} style={{ paddingTop: "0.25rem", borderTopLeftRadius: "0px", borderTopRightRadius: "0px" }}>
                                             <div className={styles.logMetaItem}>
                                                 <Info className={styles.metaIcon} />
                                                 <span style={{ fontSize: "0.85em" }}>From: {log.referrer}</span>
@@ -300,32 +232,7 @@ function LogPage() {
                     })}
                 </div>
 
-                {loading && (
-                    <div className={styles.loadingContainer}>
-                        <div className={styles.spinner}></div>
-                        <p className={styles.loadingText}>Đang tải thêm logs...</p>
-                    </div>
-                )}
-
-                {!loading && !hasMore && logs.length > 0 && (
-                    <div className={styles.endMessage}>
-                        <div className={styles.endMessageIcon}>✓</div>
-                        <p className={styles.endMessageText}>Đã hiển thị tất cả logs</p>
-                        <button className={styles.scrollTopBtn} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-                            Về đầu trang
-                        </button>
-                    </div>
-                )}
-
-                {!loading && logs.length === 0 && (
-                    <div className={styles.noResults}>
-                        <div className={styles.noResultsIcon}>🔍</div>
-                        <h3 className={styles.noResultsTitle}>Không tìm thấy log</h3>
-                        <p className={styles.noResultsText}>Hãy thử điều chỉnh bộ lọc hoặc từ khóa tìm kiếm</p>
-                    </div>
-                )}
-
-                <div ref={observerTarget} className={styles.observerTarget}></div>
+                <Pagination prevCursor={prevCursor} nextCursor={nextCursor} hasPrev={hasPrev} hasMore={hasMore} setCursor={setCursor} setDirection={setDirection} />
             </div>
         </>
     );

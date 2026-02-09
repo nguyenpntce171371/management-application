@@ -1,17 +1,21 @@
-import { useState, useEffect } from "react";
-import { Database, Download, Trash2, Upload, RefreshCw, Settings, HardDrive } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Database, Trash2, RefreshCw, Settings, HardDrive } from "lucide-react";
 import PageHeader from "../../components/layout/PageHeader";
 import styles from "./BackupManagement.module.css";
 import axiosInstance from "../../services/axiosInstance";
-import { notify } from "../../context/NotificationContext";
+import Pagination from "../../components/common/Pagination";
+import { useSocket } from "../../context/SocketContext";
 
 function BackupManagement() {
-    const [backups, setBackups] = useState([]);
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const socket = useSocket();
+
     const [creating, setCreating] = useState(false);
     const [restoring, setRestoring] = useState(null);
-    const [importing, setImporting] = useState(false);
+
+    const [stats, setStats] = useState(null);
     const [showConfig, setShowConfig] = useState(false);
     const [configForm, setConfigForm] = useState({
         schedule: "0 0 * * *",
@@ -19,42 +23,75 @@ function BackupManagement() {
         retention: 7
     });
 
-    useEffect(() => {
-        fetchBackups();
-        fetchConfig();
-        fetchStats();
+    const [items, setItems] = useState([]);
+    const [cursor, setCursor] = useState(null);
+    const [direction, setDirection] = useState("next");
+    const [nextCursor, setNextCursor] = useState(null);
+    const [prevCursor, setPrevCursor] = useState(null);
+    const [hasMore, setHasMore] = useState(false);
+    const [hasPrev, setHasPrev] = useState(false);
+    const limit = 21;
+
+    const fetchBackups = useCallback(async () => {
+        const res = await axiosInstance.get("/api/backups", {
+            params: {
+                limit,
+                cursor,
+                direction
+            }
+        });
+
+        const { data, pagination } = res.data;
+        setItems(data || []);
+        setHasMore(!!pagination?.hasMore);
+        setHasPrev(!!pagination?.hasPrev);
+        setNextCursor(pagination?.nextCursor || null);
+        setPrevCursor(pagination?.prevCursor || null);
+    }, [limit, cursor, direction]);
+
+    const fetchStats = useCallback(async () => {
+        const res = await axiosInstance.get("/api/backups/stats");
+        setStats(res.data.data);
     }, []);
 
-    const fetchBackups = async () => {
-        setLoading(true);
-        try {
-            const response = await axiosInstance.get("/api/backups", {
-                params: {
-                    page: 1,
-                    limit: 20,
-                    type: "all",
-                    source: "all",
-                    status: "completed"
-                }
-            });
-            setBackups(response.data.data);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const fetchConfig = useCallback(async () => {
+        const res = await axiosInstance.get("/api/backups/config");
+        setConfigForm(res.data.data);
+    }, []);
 
-    const fetchConfig = async () => {
-        const response = await axiosInstance.get("/api/backups/config");
-        setConfigForm({
-            schedule: response.data.data.schedule,
-            enabled: response.data.data.enabled,
-            retention: response.data.data.retention
+    const fetchData = useCallback(async () => {
+        await Promise.all([fetchBackups(), fetchStats(), fetchConfig()]);
+    }, [fetchBackups, fetchStats, fetchConfig]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const refresh = () => fetchData();
+
+        socket.on("backupCreated", refresh);
+        socket.on("backupRestored", refresh);
+        socket.on("backupDeleted", refresh);
+        socket.on("backupUpdated", refresh);
+
+        return () => {
+            socket.off("backupCreated", refresh);
+            socket.off("backupRestored", refresh);
+            socket.off("backupDeleted", refresh);
+            socket.off("backupUpdated", refresh);
+        };
+    }, [socket, fetchData]);
+
+    const updateParams = (newParams) => {
+        const params = new URLSearchParams(searchParams);
+        Object.entries(newParams).forEach(([key, value]) => {
+            if (value === "" || value === "all") params.delete(key);
+            else params.set(key, value);
         });
-    };
-
-    const fetchStats = async () => {
-        const response = await axiosInstance.get("/api/backups/stats");
-        setStats(response.data.data);
+        navigate(`?${params.toString()}`);
     };
 
     const handleCreateBackup = async (type) => {
@@ -63,73 +100,31 @@ function BackupManagement() {
         setCreating(true);
         try {
             await axiosInstance.post("/api/backups", { type });
-            fetchBackups();
-            fetchStats();
         } finally {
             setCreating(false);
         }
     };
 
-    const handleRestore = async (backupId, type) => {
-        if (!confirm(`Bạn có chắc muốn restore ${type}? Dữ liệu hiện tại sẽ bị ghi đè!`)) {
+    const handleRestore = async (id, type) => {
+        if (restoring) return;
+        if (!confirm("Bạn có chắc muốn restore? Dữ liệu hiện tại sẽ bị ghi đè!")) {
             return;
         }
 
-        setRestoring(backupId);
+        setRestoring(id);
         try {
-            await axiosInstance.post("/api/backups/restore", { backupId, type });
+            await axiosInstance.post("/api/backups/restore", { id, type });
         } finally {
             setRestoring(null);
         }
     };
 
-    const handleDelete = async (backupId) => {
-        await axiosInstance.delete(`/api/backups/${backupId}`);
-        fetchBackups();
-        fetchStats();
-    };
-
-    const handleImport = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        let type;
-        if (file.name.startsWith("mongo")) {
-            type = "mongodb";
-        } else if (file.name.startsWith("redis")) {
-            type = "redis";
-        } else {
-            type = prompt("Nhập loại backup (mongodb hoặc redis):");
-        }
-
-        if (!type || !["mongodb", "redis"].includes(type)) {
-            notify({
-                type: "error",
-                title: "Import thất bại",
-                message: "Loại backup không hợp lệ!",
-            });
-            return;
-        }
-
-        setImporting(true);
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("type", type);
-
-        try {
-            await axiosInstance.post("/api/backups/import", formData, {
-                headers: { "Content-Type": "multipart/form-data" }
-            });
-            fetchBackups();
-            fetchStats();
-        } finally {
-            setImporting(false);
-            e.target.value = "";
-        }
+    const handleDelete = async (id) => {
+        await axiosInstance.delete(`/api/backups/${id}`);
     };
 
     const handleUpdateConfig = async () => {
         await axiosInstance.post("/api/backups/config", configForm);
-        fetchConfig();
         setShowConfig(false);
     };
 
@@ -173,14 +168,8 @@ function BackupManagement() {
                     <div className={styles.actionButtons}>
                         <button className={styles.btnPrimary} onClick={() => handleCreateBackup("full")} disabled={creating}>
                             <Database size={18} />
-                            {creating ? "Đang tạo..." : "Backup Ngay"}
+                            Tạo Backup
                         </button>
-
-                        <label className={styles.btnSecondary}>
-                            <Upload size={18} />
-                            {importing ? "Đang import..." : "Import Backup"}
-                            <input type="file" accept=".tar.gz,.tgz" onChange={handleImport} disabled={importing} style={{ display: "none" }} />
-                        </label>
 
                         <button className={styles.btnSecondary} onClick={() => setShowConfig(!showConfig)}>
                             <Settings size={18} />
@@ -200,7 +189,7 @@ function BackupManagement() {
                         </div>
 
                         <div className={styles.formGroup}>
-                            <label>Giữ Lại (ngày)</label>
+                            <label>Giữ Lại (bản)</label>
                             <input type="number" value={configForm.retention} onChange={(e) => setConfigForm({ ...configForm, retention: parseInt(e.target.value) })} className={styles.input} min="1" max="365" />
                         </div>
 
@@ -235,53 +224,39 @@ function BackupManagement() {
                             </tr>
                         </thead>
                         <tbody>
-                            {loading ? (
-                                <tr>
-                                    <td colSpan="6" className={styles.loading}>Đang tải...</td>
-                                </tr>
-                            ) : backups.length === 0 ? (
-                                <tr>
-                                    <td colSpan="6" className={styles.empty}>Chưa có backup nào</td>
-                                </tr>
-                            ) : (
-                                backups.map(backup => (
-                                    <tr key={backup._id}>
-                                        <td>
-                                            <span className={`${styles.badge} ${styles[backup.type]}`}>
-                                                {backup.type === "mongodb" ? "MongoDB" : "Redis"}
-                                            </span>
-                                        </td>
-                                        <td className={styles.filename}>{backup.filename}</td>
-                                        <td>{formatBytes(backup.size)}</td>
-                                        <td>
-                                            <span className={`${styles.badge} ${styles[backup.source]}`}>
-                                                {backup.source === "auto" ? "Tự động" : backup.source === "manual" ? "Thủ công" : "Import"}
-                                            </span>
-                                        </td>
-                                        <td>{formatDate(backup.createdAt)}</td>
-                                        <td>
-                                            <div className={styles.actionBtns}>
-                                                {backup.downloadUrl && (
-                                                    <a href={backup.downloadUrl} className={styles.iconBtn} title="Tải xuống" download>
-                                                        <Download size={16} />
-                                                    </a>
-                                                )}
+                            {(items ?? []).map((backup) => (
+                                <tr key={backup.id}>
+                                    <td>
+                                        <span className={`${styles.badge} ${styles[backup.type]}`}>
+                                            {backup.type === "mongodb" ? "MongoDB" : "Redis"}
+                                        </span>
+                                    </td>
+                                    <td className={styles.filename}>{backup.filename}</td>
+                                    <td>{formatBytes(backup.size)}</td>
+                                    <td>
+                                        <span className={`${styles.badge} ${styles[backup.source]}`}>
+                                            {backup.source === "auto" ? "Tự động" : "Thủ công"}
+                                        </span>
+                                    </td>
+                                    <td>{formatDate(backup.createdAt)}</td>
+                                    <td>
+                                        <div className={styles.actionBtns}>
+                                            <button className={styles.iconBtn} onClick={() => handleRestore(backup.id, backup.type)} disabled={restoring === backup.id} title="Restore">
+                                                <RefreshCw size={16} />
+                                            </button>
 
-                                                <button className={styles.iconBtn} onClick={() => handleRestore(backup._id, backup.type)} disabled={restoring === backup._id} title="Restore">
-                                                    <RefreshCw size={16} />
-                                                </button>
-
-                                                <button className={`${styles.iconBtn} ${styles.danger}`} onClick={() => handleDelete(backup._id)} title="Xóa">
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
+                                            <button className={`${styles.iconBtn} ${styles.danger}`} onClick={() => handleDelete(backup.id)} title="Xóa">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>
+
+                <Pagination prevCursor={prevCursor} nextCursor={nextCursor} hasPrev={hasPrev} hasMore={hasMore} setCursor={setCursor} setDirection={setDirection} />
             </div>
         </>
     );

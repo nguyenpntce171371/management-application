@@ -1,4 +1,4 @@
-import { useEffect, useState, Fragment } from "react";
+import { useEffect, useState, Fragment, useCallback } from "react";
 import axiosInstance from "../../../services/axiosInstance";
 import { ChartBar } from "lucide-react";
 import styles from "../PropertyValuation.module.css";
@@ -6,6 +6,7 @@ import { useParams, Link } from "react-router-dom";
 import { formatNumber } from "../../../hooks/useNumberFormat";
 import { useSocket } from "../../../context/SocketContext";
 import { useNavigate } from "react-router-dom";
+import PageHeader from "../../../components/layout/PageHeader";
 
 function PropertyValuationDetail() {
     const { id } = useParams();
@@ -13,38 +14,28 @@ function PropertyValuationDetail() {
     const socket = useSocket();
     const navigate = useNavigate();
 
+    const fetchData = useCallback(async () => {
+        const res = await axiosInstance.get(`/api/appraisals/${id}`);
+        setAppraisal(res.data.data);
+    }, [id]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
     useEffect(() => {
         if (!socket) return;
 
-        const onUpdated = (updated) => {
-            if (updated._id === id) {
-                setAppraisal(updated);
-            }
-        };
+        const refresh = () => fetchData();
 
-        const onDeleted = (deletedId) => {
-            if (deletedId === id) {
-                navigate(-1);
-            }
-        };
-
-        socket.on("appraisalUpdated", onUpdated);
-        socket.on("appraisalDeleted", onDeleted);
+        socket.on("appraisalUpdated", refresh);
+        socket.on("appraisalDeleted", refresh);
 
         return () => {
-            socket.off("appraisalUpdated", onUpdated);
-            socket.off("appraisalDeleted", onDeleted);
+            socket.off("appraisalUpdated", refresh);
+            socket.off("appraisalDeleted", refresh);
         };
     }, [socket, id, navigate]);
-
-    useEffect(() => {
-        loadDetail();
-    }, [id]);
-
-    const loadDetail = async () => {
-        const res = await axiosInstance.get(`/api/appraisals/${id}`);
-        setAppraisal(res.data.data);
-    };
 
     const [totalLand, setTotalLand] = useState(0);
     const [totalConstruction, setTotalConstruction] = useState(0);
@@ -70,20 +61,17 @@ function PropertyValuationDetail() {
 
     return (
         <>
-            <div className={styles.container}>
-                <div className={styles.pageHeader}>
-                    <div className={styles.headerTop}>
-                        <div className={styles.headerLeft}>
-                            <div className={styles.titleWrapper}>
-                                <h1 className={styles.title}>Khách hàng: {appraisal.customerName}</h1>
-                                <p className={styles.subtitle}>Thẩm định viên: {appraisal.appraiser}</p>
-                            </div>
-                        </div>
-                        <Link to={`/appraisals/${id}/worksheet`} className={styles.viewSheet}>
-                            <ChartBar size={20} strokeWidth={2.5} />
-                            <span>Xem bảng tính</span>
-                        </Link>
+            <PageHeader title="Chi Tiết Thẩm Định Giá" />
+            <div className={styles.content}>
+                <div className={styles.searchBar}>
+                    <div className={styles.searchWrapper}>
+                        <h3 className={styles.customerName}>Khách hàng: {appraisal.customerName}</h3>
+                        <p className={styles.appraiser}>Thẩm định viên: {appraisal.appraiser}</p>
                     </div>
+                    <Link to={`/appraisals/${id}/worksheet`} className={styles.viewSheet}>
+                        <ChartBar size={20} strokeWidth={2.5} />
+                        <span>Xem bảng tính</span>
+                    </Link>
                 </div>
 
                 {(appraisal.assets || appraisal.constructions) && <div className={styles.tableContainer}>

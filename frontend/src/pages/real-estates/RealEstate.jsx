@@ -1,72 +1,71 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./RealEstate.module.css";
 import PageHeader from "../../components/layout/PageHeader";
-import PropertyCard from "../../components/card/PropertyCard";
 import axiosInstance from "../../services/axiosInstance";
-import { REAL_ESTATE_TYPES, REAL_ESTATE_LOCATIONS, REAL_ESTATE_STATUSES } from "../../config/realEstate";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { PlusCircle, Search, SlidersHorizontal, Grid3x3, List, MapPin, TrendingUp, X, Filter } from "lucide-react";
+import { PlusCircle, Grid3x3, List, Check, Eye, MapPin } from "lucide-react";
 import { useSocket } from "../../context/SocketContext";
+import SearchField from "../../components/common/SearchField";
+import Pagination from "../../components/common/Pagination";
+import { Role } from "../../config/role";
+import { useAuth } from "../../context/AuthContext";
 
 function RealEstate() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const pageFromUrl = parseInt(searchParams.get("page") || "1");
-    const searchFromUrl = searchParams.get("search") || "";
-    const typeFromUrl = searchParams.get("type") || "all";
-    const locationFromUrl = searchParams.get("location") || "all";
-    const statusFromUrl = searchParams.get("status") || "all";
-    const [page, setPage] = useState(pageFromUrl);
-    const [searchTerm, setSearchTerm] = useState(searchFromUrl);
-    const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
-    const [selectedType, setSelectedType] = useState(typeFromUrl);
-    const [selectedLocation, setSelectedLocation] = useState(locationFromUrl);
-    const [selectedStatus, setSelectedStatus] = useState(statusFromUrl);
-    const [viewMode, setViewMode] = useState("grid");
-    const [showFilters, setShowFilters] = useState(false);
-    const [properties, setProperties] = useState([]);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalItems, setTotalItems] = useState(0);
-    const [limit] = useState(21);
     const socket = useSocket();
 
+    const searchFromUrl = searchParams.get("search") || "";
+
+    const [searchTerm, setSearchTerm] = useState(searchFromUrl);
+    const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
+    const [viewMode, setViewMode] = useState("grid");
+
+    const [items, setItems] = useState([]);
+    const [cursor, setCursor] = useState(null);
+    const [direction, setDirection] = useState("next");
+    const [nextCursor, setNextCursor] = useState(null);
+    const [prevCursor, setPrevCursor] = useState(null);
+    const [hasMore, setHasMore] = useState(false);
+    const [hasPrev, setHasPrev] = useState(false);
+    const limit = 21;
+
+    const { user } = useAuth();
+
     useEffect(() => {
-        setPage(pageFromUrl);
         setSearchTerm(searchFromUrl);
         setDebouncedSearch(searchFromUrl);
-        setSelectedType(typeFromUrl);
-        setSelectedLocation(locationFromUrl);
-        setSelectedStatus(statusFromUrl);
-    }, [pageFromUrl, searchFromUrl, typeFromUrl, locationFromUrl, statusFromUrl]);
+    }, [searchFromUrl]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearch(searchTerm);
-            updateParams({ search: searchTerm, page: 1 });
+            updateParams({ search: searchTerm });
         }, 400);
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
+    useEffect(() => {
+        setCursor(null);
+        setDirection("next");
+    }, [debouncedSearch]);
+
     const fetchData = useCallback(async () => {
         const res = await axiosInstance.get("/api/real-estates", {
             params: {
-                page,
                 limit,
-                search: debouncedSearch,
-                type: selectedType,
-                location: selectedLocation,
-                status: selectedStatus,
-                sortBy: "createdAt",
-                sortOrder: "desc",
-            },
+                cursor,
+                direction,
+                search: debouncedSearch
+            }
         });
-        const newData = res.data?.data ?? [];
-        const pagination = res.data?.pagination;
-        setProperties(newData);
-        setTotalPages(pagination?.totalPages || 1);
-        setTotalItems(pagination?.total || 0);
-    }, [page, limit, debouncedSearch, selectedType, selectedLocation, selectedStatus]);
+        const { data, pagination } = res.data;
+        setItems(data || []);
+        setHasMore(!!pagination?.hasMore);
+        setHasPrev(!!pagination?.hasPrev);
+        setNextCursor(pagination?.nextCursor || null);
+        setPrevCursor(pagination?.prevCursor || null);
+    }, [limit, cursor, direction, debouncedSearch]);
 
     useEffect(() => {
         fetchData();
@@ -75,40 +74,18 @@ function RealEstate() {
     useEffect(() => {
         if (!socket) return;
 
-        const onCreated = () => {
-            fetchData();
-        };
+        const refresh = () => fetchData();
 
-        const onDeleted = () => {
-            fetchData();
-        };
-
-        const onUpdated = (updated) => {
-            const updatedId = typeof updated === "string" ? updated : updated?._id;
-
-            setProperties(prev => {
-                const index = prev.findIndex(p => p._id === updatedId);
-                if (index === -1) return prev;
-
-                if (typeof updated === "object") {
-                    const next = [...prev];
-                    next[index] = updated;
-                    return next;
-                }
-
-                fetchData();
-                return prev;
-            });
-        };
-
-        socket.on("realEstateCreated", onCreated);
-        socket.on("realEstateDeleted", onDeleted);
-        socket.on("realEstateUpdated", onUpdated);
+        socket.on("realEstateCreated", refresh);
+        socket.on("realEstateRestored", refresh);
+        socket.on("realEstateDeleted", refresh);
+        socket.on("realEstateUpdated", refresh);
 
         return () => {
-            socket.off("realEstateCreated", onCreated);
-            socket.off("realEstateDeleted", onDeleted);
-            socket.off("realEstateUpdated", onUpdated);
+            socket.off("realEstateCreated", refresh);
+            socket.off("realEstateRestored", refresh);
+            socket.off("realEstateDeleted", refresh);
+            socket.off("realEstateUpdated", refresh);
         };
     }, [socket, fetchData]);
 
@@ -121,35 +98,26 @@ function RealEstate() {
         navigate(`?${params.toString()}`);
     };
 
-    const handlePageChange = (newPage) => {
-        if (newPage >= 1 && newPage <= totalPages) {
-            updateParams({ page: newPage });
-            window.scrollTo({ top: 0, behavior: "smooth" });
+    const formatPrice = (price) => {
+        if (price >= 1_000_000_000) {
+            return (price / 1_000_000_000).toFixed(2).replace(/\.00$/, "") + " tỷ";
         }
+        if (price >= 1_000_000) {
+            return (price / 1_000_000).toFixed(2).replace(/\.00$/, "") + " triệu";
+        }
+        return price.toLocaleString("vi-VN");
     };
 
-    const clearFilters = () => {
-        navigate("?page=1");
-    };
-
-    const activeFiltersCount = (selectedType !== "all" ? 1 : 0) + (selectedLocation !== "all" ? 1 : 0) + (selectedStatus !== "all" ? 1 : 0);
+    const handleApprove = async (property) => {
+        await axiosInstance.post(`/api/real-estates/${property.id}`, property);
+    }
 
     return (
         <>
             <PageHeader title="Danh Sách Bất Động Sản" />
             <div className={styles.content}>
                 <div className={styles.searchFilterBar}>
-                    <div className={styles.searchSection}>
-                        <div className={styles.searchWrapper}>
-                            <Search className={styles.searchIcon} />
-                            <input type="text" placeholder="Tìm kiếm theo tên hoặc địa điểm..." className={styles.searchInput} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                        </div>
-                        <button className={`${styles.filterToggle} ${showFilters ? styles.filterToggleActive : ""}`} onClick={() => setShowFilters(!showFilters)}>
-                            <SlidersHorizontal />
-                            Lọc
-                            {activeFiltersCount > 0 && (<span className={styles.filterBadge}>{activeFiltersCount}</span>)}
-                        </button>
-                    </div>
+                    <SearchField searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Tìm kiếm theo tên hoặc địa điểm..." />
                     <div className={styles.viewControls}>
                         <div className={styles.viewModeButtons}>
                             <button className={`${styles.viewModeBtn} ${viewMode === "grid" ? styles.viewModeBtnActive : ""}`} onClick={() => setViewMode("grid")}><Grid3x3 /></button>
@@ -160,104 +128,45 @@ function RealEstate() {
                         </Link>
                     </div>
                 </div>
-                {showFilters && (
-                    <div className={styles.advancedFilters}>
-                        <div className={styles.filterGroup}>
-                            <label className={styles.filterLabel}>
-                                <Filter className={styles.filterIcon} />
-                                Loại hình
-                            </label>
-                            <select className={styles.filterSelect} value={selectedType} onChange={(e) => updateParams({ type: e.target.value, page: 1 })}>
-                                <option value="all">Tất cả</option>
-                                {REAL_ESTATE_TYPES.map(type => (
-                                    <option key={type} value={type}>{type}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className={styles.filterGroup}>
-                            <label className={styles.filterLabel}>
-                                <MapPin className={styles.filterIcon} />
-                                Khu vực
-                            </label>
-                            <select className={styles.filterSelect} value={selectedLocation} onChange={(e) => updateParams({ location: e.target.value, page: 1 })}>
-                                <option value="all">Tất cả</option>
-                                {REAL_ESTATE_LOCATIONS.map(location => (
-                                    <option key={location} value={location}>{location}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className={styles.filterGroup}>
-                            <label className={styles.filterLabel}>
-                                <TrendingUp className={styles.filterIcon} />
-                                Trạng thái
-                            </label>
-                            <select className={styles.filterSelect} value={selectedStatus} onChange={(e) => updateParams({ status: e.target.value, page: 1 })}>
-                                <option value="all">Tất cả</option>
-                                {REAL_ESTATE_STATUSES.map(status => (
-                                    <option key={status} value={status}>{status}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <button className={styles.clearFiltersBtn} onClick={clearFilters}>
-                            <X />
-                            Xóa bộ lọc
-                        </button>
-                    </div>
-                )}
-
-                <div className={styles.resultsInfo}>
-                    <p>Hiển thị {properties.length} / {totalItems} bất động sản</p>
-                </div>
 
                 <div className={viewMode === "grid" ? styles.propertiesGrid : styles.propertiesList}>
-                    {properties.map((property) => (
-                        <PropertyCard key={property._id} viewMode={viewMode} property={property} detailLink={`/real-estates/${property._id}`} onApprove={true} />
+                    {(items ?? []).map((property) => (
+                        <div className={`${viewMode === "list" ? styles.propertyCardList : styles.propertyCard}`}>
+                            <div className={styles.propertyImage}>
+                                <img src={property.images?.[0]} alt={property.title} />
+                                <span className={styles.propertyStatus}>
+                                    {property.status}
+                                </span>
+                            </div>
+                            <div className={styles.propertyContent}>
+                                <h3 className={styles.propertyName}>{property.propertyType}</h3>
+
+                                <div className={styles.propertyLocation}>
+                                    <MapPin className={styles.locationIcon} />
+                                    <span>{property.address}</span>
+                                </div>
+
+                                <div className={styles.propertyFooter}>
+                                    <div className={styles.propertyPrice}>
+                                        <span className={styles.priceLabel}>Giá bán</span>
+                                        <span className={styles.priceValue}>{property.price ? formatPrice(property.price) : "Thương lượng"}</span>
+                                    </div>
+                                    <div className={styles.propertyActions}>
+                                        {(Role[(user.role || "").toUpperCase()].value >= Role["STAFF"].value && property.status === "Chờ duyệt") && (<button className={`${styles.actionBtn} ${styles.actionBtnApprove}`} onClick={() => handleApprove(property, "Đang bán")} title="Duyệt">
+                                            <Check className={styles.actionBtnIcon} />
+                                        </button>)}
+                                        <Link to={`/real-estates/${property.id}`} className={styles.actionBtn}>
+                                            <Eye className={styles.actionBtnIcon} />
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     ))}
                 </div>
-
-                {totalPages > 1 && (
-                    <div className={styles.paginationContainer}>
-                        <button onClick={() => handlePageChange(page - 1)} disabled={page === 1} className={styles.pageNavButton}>
-                            Trước
-                        </button>
-
-                        <div className={styles.pageNumbers}>
-                            {(() => {
-                                const pages = [];
-                                const maxVisible = 5;
-                                let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
-                                let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-                                if (endPage - startPage < maxVisible - 1) {
-                                    startPage = Math.max(1, endPage - maxVisible + 1);
-                                }
-                                if (startPage > 1) {
-                                    pages.push(<button key={1} onClick={() => handlePageChange(1)} className={styles.pageButton}>1</button>);
-                                    if (startPage > 2)
-                                        pages.push(<span key="dots1" className={styles.pageDots}>...</span>);
-                                }
-                                for (let i = startPage; i <= endPage; i++) {
-                                    pages.push(<button key={i} onClick={() => handlePageChange(i)} className={`${styles.pageButton} ${i === page ? styles.pageButtonActive : ""}`}>{i}</button>);
-                                }
-
-                                if (endPage < totalPages) {
-                                    if (endPage < totalPages - 1)
-                                        pages.push(<span key="dots2" className={styles.pageDots}>...</span>);
-                                    pages.push(<button key={totalPages} onClick={() => handlePageChange(totalPages)} className={styles.pageButton}>{totalPages}</button>);
-                                }
-
-                                return pages;
-                            })()}
-                        </div>
-
-                        <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages} className={styles.pageNavButton}>
-                            Sau
-                        </button>
-                    </div>
-                )}
             </div>
+
+            <Pagination prevCursor={prevCursor} nextCursor={nextCursor} hasPrev={hasPrev} hasMore={hasMore} setCursor={setCursor} setDirection={setDirection} />
         </>
     );
 }

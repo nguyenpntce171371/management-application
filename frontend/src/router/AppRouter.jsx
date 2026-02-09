@@ -19,7 +19,7 @@ import UserManagement from "../pages/users/UserManagement";
 import LogPage from "../pages/logs/LogPage";
 import BackupManagement from "../pages/backups/BackupManagement";
 import NotFound from "../pages/not-found/NotFound";
-import DeletedItemsManagement from "../pages/trashs/DeletedItemsManagement";
+import DeletedItemsManagement from "../pages/deleted-items/DeletedItemsManagement";
 
 function AppRouter() {
     return (

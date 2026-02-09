@@ -19,7 +19,7 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                         <th>Yếu tố so sánh</th>
                         <th>TSTĐ</th>
                         {comparisonsData.map((comp, i) => (
-                            <th key={comp._id}>
+                            <th key={comp.id}>
                                 <Link to={`/real-estates/${comp.id}`} className={styles.TSSS} target="_blank">
                                     TSSS{i + 1}
                                 </Link>
@@ -33,8 +33,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                         <td>Thời điểm/Tình trạng giao dịch</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <input type="text" className={styles.cellInput} value={comp.transactionTime || ""} onChange={e => handleComparisonChange(comp._id, "transactionTime", e.target.value)} />
+                            <td key={comp.id}>
+                                <input type="text" className={styles.cellInput} value={comp.transactionTime || ""} onChange={e => handleComparisonChange(comp.id, "transactionTime", e.target.value)} />
                             </td>
                         ))}
                     </tr>
@@ -43,8 +43,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                         <td>Nguồn</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <input type="text" className={styles.cellInput} value={comp.source || ""} onChange={e => handleComparisonChange(comp._id, "source", e.target.value)} />
+                            <td key={comp.id}>
+                                <input type="text" className={styles.cellInput} value={comp.source || ""} onChange={e => handleComparisonChange(comp.id, "source", e.target.value)} />
                             </td>
                         ))}
                     </tr>
@@ -53,8 +53,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                         <td>Thông tin liên lạc</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id} >
-                                <input type="text" className={styles.cellInput} style={{ color: "red" }} value={comp.contactInfo || ""} onChange={e => handleComparisonChange(comp._id, "contactInfo", e.target.value)} />
+                            <td key={comp.id} >
+                                <input type="text" className={styles.cellInput} style={{ color: "red" }} value={comp.contactInfo || ""} onChange={e => handleComparisonChange(comp.id, "contactInfo", e.target.value)} />
                             </td>
                         ))}
                     </tr>
@@ -65,8 +65,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                             <input className={styles.cellInput} value={appraisalData.legalStatus || ""} onChange={e => handleAppraisalChange(appraisalData.id, "legalStatus", e.target.value)} />
                         </td>
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <input type="text" className={styles.cellInput} value={comp.legalStatus || ""} onChange={e => handleComparisonChange(comp._id, "legalStatus", e.target.value)} />
+                            <td key={comp.id}>
+                                <input type="text" className={styles.cellInput} value={comp.legalStatus || ""} onChange={e => handleComparisonChange(comp.id, "legalStatus", e.target.value)} />
                             </td>
                         ))}
                     </tr>
@@ -77,8 +77,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                             <MultiSelectLandType value={appraisalData.land?.map(l => l.landType) || []} list={LAND_TYPE} onChange={(value) => handleAppraisalChange(appraisalData.id, "landTypes", value)} />
                         </td>
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id} style={{ textAlign: "left" }}>
-                                <MultiSelectLandType value={comp.land?.map(l => l.landType) || []} list={LAND_TYPE} onChange={(value) => handleComparisonChange(comp._id, "landTypes", value)} />
+                            <td key={comp.id} style={{ textAlign: "left" }}>
+                                <MultiSelectLandType value={comp.land?.map(l => l.landType) || []} list={LAND_TYPE} onChange={(value) => handleComparisonChange(comp.id, "landTypes", value)} />
                             </td>
                         ))}
                     </tr>
@@ -89,8 +89,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                             <textarea className={styles.cellInput} value={appraisalData.location?.landParcel || ""} onChange={e => handleAppraisalChange(appraisalData.id, "location.landParcel", e.target.value)} rows={3} />
                         </td>
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <textarea className={styles.cellInput} value={comp.location?.landParcel || ""} onChange={e => handleComparisonChange(comp._id, "location.landParcel", e.target.value)} rows={3} />
+                            <td key={comp.id}>
+                                <textarea className={styles.cellInput} value={comp.location?.landParcel || ""} onChange={e => handleComparisonChange(comp.id, "location.landParcel", e.target.value)} rows={3} />
                             </td>
                         ))}
                     </tr>
@@ -99,8 +99,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                             <textarea className={styles.cellInput} value={appraisalData.location?.description || ""} onChange={e => handleAppraisalChange(appraisalData.id, "location.description", e.target.value)} rows={3} />
                         </td>
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <textarea className={styles.cellInput} value={comp.location?.description || ""} onChange={e => handleComparisonChange(comp._id, "location.description", e.target.value)} rows={3} />
+                            <td key={comp.id}>
+                                <textarea className={styles.cellInput} value={comp.location?.description || ""} onChange={e => handleComparisonChange(comp.id, "location.description", e.target.value)} rows={3} />
                             </td>
                         ))}
                     </tr>
@@ -115,11 +115,11 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                             </div>
                         </td>
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 <div className={styles.dimensionInput}>
-                                    <NumberInput className={styles.cellInput} value={comp.width || ""} onChange={value => handleComparisonChange(comp._id, "width", value)} />
+                                    <NumberInput className={styles.cellInput} value={comp.width || ""} onChange={value => handleComparisonChange(comp.id, "width", value)} />
                                     <span>x</span>
-                                    <NumberInput className={styles.cellInput} value={comp.length || ""} onChange={value => handleComparisonChange(comp._id, "length", value)} />
+                                    <NumberInput className={styles.cellInput} value={comp.length || ""} onChange={value => handleComparisonChange(comp.id, "length", value)} />
                                 </div>
                             </td>
                         ))}
@@ -131,8 +131,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                             <input className={styles.cellInput} value={appraisalData.businessAdvantage || ""} onChange={e => handleAppraisalChange(appraisalData.id, "businessAdvantage", e.target.value)} placeholder="Bình thường" />
                         </td>
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <input className={styles.cellInput} value={comp.businessAdvantage || ""} onChange={e => handleComparisonChange(comp._id, "businessAdvantage", e.target.value)} placeholder="Bình thường" />
+                            <td key={comp.id}>
+                                <input className={styles.cellInput} value={comp.businessAdvantage || ""} onChange={e => handleComparisonChange(comp.id, "businessAdvantage", e.target.value)} placeholder="Bình thường" />
                             </td>
                         ))}
                     </tr>
@@ -143,8 +143,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                             <input className={styles.cellInput} value={appraisalData.livingEnvironment || ""} onChange={e => handleAppraisalChange(appraisalData.id, "livingEnvironment", e.target.value)} placeholder="Bình thường" />
                         </td>
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <input className={styles.cellInput} value={comp.livingEnvironment || ""} onChange={e => handleComparisonChange(comp._id, "livingEnvironment", e.target.value)} placeholder="Bình thường" />
+                            <td key={comp.id}>
+                                <input className={styles.cellInput} value={comp.livingEnvironment || ""} onChange={e => handleComparisonChange(comp.id, "livingEnvironment", e.target.value)} placeholder="Bình thường" />
                             </td>
                         ))}
                     </tr>
@@ -155,8 +155,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                             <NumberInput className={styles.cellInput} style={{ fontWeight: "bold" }} value={appraisalData.area || ""} onChange={value => handleAppraisalChange(appraisalData.id, "area", value)} />
                         </td>
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <NumberInput className={styles.cellInput} style={{ fontWeight: "bold" }} value={comp.area || ""} onChange={value => handleComparisonChange(comp._id, "area", value)}  />
+                            <td key={comp.id}>
+                                <NumberInput className={styles.cellInput} style={{ fontWeight: "bold" }} value={comp.area || ""} onChange={value => handleComparisonChange(comp.id, "area", value)}  />
                             </td>
                         ))}
                     </tr>
@@ -172,8 +172,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                                 {comparisonsData.map((comp) => {
                                     const compLand = getLandByType(comp.land, landType);
                                     return (
-                                        <td key={comp._id}>
-                                            {compLand && (<NumberInput className={styles.cellInput} style={{ fontStyle: "italic" }} value={compLand.landArea || ""} onChange={value => handleComparisonChange(comp._id, `land.${landType}.landArea`, value)} />)}
+                                        <td key={comp.id}>
+                                            {compLand && (<NumberInput className={styles.cellInput} style={{ fontStyle: "italic" }} value={compLand.landArea || ""} onChange={value => handleComparisonChange(comp.id, `land.${landType}.landArea`, value)} />)}
                                         </td>
                                     );
                                 })}
@@ -187,8 +187,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                             <input className={styles.cellInput} value={appraisalData.infrastructure || ""} onChange={e => handleAppraisalChange(appraisalData.id, "infrastructure", e.target.value)} placeholder="Hoàn chỉnh" />
                         </td>
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <input className={styles.cellInput} value={comp.infrastructure || ""} onChange={e => handleComparisonChange(comp._id, "infrastructure", e.target.value)} placeholder="Hoàn chỉnh" />
+                            <td key={comp.id}>
+                                <input className={styles.cellInput} value={comp.infrastructure || ""} onChange={e => handleComparisonChange(comp.id, "infrastructure", e.target.value)} placeholder="Hoàn chỉnh" />
                             </td>
                         ))}
                     </tr>
@@ -199,8 +199,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                             <input className={styles.cellInput} value={appraisalData.shape || ""} onChange={e => handleAppraisalChange(appraisalData.id, "shape", e.target.value)} placeholder="Cân đối" />
                         </td>
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <input className={styles.cellInput} value={comp.shape || ""} onChange={e => handleComparisonChange(comp._id, "shape", e.target.value)} placeholder="Cân đối" />
+                            <td key={comp.id}>
+                                <input className={styles.cellInput} value={comp.shape || ""} onChange={e => handleComparisonChange(comp.id, "shape", e.target.value)} placeholder="Cân đối" />
                             </td>
                         ))}
                     </tr>
@@ -213,8 +213,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                             </div>
                         </td>
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <div className={styles.cellInput} onClick={() => handleComparisonChange(comp._id, "currentUsageStatus", comp.currentUsageStatus === "Đất trống" ? "Có CTXD" : "Đất trống")} >
+                            <td key={comp.id}>
+                                <div className={styles.cellInput} onClick={() => handleComparisonChange(comp.id, "currentUsageStatus", comp.currentUsageStatus === "Đất trống" ? "Có CTXD" : "Đất trống")} >
                                     {comp.currentUsageStatus || ""}
                                 </div>
                             </td>
@@ -225,8 +225,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                         <td>Giá bán (VND)</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <NumberInput className={styles.cellInput} value={comp.price || ""} onChange={value => handleComparisonChange(comp._id, "price", value)} />
+                            <td key={comp.id}>
+                                <NumberInput className={styles.cellInput} value={comp.price || ""} onChange={value => handleComparisonChange(comp.id, "price", value)} />
                             </td>
                         ))}
                     </tr>
@@ -235,9 +235,9 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                         <td>Giá ước tính (VND)</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id} onClick={() => setEditingIndex(comp._id)}>
-                                {editingId === comp._id ? (
-                                    <PercentInput className={styles.cellInput} value={comp.percent || ""} onChange={v => handleComparisonChange(comp._id, "percent", v)} onBlur={() => setEditingIndex(null)} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { setEditingIndex(null); } }} autoFocus />
+                            <td key={comp.id} onClick={() => setEditingIndex(comp.id)}>
+                                {editingId === comp.id ? (
+                                    <PercentInput className={styles.cellInput} value={comp.percent || ""} onChange={v => handleComparisonChange(comp.id, "percent", v)} onBlur={() => setEditingIndex(null)} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { setEditingIndex(null); } }} autoFocus />
                                 ) : (
                                     <NumberInput className={styles.cellInput} value={comp.estimatedPrice} roundOnBlur={true} readOnly />
                                 )}
@@ -249,8 +249,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                         <td >Diện tích sàn sử dụng (m2)</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                {comp.currentUsageStatus === "Có CTXD" && (<NumberInput className={styles.cellInput} value={comp.usableArea || ""} onChange={value => handleComparisonChange(comp._id, "usableArea", value)} />)}
+                            <td key={comp.id}>
+                                {comp.currentUsageStatus === "Có CTXD" && (<NumberInput className={styles.cellInput} value={comp.usableArea || ""} onChange={value => handleComparisonChange(comp.id, "usableArea", value)} />)}
                             </td>
                         ))}
                     </tr>
@@ -258,8 +258,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                         <td>Đơn giá CTXD (VND/m2) căn cứ theo QĐ số 23/2022/QĐ-UBND</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                {comp.currentUsageStatus === "Có CTXD" && (<NumberInput className={styles.cellInput} value={comp.constructionUnitPrice || ""} onChange={value => handleComparisonChange(comp._id, "constructionUnitPrice", value)} />)}
+                            <td key={comp.id}>
+                                {comp.currentUsageStatus === "Có CTXD" && (<NumberInput className={styles.cellInput} value={comp.constructionUnitPrice || ""} onChange={value => handleComparisonChange(comp.id, "constructionUnitPrice", value)} />)}
                             </td>
                         ))}
                     </tr>
@@ -267,8 +267,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                         <td>CLCL (%)</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                {comp.currentUsageStatus === "Có CTXD" && (<PercentInput className={styles.cellInput} value={comp.qualityRemainingPercent || ""} onChange={value => handleComparisonChange(comp._id, "qualityRemainingPercent", value)} />)}
+                            <td key={comp.id}>
+                                {comp.currentUsageStatus === "Có CTXD" && (<PercentInput className={styles.cellInput} value={comp.qualityRemainingPercent || ""} onChange={value => handleComparisonChange(comp.id, "qualityRemainingPercent", value)} />)}
                             </td>
                         ))}
                     </tr>
@@ -276,7 +276,7 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                         <td>Giá trị công trình xây dựng (VND)</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {comp.currentUsageStatus === "Có CTXD" ? formatNumber(comp.constructionValue) : ""}
                             </td>
                         ))}
@@ -286,7 +286,7 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                         <td style={{ fontWeight: "bold" }}>Đơn giá QSDĐ (VND/m2)</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id} style={{ fontWeight: "bold" }}>
+                            <td key={comp.id} style={{ fontWeight: "bold" }}>
                                 {formatNumber(comp.landUseRightUnitPrice) || ""}
                             </td>
                         ))}
@@ -310,8 +310,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                                         {comparisonsData.map((comp) => {
                                             const compLand = getLandByType(comp.land, landType);
                                             return (
-                                                <td key={comp._id}>
-                                                    {compLand && (<textarea type="text" className={styles.cellInput} value={compLand.streetDescription || ""} onChange={e => handleComparisonChange(comp._id, `land.${landType}.streetDescription`, e.target.value)} rows={3} />)}
+                                                <td key={comp.id}>
+                                                    {compLand && (<textarea type="text" className={styles.cellInput} value={compLand.streetDescription || ""} onChange={e => handleComparisonChange(comp.id, `land.${landType}.streetDescription`, e.target.value)} rows={3} />)}
                                                 </td>
                                             );
                                         })}
@@ -324,9 +324,9 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                                         {comparisonsData.map((comp) => {
                                             const compLand = getLandByType(comp.land, landType);
                                             return (
-                                                <td key={comp._id}>
+                                                <td key={comp.id}>
                                                     {compLand && (
-                                                        <NumberInput className={styles.cellInput} value={compLand.ontLandPrice || ""} onChange={value => handleComparisonChange(comp._id, `land.${landType}.ontLandPrice`, value)} />
+                                                        <NumberInput className={styles.cellInput} value={compLand.ontLandPrice || ""} onChange={value => handleComparisonChange(comp.id, `land.${landType}.ontLandPrice`, value)} />
                                                     )}
                                                 </td>
                                             );
@@ -344,8 +344,8 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                                     <NumberInput className={styles.cellInput} value={appraisalData.convertibleAreaLimit || ""} onChange={value => handleAppraisalChange(appraisalData.id, "convertibleAreaLimit", value)} />
                                 </td>
                                 {comparisonsData.map((comp) => (
-                                    <td key={comp._id}>
-                                        <NumberInput className={styles.cellInput} value={comp.convertibleAreaLimit || ""} onChange={value => handleComparisonChange(comp._id, "convertibleAreaLimit", value)} />
+                                    <td key={comp.id}>
+                                        <NumberInput className={styles.cellInput} value={comp.convertibleAreaLimit || ""} onChange={value => handleComparisonChange(comp.id, "convertibleAreaLimit", value)} />
                                     </td>
                                 ))}
                             </tr>
@@ -362,7 +362,7 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                                         <td>Tổng diện tích (m2)</td>
                                         <td />
                                         {comparisonsData.map((comp) => (
-                                            <td key={comp._id}>{formatNumber(comp.area)}</td>
+                                            <td key={comp.id}>{formatNumber(comp.area)}</td>
                                         ))}
                                     </tr>
 
@@ -371,7 +371,7 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                                         <td>Diện tích đất điều chỉnh (m2)</td>
                                         <td />
                                         {comparisonsData.map((comp) => (
-                                            <td key={comp._id}>
+                                            <td key={comp.id}>
                                                 {getLandByType(comp.land, adjustLandType) && formatNumber(getLandByType(comp.land, adjustLandType).landArea || "")}
                                             </td>
                                         ))}
@@ -383,7 +383,7 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                                         <td />
                                         {comparisonsData.map((comp) => {
                                             return (
-                                                <td key={comp._id}>
+                                                <td key={comp.id}>
                                                     {getLandByType(comp.land, adjustLandType) && formatNumber((getLandByType(comp.land, baseLandType)?.ontLandPrice || getLandByType(appraisalData.land, baseLandType)?.ontLandPrice || 0) - (getLandByType(comp.land, adjustLandType)?.ontLandPrice || 0))}
                                                 </td>
                                             );
@@ -397,7 +397,7 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                                         {comparisonsData.map((comp) => {
                                             const priceDiff = (getLandByType(comp.land, baseLandType)?.ontLandPrice || getLandByType(appraisalData.land, baseLandType)?.ontLandPrice || 0) - (getLandByType(comp.land, adjustLandType)?.ontLandPrice || 0);
                                             return (
-                                                <td key={comp._id}>
+                                                <td key={comp.id}>
                                                     {getLandByType(comp.land, adjustLandType) && formatNumber(priceDiff * (getLandByType(comp.land, adjustLandType)?.landArea || 0))}
                                                 </td>
                                             );
@@ -410,7 +410,7 @@ function BasicSheet({ appraisalData, comparisonsData, handleComparisonChange, ha
                                 <td style={{ fontWeight: "bold" }}>Đơn giá QSDĐ điều chỉnh (VND/m2)</td>
                                 <td />
                                 {comparisonsData.map((comp) => (
-                                    <td key={comp._id} style={{ fontWeight: "bold" }}>
+                                    <td key={comp.id} style={{ fontWeight: "bold" }}>
                                         {formatNumber(comp.adjustedLandUnitPrice)}
                                     </td>
                                 ))}

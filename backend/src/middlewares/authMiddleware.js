@@ -1,14 +1,12 @@
 import jwt from "jsonwebtoken";
 import Token from "../models/Token.js";
 import { Role } from "../config/role.js";
-import crypto from "crypto";
 
 export const verify = (requiredRole) => {
     return async (req, res, next) => {
         try {
             const accessToken = req.cookies.accessToken;
             const refreshToken = req.cookies.refreshToken;
-
             if (!accessToken) {
                 return res.status(401).json({
                     success: false,
@@ -16,10 +14,6 @@ export const verify = (requiredRole) => {
                     message: refreshToken ? "Phiên làm việc đã hết hạn." : "Không có token được cung cấp.",
                 });
             }
-
-            const decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
-            req.user = decoded;
-
             const deviceId = req.cookies.deviceId;
             if (!deviceId) {
                 return res.status(401).json({
@@ -29,39 +23,51 @@ export const verify = (requiredRole) => {
                 });
             }
 
-            const sessions = await Token.find({ userId: req.user.id });
-            const session = sessions.find(s => s.compareDeviceId(deviceId));
+            const decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
+            req.user = decoded;
 
-            if (!session) {
-                return res.status(401).json({
-                    success: false,
-                    code: "TOKEN_NOT_FOUND",
-                    message: "Phiên không tồn tại.",
-                });
+            if (requiredRole) {
+                const userLevel = Role[decoded.role?.toUpperCase()] ?? 0;
+                const requiredLevel = Role[requiredRole?.toUpperCase()] ?? 999;
+
+                if (userLevel < requiredLevel) {
+                    return res.status(403).json({
+                        success: false,
+                        code: "FORBIDDEN",
+                        message: "Quyền truy cập không đủ.",
+                    });
+                }
             }
 
-            if (new Date() > session.accessTokenExpiresAt) {
+            const now = Math.floor(Date.now() / 1000);
+            const ttl = typeof decoded.exp === "number" ? decoded.exp - now : 0;
+
+            if (ttl <= 0) {
                 return res.status(401).json({
                     success: false,
                     code: "TOKEN_EXPIRED",
                     message: "Phiên làm việc đã hết hạn.",
                 });
-            }
-
-            const userRoleLevel = Role[req.user.role?.toUpperCase()] ?? 0;
-            const requiredRoleLevel = Role[requiredRole?.toUpperCase()] ?? 999;
-
-            if (userRoleLevel < requiredRoleLevel) {
-                return res.status(403).json({
-                    success: false,
-                    code: "FORBIDDEN",
-                    message: "Quyền truy cập không đủ.",
-                });
+            } else {
+                const hashedDeviceId = Token.hashValue(deviceId);
+                const session = await Token.findOne({ userId: decoded.id, deviceId: hashedDeviceId, accessTokenExpiresAt: { $gt: new Date() } });
+                if (!session) {
+                    return res.status(401).json({
+                        success: false,
+                        code: "SESSION_REVOKED",
+                        message: "Phiên đăng nhập đã bị thu hồi.",
+                    });
+                } else {
+                    req.session = {
+                        id: session._id,
+                        deviceId: session.deviceId
+                    };
+                }
             }
 
             return next();
-        } catch (err) {
-            if (err instanceof jwt.TokenExpiredError) {
+        } catch (error) {
+            if (error instanceof jwt.TokenExpiredError) {
                 return res.status(401).json({
                     success: false,
                     code: "TOKEN_EXPIRED",
@@ -69,7 +75,7 @@ export const verify = (requiredRole) => {
                 });
             }
 
-            if (err instanceof jwt.JsonWebTokenError) {
+            if (error instanceof jwt.JsonWebTokenError) {
                 return res.status(401).json({
                     success: false,
                     code: "INVALID_TOKEN",
@@ -77,7 +83,7 @@ export const verify = (requiredRole) => {
                 });
             }
 
-            console.error("Verify middleware error:", err);
+            console.error("Verify middleware error:", error);
             return res.status(500).json({
                 success: false,
                 code: "SERVER_ERROR",

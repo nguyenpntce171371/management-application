@@ -1,40 +1,15 @@
 import User from "../models/User.js";
 import { sendOTPResetPasswordEmail, sendPasswordChangedEmail } from "../services/email.service.js";
 import { OTPService } from "../services/otp.service.js";
-import crypto from "crypto";
 import { io } from "../index.js";
 import Token from "../models/Token.js";
-import NodeCache from "node-cache";
-import { generatePresignedUrl } from "../services/storage.service.js";
-
-const imageUrlCache = new NodeCache({
-    stdTTL: 1800,
-    checkperiod: 600,
-    useClones: false,
-    maxKeys: 10000
-});
-
-const getCachedImageUrl = async (imagePath) => {
-    if (!(imagePath && !imagePath.startsWith("http"))) return imagePath;
-
-    const cachedUrl = imageUrlCache.get(imagePath);
-    if (cachedUrl) return cachedUrl;
-
-    try {
-        const url = await generatePresignedUrl(imagePath, 30);
-        imageUrlCache.set(imagePath, url);
-        return url;
-    } catch (error) {
-        console.error(`Failed to generate URL for ${imagePath}:`, error);
-        return null;
-    }
-};
+import { normalizeEmail } from "../utils/string.js";
 
 export const changePassword = async (req, res) => {
     try {
-        let { email, oldPassword, newPassword, confirm } = req.body;
-
-        if (!email || !newPassword || !confirm) {
+        const { email } = req.user;
+        const { oldPassword, newPassword, confirm } = req.body;
+        if (!newPassword || !confirm) {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_FIELDS",
@@ -50,7 +25,7 @@ export const changePassword = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email }, { _id: 1, fullName: 1, provider: 1, password: 1 });
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -76,43 +51,25 @@ export const changePassword = async (req, res) => {
                     message: "Thông tin đăng nhập không hợp lệ",
                 });
             }
-
         } else {
-            await user.setPassword(newPassword);
             user.provider = "local";
-            await user.save();
         }
 
-        const deviceId = req.cookies.deviceId;
-        const hashedDeviceId = crypto.createHash("sha256").update(deviceId).digest("hex");
-        const currentSession = await Token.findOne({ userId: user._id, deviceId: hashedDeviceId });
-        const sessions = await Token.find({ userId: user._id });
-        const sessionIdsToDelete = sessions.filter(s => !s._id.equals(currentSession._id)).map(s => s._id);
-        await Token.deleteMany({ _id: { $in: sessionIdsToDelete } });
+        await user.setPassword(newPassword);
+        await user.save();
+        const deviceId = req.session.deviceId;
 
-        io.to(user._id).emit("loggedOut", { sessionIds: sessionIdsToDelete });
+        const sessions = await Token.find({ userId: user._id, deviceId: { $ne: deviceId } }, { _id: 1 }).lean();
+        await Token.deleteMany({ userId: user._id, deviceId: { $ne: deviceId } });
+
+        io.to(user._id.toString()).emit("loggedOut", sessions.map(s => s._id.toString()));
 
         await sendPasswordChangedEmail(email, user.fullName);
-
-        let avatarUrl = user.avatar;
-
-        if (user.avatar && !user.avatar.startsWith("http")) {
-            avatarUrl = await getCachedImageUrl(user.avatar);
-        }
 
         return res.status(200).json({
             success: true,
             code: "PASSWORD_CHANGED",
-            message: "Mật khẩu đã được thay đổi thành công",
-            data: {
-                id: user.userId,
-                email: user.email,
-                role: user.role,
-                fullName: user.fullName,
-                address: user.address,
-                avatar: avatarUrl,
-                provider: user.provider
-            }
+            message: "Mật khẩu đã được thay đổi thành công"
         });
     } catch (error) {
         console.error("Change password error:", error);
@@ -126,7 +83,8 @@ export const changePassword = async (req, res) => {
 
 export const sendOtpForgot = async (req, res) => {
     try {
-        let { email } = req.body;
+        const { email: rawEmail } = req.body;
+        const email = normalizeEmail(rawEmail);
 
         if (!email) {
             return res.status(400).json({
@@ -135,12 +93,13 @@ export const sendOtpForgot = async (req, res) => {
                 message: "Email is required",
             });
         }
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                code: "EMAIL_NOT_FOUND",
-                message: "Email not found",
+
+        const exists = await User.exists({ email });
+        if (!exists) {
+            return res.status(200).json({
+                success: true,
+                code: "OTP_SENT",
+                message: "Đã gửi mã OTP đến email của bạn",
             });
         }
 
@@ -172,22 +131,14 @@ export const sendOtpForgot = async (req, res) => {
 
 export const verifyOTP = async (req, res) => {
     try {
-        let { email, otp } = req.body;
+        const { otp, email: rawEmail } = req.body;
+        const email = normalizeEmail(rawEmail);
 
         if (!email || !otp) {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_FIELDS",
                 message: "Các trường bắt buộc bị thiếu",
-            });
-        }
-
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                code: "USER_NOT_FOUND",
-                message: "Không tìm thấy người dùng",
             });
         }
 
@@ -225,7 +176,8 @@ export const verifyOTP = async (req, res) => {
 
 export const resetPassword = async (req, res) => {
     try {
-        let { email, resetToken, newPassword, confirm } = req.body;
+        const { email: rawEmail, resetToken, newPassword, confirm } = req.body;
+        const email = normalizeEmail(rawEmail);
         if (!email || !newPassword || !confirm) {
             return res.status(400).json({
                 success: false,
@@ -242,15 +194,6 @@ export const resetPassword = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                code: "USER_NOT_FOUND",
-                message: "Không tìm thấy người dùng",
-            });
-        }
-
         const verified = await OTPService.isVerified(email, resetToken, "reset_password");
         if (!verified) {
             return res.status(400).json({
@@ -261,17 +204,25 @@ export const resetPassword = async (req, res) => {
         }
         await OTPService.clearVerified(email, "reset_password");
 
+        const user = await User.findOne({ email }, { _id: 1, provider: 1 });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                code: "USER_NOT_FOUND",
+                message: "Không tìm thấy người dùng",
+            });
+        }
+
         await user.setPassword(newPassword);
         if (user.provider !== "local") {
             user.provider = "local";
         }
         await user.save();
 
-        const sessions = await Token.find({ userId: user._id });
-        const sessionIds = sessions.map(s => s._id);
+        const sessions = await Token.find({ userId: user._id }, { _id: 1 }).lean();
         await Token.deleteMany({ userId: user._id });
 
-        io.to(user._id).emit("loggedOut", { sessionIds });
+        io.to(user._id.toString()).emit("loggedOut", sessions.map(s => s._id.toString()));
 
         return res.status(200).json({
             success: true,

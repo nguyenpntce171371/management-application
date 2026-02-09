@@ -12,6 +12,7 @@ import { useParams } from "react-router-dom";
 import { usePropertyComparison } from "../../../../hooks/usePropertyComparison";
 import { exportPropertyComparisonToExcel } from "../../../../hooks/excelExport";
 import provinces from "../../../../data/vietnam-provinces.json";
+import { notify } from "../../../../context/NotificationContext";
 
 function AppraisalWorksheet() {
     const { id } = useParams();
@@ -62,9 +63,27 @@ function AppraisalWorksheet() {
         const constructions = appraisalData.constructions || [];
 
         const processedAssets = await Promise.all(assets.map(async (asset) => {
-            const assetId = asset.id || asset._id;
-            const selectedComparisonIds = (asset.selectedComparisons || []).map(comp => comp.id || comp._id).filter(Boolean);
-            const apiAssetData = { ...asset, id: assetId, _id: assetId, appraisalId: id, isComparison: false, selectedComparisons: selectedComparisonIds };
+            const assetId = asset.id;
+            const selectedComparisonIds = (asset.selectedComparisons || [])
+                .map(comp => {
+                    const realEstateId = comp.realEstateId;
+                    if (typeof realEstateId === 'string') {
+                        return realEstateId;
+                    } else if (realEstateId?.id) {
+                        return realEstateId.id;
+                    }
+                    return null;
+                })
+                .filter(Boolean);
+
+            const apiAssetData = {
+                ...asset,
+                id: assetId,
+                appraisalId: id,
+                isComparison: false,
+                selectedComparisons: selectedComparisonIds
+            };
+
             const existingAsset = await indexedDBService.getPropertyById(assetId);
             let mergedAsset = existingAsset ? { ...apiAssetData, ...existingAsset } : apiAssetData;
             await indexedDBService.saveProperty(mergedAsset);
@@ -72,22 +91,44 @@ function AppraisalWorksheet() {
         }));
 
         await Promise.all(constructions.map(async (construction) => {
-            const constructionId = construction.id || construction._id;
-            const apiConstructionData = { ...construction, id: constructionId, _id: constructionId, appraisalId: id };
+            const constructionId = construction.id;
+            const apiConstructionData = { ...construction, id: constructionId, appraisalId: id };
             const existingConstruction = await indexedDBService.getConstructionWorkById(constructionId);
             const mergedConstruction = existingConstruction ? { ...apiConstructionData, ...existingConstruction } : apiConstructionData;
             await indexedDBService.saveConstructionWork(mergedConstruction);
         }));
 
         for (const { asset, comparisonIds } of processedAssets) {
-            const apiAsset = assets.find(a => (a.id || a._id) === asset.id);
+            const apiAsset = assets.find(a => a.id === asset.id);
             const apiComparisons = apiAsset?.selectedComparisons || [];
 
             for (const compId of comparisonIds) {
-                const comparisonExtraData = apiComparisons.find(comp => (comp.id || comp._id) === compId);
+                const comparisonExtraData = apiComparisons.find(comp => {
+                    const realEstateId = comp.realEstateId;
+                    if (typeof realEstateId === 'string') {
+                        return realEstateId === compId;
+                    } else if (realEstateId?.id) {
+                        return realEstateId.id === compId;
+                    }
+                    return false;
+                });
+
                 const compRes = await axiosInstance.get(`/api/real-estates/${compId}`);
                 const compData = compRes.data.data;
-                const mergedCompData = { ...compData, id: compData._id || compId, _id: compData._id || compId, isComparison: true, ...(comparisonExtraData || {}) };
+
+                const mergedCompData = {
+                    ...compData,
+                    id: compId,
+                    isComparison: true,
+                    areaRate: comparisonExtraData?.areaRate,
+                    businessRate: comparisonExtraData?.businessRate,
+                    environmentRate: comparisonExtraData?.environmentRate,
+                    adjustedLandUnitPrice: comparisonExtraData?.adjustedLandUnitPrice,
+                    locationRate: comparisonExtraData?.locationRate,
+                    shapeRate: comparisonExtraData?.shapeRate,
+                    sizeRate: comparisonExtraData?.sizeRate,
+                    guidedPrice: comparisonExtraData?.guidedPrice,
+                };
                 const existingComp = await indexedDBService.getPropertyById(compId);
                 const finalCompData = existingComp ? { ...mergedCompData, ...existingComp } : mergedCompData;
                 await indexedDBService.saveProperty(finalCompData);
@@ -96,7 +137,6 @@ function AppraisalWorksheet() {
 
         return processedAssets.map(item => item.asset);
     }, [id]);
-
     const normalizeProperty = useCallback(async (p) => {
         const now = new Date();
         const defaultTime = `Tháng ${now.getMonth() + 1}/${now.getFullYear()}`;
@@ -105,15 +145,14 @@ function AppraisalWorksheet() {
 
         return {
             ...p,
-            _id: p._id || p.id || uuidv4(),
+            id: p.id || uuidv4(),
             transactionTime: p.transactionTime || defaultTime,
             source: p.source || (p.location?.lat && p.location?.lng ? "Thu thập thực tế" : ""),
             contactInfo: p.contactInfo || p.contacts?.[0]?.phone || "",
             legalStatus: p.legalStatus ? "Giấy chứng nhận QSDĐ" : "",
             location: {
                 ...p.location,
-                landParcel: p.location?.landParcel
-                    || `Tài sản tọa lạc tại ${address} (nay ${newAddress})`,
+                landParcel: p.location?.landParcel || `Tài sản tọa lạc tại ${address} (nay ${newAddress})`,
                 description: p.location?.description || `TSSS tiếp giáp đường ${p.street}`
             },
             currentUsageStatus: p.currentUsageStatus || (p.propertyType?.includes("Nhà") ? "Có CTXD" : "Đất trống"),
@@ -151,13 +190,11 @@ function AppraisalWorksheet() {
         )];
 
         for (const compId of selectedIds) {
-            const exists = allIndexedProperties.find(p => (p.id === compId || p._id === compId) && p.isComparison);
+            const exists = allIndexedProperties.find(p => p.id === compId && p.isComparison);
             if (!exists) {
                 const res = await axiosInstance.get(`/api/real-estates/${compId}`);
                 const data = {
                     ...res.data.data,
-                    id: res.data.data._id,
-                    _id: res.data.data._id,
                     isComparison: true
                 };
                 await indexedDBService.saveProperty(data);
@@ -188,7 +225,7 @@ function AppraisalWorksheet() {
         for (const appraisal of appraisals) {
             if (Array.isArray(appraisal.selectedComparisons)) {
                 selections[appraisal.id] = appraisal.selectedComparisons.map(sc => {
-                    return typeof sc === "object" ? (sc.id || sc._id) : sc;
+                    return typeof sc === "object" ? sc.id : sc;
                 }).filter(Boolean);
             } else {
                 selections[appraisal.id] = [];
@@ -271,7 +308,11 @@ function AppraisalWorksheet() {
 
     const handleConfirmAdd = useCallback(async () => {
         if (!province || !district || !ward || !street) {
-            alert("Vui lòng điền đầy đủ thông tin");
+            notify({
+                type: "error",
+                title: "Thiếu thông tin",
+                message: "Vui lòng điền đầy đủ thông tin",
+            });
             return;
         }
 
@@ -334,8 +375,6 @@ function AppraisalWorksheet() {
                 const res = await axiosInstance.get(`/api/real-estates/${comparisonId}`);
                 property = {
                     ...res.data.data,
-                    id: res.data.data._id,
-                    _id: res.data.data._id,
                     isComparison: true
                 };
             }
@@ -344,8 +383,8 @@ function AppraisalWorksheet() {
             await indexedDBService.saveProperty(normalized);
 
             setProperties(prev => {
-                const exists = prev.find(p => p.id === comparisonId || p._id === comparisonId);
-                return exists ? prev.map(p => (p.id === comparisonId || p._id === comparisonId) ? normalized : p) : [...prev, normalized];
+                const exists = prev.find(p => p.id === comparisonId);
+                return exists ? prev.map(p => (p.id === comparisonId) ? normalized : p) : [...prev, normalized];
             });
         }
 
@@ -378,7 +417,7 @@ function AppraisalWorksheet() {
     const currentComparisonsData = useMemo(() => {
         if (!currentTab?.appraisalId) return [];
         const selectedIds = selectedComparisons[currentTab.appraisalId] || [];
-        return selectedIds.map(id => comparisonsData.find(c => (c.id === id || c._id === id))).filter(Boolean);
+        return selectedIds.map(id => comparisonsData.find(c => c.id === id)).filter(Boolean);
     }, [currentTab, selectedComparisons, comparisonsData]);
 
     const exportToExcel = useCallback(async () => {
@@ -394,7 +433,6 @@ function AppraisalWorksheet() {
         const allIndexedProperties = await indexedDBService.getAllProperties();
         const assets = appraisalPropertiesData.map(asset => ({
             id: asset.id,
-            _id: asset._id,
             name: asset.name || "Chưa xác định",
             area: asset.area,
             businessAdvantage: asset.businessAdvantage,
@@ -420,10 +458,9 @@ function AppraisalWorksheet() {
             },
             province: asset.province,
             selectedComparisons: (selectedComparisons[asset.id] || []).map(compId => {
-                const comp = allIndexedProperties.find(p => p.id === compId || p._id === compId);
+                const comp = allIndexedProperties.find(p => p.id === compId);
                 return {
                     id: comp?.id,
-                    _id: comp?._id,
                     areaRate: comp?.areaRate,
                     businessRate: comp?.businessRate,
                     environmentRate: comp?.environmentRate,
@@ -489,55 +526,110 @@ function AppraisalWorksheet() {
     }, [id, appraisalPropertiesData, selectedComparisons]);
 
     const handleReload = useCallback(async () => {
+        await indexedDBService.deletePropertiesByAppraisalId(id);
+        await indexedDBService.deleteConstructionWorksByAppraisalId(id);
+
         const response = await axiosInstance.get(`/api/appraisals/${id}`);
         const appraisalData = response.data.data;
         const assets = appraisalData.assets || [];
         const constructions = appraisalData.constructions || [];
-        if (assets.length === 0) {
-            await indexedDBService.deletePropertiesByAppraisalId(id);
-        }
-        if (constructions.length === 0) {
-            await indexedDBService.deleteConstructionWorksByAppraisalId(id);
-        }
+
         const processedAssets = await Promise.all(assets.map(async (asset) => {
-            const assetId = asset.id || asset._id;
-            const selectedComparisonIds = (asset.selectedComparisons || []).map(comp => comp.id || comp._id).filter(Boolean);
-            const apiAssetData = { ...asset, id: assetId, _id: assetId, appraisalId: id, isComparison: false, selectedComparisons: selectedComparisonIds };
-            const existingAsset = await indexedDBService.getPropertyById(assetId);
-            let mergedAsset = existingAsset ? { ...existingAsset, ...apiAssetData } : apiAssetData;
-            await indexedDBService.saveProperty(mergedAsset);
-            return { asset: mergedAsset, comparisonIds: selectedComparisonIds };
+            const assetId = asset.id;
+            const selectedComparisonIds = (asset.selectedComparisons || [])
+                .map(comp => {
+                    const realEstateId = comp.realEstateId;
+                    if (typeof realEstateId === 'string') {
+                        return realEstateId;
+                    } else if (realEstateId?.id) {
+                        return realEstateId.id;
+                    }
+                    return null;
+                })
+                .filter(Boolean);
+
+            const apiAssetData = {
+                ...asset,
+                id: assetId,
+                appraisalId: id,
+                isComparison: false,
+                selectedComparisons: selectedComparisonIds
+            };
+
+            await indexedDBService.saveProperty(apiAssetData);
+            return { asset: apiAssetData, comparisonIds: selectedComparisonIds };
         }));
 
         const processedConstructions = await Promise.all(constructions.map(async (construction) => {
-            const constructionId = construction.id || construction._id;
-            const apiConstructionData = { ...construction, id: constructionId, _id: constructionId, appraisalId: id };
-            const existingConstruction = await indexedDBService.getConstructionWorkById(constructionId);
-            const mergedConstruction = existingConstruction ? { ...existingConstruction, ...apiConstructionData } : apiConstructionData;
-            await indexedDBService.saveConstructionWork(mergedConstruction);
-            return mergedConstruction;
+            const constructionId = construction.id;
+            const apiConstructionData = { ...construction, id: constructionId, appraisalId: id };
+
+            await indexedDBService.saveConstructionWork(apiConstructionData);
+            return apiConstructionData;
         }));
 
         for (const { asset, comparisonIds } of processedAssets) {
-            const apiAsset = assets.find(a => (a.id || a._id) === asset.id);
+            const apiAsset = assets.find(a => a.id === asset.id);
             const apiComparisons = apiAsset?.selectedComparisons || [];
 
             for (const compId of comparisonIds) {
-                const comparisonExtraData = apiComparisons.find(comp => (comp.id || comp._id) === compId);
-                const compRes = await axiosInstance.get(`/api/real-estates/${compId}`);
-                const compData = compRes.data.data;
-                const mergedCompData = { ...compData, id: compData._id || compId, _id: compData._id || compId, isComparison: true, ...(comparisonExtraData || {}) };
-                const existingComp = await indexedDBService.getPropertyById(compId);
-                const finalCompData = existingComp ? { ...existingComp, ...mergedCompData } : mergedCompData;
-                await indexedDBService.saveProperty(finalCompData);
+                const comparisonExtraData = apiComparisons.find(comp => {
+                    const realEstateId = comp.realEstateId;
+                    if (typeof realEstateId === 'string') {
+                        return realEstateId === compId;
+                    } else if (realEstateId?.id) {
+                        return realEstateId.id === compId;
+                    }
+                    return false;
+                });
+
+                let existingComp = await indexedDBService.getPropertyById(compId);
+
+                if (!existingComp) {
+                    const compRes = await axiosInstance.get(`/api/real-estates/${compId}`);
+                    const compData = compRes.data.data;
+
+                    const mergedCompData = {
+                        ...compData,
+                        id: compId,
+                        isComparison: true,
+                        areaRate: comparisonExtraData?.areaRate,
+                        businessRate: comparisonExtraData?.businessRate,
+                        environmentRate: comparisonExtraData?.environmentRate,
+                        adjustedLandUnitPrice: comparisonExtraData?.adjustedLandUnitPrice,
+                        locationRate: comparisonExtraData?.locationRate,
+                        shapeRate: comparisonExtraData?.shapeRate,
+                        sizeRate: comparisonExtraData?.sizeRate,
+                        guidedPrice: comparisonExtraData?.guidedPrice,
+                    };
+                    await indexedDBService.saveProperty(mergedCompData);
+                } else {
+                    const updatedComp = {
+                        ...existingComp,
+                        areaRate: comparisonExtraData?.areaRate ?? existingComp.areaRate,
+                        businessRate: comparisonExtraData?.businessRate ?? existingComp.businessRate,
+                        environmentRate: comparisonExtraData?.environmentRate ?? existingComp.environmentRate,
+                        adjustedLandUnitPrice: comparisonExtraData?.adjustedLandUnitPrice ?? existingComp.adjustedLandUnitPrice,
+                        locationRate: comparisonExtraData?.locationRate ?? existingComp.locationRate,
+                        shapeRate: comparisonExtraData?.shapeRate ?? existingComp.shapeRate,
+                        sizeRate: comparisonExtraData?.sizeRate ?? existingComp.sizeRate,
+                        guidedPrice: comparisonExtraData?.guidedPrice ?? existingComp.guidedPrice,
+                    };
+                    await indexedDBService.saveProperty(updatedComp);
+                }
             }
         }
+
         const updatedAssets = processedAssets.map(item => item.asset);
+        setAppraisalProperties(updatedAssets);
         setAppraisalPropertiesData(updatedAssets);
         setConstructionWorks(processedConstructions);
+
         const allComparisons = await indexedDBService.getAllProperties();
         const comparisonProperties = allComparisons.filter(p => p.isComparison);
         setComparisonsData(comparisonProperties);
+        setProperties(comparisonProperties);
+
         const selections = {};
         for (const asset of updatedAssets) {
             if (Array.isArray(asset.selectedComparisons)) {
@@ -547,8 +639,45 @@ function AppraisalWorksheet() {
             }
         }
         setSelectedComparisons(selections);
+
+        const newTabs = [];
+        updatedAssets.forEach((appraisal, index) => {
+            newTabs.push({
+                id: `basic-${appraisal.id}`,
+                label: `Thửa ${index + 1} - Thông tin cơ bản`,
+                type: "basic",
+                appraisalId: appraisal.id
+            });
+            newTabs.push({
+                id: `adjustment-${appraisal.id}`,
+                label: `Thửa ${index + 1} - Điều chỉnh`,
+                type: "adjustment",
+                appraisalId: appraisal.id
+            });
+        });
+
+        if (updatedAssets.length > 0) {
+            newTabs.push({
+                id: "total",
+                label: "Tổng cộng",
+                type: "total"
+            });
+        }
+
+        setTabs(newTabs);
+
+        if (!newTabs.find(t => t.id === activeTab)) {
+            setActiveTab(newTabs.length > 0 ? newTabs[0].id : "");
+        }
+
+        notify({
+            type: "success",
+            title: "Tải lại thành công",
+            message: "Dữ liệu đã được đồng bộ từ hệ thống",
+        });
+
         return updatedAssets;
-    }, [id, setAppraisalProperties, setConstructionWorks, setProperties, setSelectedComparisons]);
+    }, [id, activeTab, setAppraisalPropertiesData, setConstructionWorks, setComparisonsData]);
 
     const selectedProvinceData = useMemo(() => (
         provinces.find(p => p.name === province)

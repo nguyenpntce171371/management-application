@@ -1,7 +1,7 @@
-const DB_NAME = 'PropertyAppraisalDB';
-const DB_VERSION = 2;
-const STORE_NAME = 'appraisalProperties';
-const CW_STORE = 'constructionWorks';
+const DB_NAME = "PropertyAppraisalDB";
+const DB_VERSION = 3;
+const STORE_NAME = "appraisalProperties";
+const CW_STORE = "constructionWorks";
 
 class IndexedDBService {
     constructor() {
@@ -23,14 +23,14 @@ class IndexedDBService {
                 const db = event.target.result;
 
                 if (!db.objectStoreNames.contains(STORE_NAME)) {
-                    const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-                    objectStore.createIndex('createdAt', 'createdAt', { unique: false });
+                    const objectStore = db.createObjectStore(STORE_NAME, { keyPath: "id" });
+                    objectStore.createIndex("createdAt", "createdAt", { unique: false });
                 }
 
                 if (!db.objectStoreNames.contains(CW_STORE)) {
-                    const cwStore = db.createObjectStore(CW_STORE, { keyPath: 'id' });
-                    cwStore.createIndex('createdAt', 'createdAt', { unique: false });
-                    cwStore.createIndex('appraisalId', 'appraisalId', { unique: false });
+                    const cwStore = db.createObjectStore(CW_STORE, { keyPath: "id" });
+                    cwStore.createIndex("createdAt", "createdAt", { unique: false });
+                    cwStore.createIndex("appraisalId", "appraisalId", { unique: false });
                 }
             };
         });
@@ -40,7 +40,7 @@ class IndexedDBService {
         if (!this.db) await this.init();
 
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction([STORE_NAME], 'readwrite');
+            const tx = this.db.transaction([STORE_NAME], "readwrite");
             const store = tx.objectStore(STORE_NAME);
 
             property.updatedAt = new Date().toISOString();
@@ -56,7 +56,7 @@ class IndexedDBService {
         if (!this.db) await this.init();
 
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction([STORE_NAME], 'readonly');
+            const tx = this.db.transaction([STORE_NAME], "readonly");
             const store = tx.objectStore(STORE_NAME);
             const req = store.getAll();
 
@@ -69,7 +69,7 @@ class IndexedDBService {
         if (!this.db) await this.init();
 
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction([STORE_NAME], 'readonly');
+            const tx = this.db.transaction([STORE_NAME], "readonly");
             const store = tx.objectStore(STORE_NAME);
             const req = store.get(id);
 
@@ -82,7 +82,7 @@ class IndexedDBService {
         if (!this.db) await this.init();
 
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction([STORE_NAME], 'readwrite');
+            const tx = this.db.transaction([STORE_NAME], "readwrite");
             const store = tx.objectStore(STORE_NAME);
             const req = store.delete(id);
 
@@ -95,7 +95,7 @@ class IndexedDBService {
         if (!this.db) await this.init();
 
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction([STORE_NAME], 'readwrite');
+            const tx = this.db.transaction([STORE_NAME], "readwrite");
             const store = tx.objectStore(STORE_NAME);
             const req = store.clear();
 
@@ -110,13 +110,14 @@ class IndexedDBService {
         return new Promise((resolve, reject) => {
             const tx = this.db.transaction([STORE_NAME], 'readwrite');
             const store = tx.objectStore(STORE_NAME);
-            const index = store.index('appraisalId');
-            const req = index.openCursor(IDBKeyRange.only(appraisalId));
+            const req = store.openCursor();
 
             req.onsuccess = (event) => {
                 const cursor = event.target.result;
                 if (cursor) {
-                    cursor.delete();
+                    if (cursor.value.appraisalId === appraisalId && !cursor.value.isComparison) {
+                        cursor.delete();
+                    }
                     cursor.continue();
                 } else {
                     resolve();
@@ -131,7 +132,7 @@ class IndexedDBService {
         if (!this.db) await this.init();
 
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction([CW_STORE], 'readwrite');
+            const tx = this.db.transaction([CW_STORE], "readwrite");
             const store = tx.objectStore(CW_STORE);
 
             work.updatedAt = new Date().toISOString();
@@ -147,7 +148,7 @@ class IndexedDBService {
         if (!this.db) await this.init();
 
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction([CW_STORE], 'readonly');
+            const tx = this.db.transaction([CW_STORE], "readonly");
             const store = tx.objectStore(CW_STORE);
             const req = store.getAll();
 
@@ -160,7 +161,7 @@ class IndexedDBService {
         if (!this.db) await this.init();
 
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction([CW_STORE], 'readonly');
+            const tx = this.db.transaction([CW_STORE], "readonly");
             const store = tx.objectStore(CW_STORE);
             const req = store.get(id);
 
@@ -173,7 +174,7 @@ class IndexedDBService {
         if (!this.db) await this.init();
 
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction([CW_STORE], 'readwrite');
+            const tx = this.db.transaction([CW_STORE], "readwrite");
             const store = tx.objectStore(CW_STORE);
             const req = store.delete(id);
 
@@ -186,7 +187,7 @@ class IndexedDBService {
         if (!this.db) await this.init();
 
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction([CW_STORE], 'readwrite');
+            const tx = this.db.transaction([CW_STORE], "readwrite");
             const store = tx.objectStore(CW_STORE);
             const req = store.clear();
 
@@ -199,9 +200,9 @@ class IndexedDBService {
         if (!this.db) await this.init();
 
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction([CW_STORE], 'readonly');
+            const tx = this.db.transaction([CW_STORE], "readonly");
             const store = tx.objectStore(CW_STORE);
-            const index = store.index('appraisalId');
+            const index = store.index("appraisalId");
 
             const req = index.getAll(appraisalId);
             req.onsuccess = () => resolve(req.result || []);
@@ -213,9 +214,9 @@ class IndexedDBService {
         if (!this.db) await this.init();
 
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction([CW_STORE], 'readwrite');
+            const tx = this.db.transaction([CW_STORE], "readwrite");
             const store = tx.objectStore(CW_STORE);
-            const index = store.index('appraisalId');
+            const index = store.index("appraisalId");
             const req = index.openCursor(IDBKeyRange.only(appraisalId));
 
             req.onsuccess = (event) => {

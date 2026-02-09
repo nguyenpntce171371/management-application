@@ -2,33 +2,37 @@ import mongoose from "mongoose";
 import { normalize } from "../utils/string.js";
 
 const logSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
-    email: { type: String, index: true },
-    role: { type: String },
-    userAgent: { type: String },
-    ipAddress: { type: String, index: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    email: String,
+    role: String,
+    userAgent: String,
+    ipAddress: { type: String },
     method: { type: String, enum: ["GET", "POST", "PUT", "DELETE", "PATCH"], required: true },
-    endpoint: { type: String, index: true },
+    endpoint: { type: String },
     statusCode: { type: Number, min: 100, max: 599 },
-    referrer: { type: String },
-    message: { type: String },
-    createdAt: { type: Date, default: Date.now },
-});
+    referrer: String,
+    message: String,
+    searchText: String
+}, { timestamps: true });
 
-logSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 30 });
-logSchema.index({
-    email: "text",
-    role: "text",
-    userAgent: "text",
-    ipAddress: "text",
-    endpoint: "text",
-    messageSearch: "text"
-});
+logSchema.index({ method: 1, statusCode: 1, deletedAt: 1, createdAt: -1, _id: -1 });
+logSchema.index({ statusCode: 1, deletedAt: 1, createdAt: -1, _id: -1 });
+logSchema.index({ deletedAt: 1, createdAt: -1, _id: -1 });
+logSchema.index({ searchText: 1, createdAt: -1, _id: -1 });
 
 logSchema.pre("save", function (next) {
-    if (this.isModified("message") || this.isNew) {
-        this.messageSearch = normalize(this.message || "");
-    }
+    if (!this.isNew && !this.isModified()) return next();
+
+    const parts = [
+        this.email,
+        this.userAgent,
+        this.ipAddress,
+        this.endpoint,
+        this.message
+    ];
+
+    this.searchText = normalize(parts.filter(Boolean).join(" "));
+
     next();
 });
 

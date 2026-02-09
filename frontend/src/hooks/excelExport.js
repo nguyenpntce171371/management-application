@@ -4,7 +4,7 @@ export const exportPropertyComparisonToExcel = async (appraisalProperties, compa
     const workbook = new ExcelJS.Workbook();
     const appraisalLandRowMaps = {};
     appraisalProperties.forEach(appraisal => {
-        const selectedComparisons = comparisonsData.filter(comp => appraisal.selectedComparisons?.includes(comp.id || comp._id));
+        const selectedComparisons = comparisonsData.filter(comp => appraisal.selectedComparisons?.includes(comp.id));
         const { estimatedPriceRow, lastRow, rowReferences, landRowMap } = createBasicSheet(workbook, appraisal, selectedComparisons, getLandByType);
         appraisalLandRowMaps[appraisal.id] = landRowMap;
         createAdjustmentSheet(workbook, appraisal, selectedComparisons, estimatedPriceRow, lastRow, rowReferences);

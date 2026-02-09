@@ -7,7 +7,7 @@ BLUE="\033[0;34m"
 NC="\033[0m"
 
 if [ -f .env ]; then
-    export $(grep -v '^#' .env | grep -v '^[[:space:]]*$' | xargs)
+    export $(grep -v "^#" .env | grep -v "^[[:space:]]*$" | xargs)
 fi
 
 APP_MODE=${APP_MODE:-development}
@@ -123,7 +123,7 @@ print_step "Removing Old Project Images"
 OLD_IMAGES=$(sudo docker images | grep "managementapplication" | wc -l)
 if [ $OLD_IMAGES -gt 0 ]; then
     print_info "Found $OLD_IMAGES old images"
-    sudo docker images | grep "managementapplication" | awk '{print $3}' | xargs -r sudo docker rmi -f || true
+    sudo docker images | grep "managementapplication" | awk "{print $3}" | xargs -r sudo docker rmi -f || true
     print_success "Old images removed"
 else
     print_info "No old images to remove"

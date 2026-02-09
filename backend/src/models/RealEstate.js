@@ -1,41 +1,31 @@
 import mongoose from "mongoose";
 import { normalize } from "../utils/string.js";
+import { LandSchema } from "./Land.js";
 
-const LandSchema = new mongoose.Schema({
-    landType: String,
-    streetDescription: String,
-    location: String,
-    landArea: String,
-    ontLandPrice: String
-}, { _id: false });
-
-const RealEstateSchema = new mongoose.Schema({
-    propertyType: { type: String, index: true },
-    length: String,
-    width: String,
-    area: String,
-    usableArea: String,
+const realEstateSchema = new mongoose.Schema({
+    propertyType: String,
+    length: Number,
+    width: Number,
+    area: Number,
+    usableArea: Number,
     floors: Number,
     bedrooms: Number,
     bathrooms: Number,
     direction: String,
-    price: { type: String, index: true },
+    price: Number,
     legalStatus: String,
-    address: { type: String, index: true },
-    province: { type: String, index: true },
-    district: { type: String, index: true },
-    ward: { type: String, index: true },
-    street: { type: String, index: true },
-    propertyTypeSearch: { type: String, index: true },
-    addressSearch: { type: String, index: true },
-    provinceSearch: { type: String, index: true },
-    districtSearch: { type: String, index: true },
-    wardSearch: { type: String, index: true },
-    streetSearch: { type: String, index: true },
-    addressNote: { type: String, index: true },
-    description: { type: String, index: true },
+    address: String,
+    province: String,
+    provinceSearch: String,
+    district: String,
+    districtSearch: String,
+    ward: String,
+    wardSearch: String,
+    street: String,
+    streetSearch: String,
+    addressNote: String,
+    description: String,
     images: [String],
-    imageUrls: [String],
     contacts: [{
         name: String,
         phone: String,
@@ -49,8 +39,7 @@ const RealEstateSchema = new mongoose.Schema({
         landParcel: String
     },
     postedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    status: { type: String, default: "Chờ duyệt" },
-    listedAt: { type: Date, default: Date.now },
+    status: { type: String, enum: ["Chờ duyệt", "Đang bán", "Đã bán"], default: "Chờ duyệt" },
     adjustedLandUnitPrice: Number,
     businessAdvantage: String,
     constructionUnitPrice: Number,
@@ -68,91 +57,147 @@ const RealEstateSchema = new mongoose.Schema({
     source: String,
     transactionTime: String,
     convertibleAreaLimit: String,
-    deletedAt: { type: Date, default: null, index: true },
+    searchText: String,
+    deletedAt: { type: Date, default: null },
     deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null }
 }, { timestamps: true });
 
-RealEstateSchema.index({
-    propertyTypeSearch: "text",
-    addressSearch: "text",
-    streetSearch: "text",
-    provinceSearch: "text",
-    districtSearch: "text",
-    wardSearch: "text"
-});
+realEstateSchema.index({ status: 1, deletedAt: 1, createdAt: -1, _id: -1 });
+realEstateSchema.index({ deletedAt: 1, createdAt: -1, _id: -1 });
+realEstateSchema.index({ searchText: "text" });
 
-RealEstateSchema.pre("save", function (next) {
+realEstateSchema.pre("save", function (next) {
+    let searchText = "";
+
     if (this.propertyType) {
-        this.propertyTypeSearch = normalize(this.propertyType);
+        searchText += normalize(this.propertyType) + " ";
     }
-    if (this.address) {
-        this.addressSearch = normalize(this.address);
-    }
-    if (this.street) {
-        this.streetSearch = normalize(this.street);
-    }
-    if (this.ward) {
-        this.wardSearch = normalize(this.ward);
-    }
-    if (this.district) {
-        this.districtSearch = normalize(this.district);
-    }
+
     if (this.province) {
         this.provinceSearch = normalize(this.province);
+        searchText += this.provinceSearch + " ";
     }
+
+    if (this.district) {
+        this.districtSearch = normalize(this.district);
+        searchText += this.districtSearch + " ";
+    }
+
+    if (this.ward) {
+        this.wardSearch = normalize(this.ward);
+        searchText += this.wardSearch + " ";
+    }
+
+    if (this.street) {
+        this.streetSearch = normalize(this.street);
+        searchText += this.streetSearch + " ";
+    }
+
+    this.address = `${this.street}, ${this.ward}, ${this.district}, ${this.province}`;
+
+    this.searchText = searchText.trim();
     next();
 });
 
-RealEstateSchema.pre("findOneAndUpdate", function (next) {
+realEstateSchema.pre("findOneAndUpdate", function (next) {
     const update = this.getUpdate();
     const fields = update.$set || update;
+
+    if (!(fields.propertyType || fields.street || fields.ward || fields.district || fields.province)) return next();
+
+    let searchText = "";
+
     if (fields.propertyType) {
-        fields.propertyTypeSearch = normalize(fields.propertyType);
+        searchText += normalize(fields.propertyType) + " ";
     }
-    if (fields.address) {
-        fields.addressSearch = normalize(fields.address);
-    }
-    if (fields.street) {
-        fields.streetSearch = normalize(fields.street);
-    }
-    if (fields.ward) {
-        fields.wardSearch = normalize(fields.ward);
-    }
-    if (fields.district) {
-        fields.districtSearch = normalize(fields.district);
-    }
+
     if (fields.province) {
         fields.provinceSearch = normalize(fields.province);
+        searchText += fields.provinceSearch + " ";
     }
+
+    if (fields.district) {
+        fields.districtSearch = normalize(fields.district);
+        searchText += fields.districtSearch + " ";
+    }
+
+    if (fields.ward) {
+        fields.wardSearch = normalize(fields.ward);
+        searchText += fields.wardSearch + " ";
+    }
+
+    if (fields.street) {
+        fields.streetSearch = normalize(fields.street);
+        searchText += fields.streetSearch + " ";
+    }
+
+    if (fields.street || fields.ward || fields.district || fields.province) {
+        fields.address = `${fields.street || ""}, ${fields.ward || ""}, ${fields.district || ""}, ${fields.province || ""}`;
+    }
+
+    fields.searchText = searchText.trim();
+
     if (update.$set) {
-        this.setUpdate({ ...update, $set: fields });
+        update.$set = fields;
     } else {
         this.setUpdate(fields);
     }
+
     next();
 });
 
-RealEstateSchema.pre(/^find/, function (next) {
+realEstateSchema.pre("updateOne", function (next) {
+    const update = this.getUpdate();
+    const fields = update.$set || update;
+
+    if (!(fields.propertyType || fields.street || fields.ward || fields.district || fields.province)) return next();
+
+    let searchText = "";
+
+    if (fields.propertyType) {
+        searchText += normalize(fields.propertyType) + " ";
+    }
+
+    if (fields.province) {
+        fields.provinceSearch = normalize(fields.province);
+        searchText += fields.provinceSearch + " ";
+    }
+
+    if (fields.district) {
+        fields.districtSearch = normalize(fields.district);
+        searchText += fields.districtSearch + " ";
+    }
+
+    if (fields.ward) {
+        fields.wardSearch = normalize(fields.ward);
+        searchText += fields.wardSearch + " ";
+    }
+
+    if (fields.street) {
+        fields.streetSearch = normalize(fields.street);
+        searchText += fields.streetSearch + " ";
+    }
+
+    if (fields.street || fields.ward || fields.district || fields.province) {
+        fields.address = `${fields.street || ""}, ${fields.ward || ""}, ${fields.district || ""}, ${fields.province || ""}`;
+    }
+
+    fields.searchText = searchText.trim();
+
+    if (update.$set) {
+        update.$set = fields;
+    } else {
+        this.setUpdate(fields);
+    }
+
+    next();
+});
+
+realEstateSchema.pre(/^find/, function (next) {
     if (!this.getQuery().hasOwnProperty("deletedAt")) {
         this.where({ deletedAt: null });
     }
     next();
 });
 
-RealEstateSchema.methods.softDelete = async function (deletedBy) {
-    this.deletedAt = new Date();
-    this.deletedBy = deletedBy;
-    return await this.save();
-};
-
-RealEstateSchema.methods.restore = async function () {
-    this.deletedAt = null;
-    this.deletedBy = null;
-    return await this.save();
-};
-
-RealEstateSchema.statics.findDeleted = function (conditions = {}) {
-    return this.find({ ...conditions, deletedAt: { $ne: null } });
-};
-
-export default mongoose.model("RealEstate", RealEstateSchema);
+export default mongoose.model("RealEstate", realEstateSchema);

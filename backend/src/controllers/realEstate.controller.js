@@ -1,109 +1,173 @@
 import RealEstate from "../models/RealEstate.js";
 import { io } from "../index.js";
-import NodeCache from "node-cache";
-import { uploadMultipleImages, deleteMultipleImages, generatePresignedUrl } from "../services/storage.service.js";
+import { uploadMultipleImages } from "../services/storage.service.js";
 import { normalize, removePrefix } from "../utils/string.js";
-
-const imageUrlCache = new NodeCache({
-    stdTTL: 1800,
-    checkperiod: 600,
-    useClones: false,
-    maxKeys: 10000
-});
-
-const getCachedImageUrl = async (imagePath) => {
-    if (!(imagePath && !imagePath.startsWith("http"))) return imagePath;
-
-    const cachedUrl = imageUrlCache.get(imagePath);
-    if (cachedUrl) return cachedUrl;
-
-    try {
-        const url = await generatePresignedUrl(imagePath, 30);
-        imageUrlCache.set(imagePath, url);
-        return url;
-    } catch (error) {
-        console.error(`Failed to generate URL for ${imagePath}:`, error);
-        return null;
-    }
-};
+import { getCachedImageUrl } from "../utils/cachedImage.js";
+import { executeCursorPaginatedQuery, parseSort } from "../utils/query.js";
+import { transformIds } from "../utils/normalizeMongoIds.js";
 
 export const getRealEstate = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 12;
-        const skip = (page - 1) * limit;
-        const search = req.query.search || "";
-        const type = req.query.type || "all";
-        const location = req.query.location || "all";
-        const status = req.query.status || "all";
-        const sortBy = req.query.sortBy || "listedAt";
-        const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+        const baseQuery = {};
 
-        const query = {};
-
-        if (status !== "all") {
-            query.status = status;
+        if (req.query.status && req.query.status !== "all") {
+            baseQuery.status = req.query.status;
         }
 
-        if (type !== "all") {
-            query.propertyTypeSearch = normalize(type);
+        const searchText = normalize(req.query.search);
+        if (searchText) {
+            baseQuery.$text = { $search: searchText };
         }
 
-        if (location !== "all") {
-            const normalizedLocation = normalize(location);
-            query.$or = [
-                { addressSearch: { $regex: normalizedLocation, $options: "i" } },
-                { provinceSearch: { $regex: normalizedLocation, $options: "i" } },
-                { districtSearch: { $regex: normalizedLocation, $options: "i" } }
-            ];
+        const { sortBy, sortOrder } = parseSort(req.query, ["price", "createdAt"]);
+        const options = {
+            select: "propertyType price address images status",
+            sortBy,
+            sortOrder,
+            cursor: req.query.cursor,
+            direction: req.query.direction,
+            limit: req.query.limit,
+            lean: true
         }
 
-        if (search) {
-            const normalizedSearch = normalize(search);
-            query.$or = [
-                { propertyTypeSearch: { $regex: normalizedSearch, $options: "i" } },
-                { addressSearch: { $regex: normalizedSearch, $options: "i" } }
-            ];
-        }
-
-        const [total, data] = await Promise.all([
-            RealEstate.countDocuments(query),
-            RealEstate.find(query)
-                .select("propertyType price address province district ward street images listedAt status bedrooms bathrooms area")
-                .sort({ [sortBy]: sortOrder, _id: sortOrder })
-                .skip(skip)
-                .limit(limit)
-                .lean()
-        ]);
+        const { data, hasMore, hasPrev, nextCursor, prevCursor } = await executeCursorPaginatedQuery(RealEstate, baseQuery, options);
 
         const processedData = await Promise.all(
-            data.map(async (item) => {
-                if (item.images?.length) {
-                    const processedImages = await Promise.all(
-                        item.images.map(img =>
-                            img && !img.startsWith("http") ? getCachedImageUrl(img) : Promise.resolve(img)
-                        )
-                    );
-                    return {
-                        ...item,
-                        images: processedImages.filter(Boolean)
-                    };
-                }
-                return item;
-            })
+            data.map(async ({ images, ...rest }) => ({
+                ...rest,
+                ...(images?.length && {
+                    images: (await Promise.all(images.map(img => img && !img.startsWith("http") ? getCachedImageUrl(img) : img))).filter(Boolean)
+                })
+            }))
         );
 
         return res.status(200).json({
             success: true,
             code: "REAL_ESTATE_LIST",
             pagination: {
-                page,
-                limit,
-                total,
-                totalPages: Math.ceil(total / limit),
-                hasMore: page * limit < total
+                hasMore,
+                hasPrev,
+                nextCursor,
+                prevCursor
             },
-            data: processedData
+            data: transformIds(processedData)
+        });
+    } catch (error) {
+        console.error("Get Real Estate Error:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+        });
+    }
+};
+
+export const getNearbyRealEstate = async (req, res) => {
+    try {
+        const { street, ward, district, province } = req.query;
+
+        if (!street || !ward || !district || !province) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_PARAMS",
+                message: "Thiếu tham số địa chỉ cần thiết"
+            });
+        }
+
+        const baseQuery = {};
+
+        baseQuery.provinceSearch = normalize(province);
+        baseQuery.districtSearch = normalize(district);
+        baseQuery.wardSearch = normalize(ward);
+        const streetSearch = normalize(street);
+
+        const options = {
+            select: "propertyType name address area usableArea price images location",
+            sortBy: "priority",
+            sortOrder: -1,
+            cursor: req.query.cursor,
+            direction: req.query.direction,
+            limit: req.query.limit,
+            lean: true,
+
+            extraStages: [
+                {
+                    $addFields: {
+                        priority: {
+                            $cond: [
+                                { $eq: ["$streetSearch", streetSearch] },
+                                2,
+                                1
+                            ]
+                        }
+                    }
+                }
+            ]
+        };
+
+        const { data, hasMore, hasPrev, nextCursor, prevCursor } = await executeCursorPaginatedQuery(RealEstate, baseQuery, options);
+
+        return res.status(200).json({
+            success: true,
+            code: "NEARBY_REAL_ESTATE_LIST",
+            pagination: {
+                hasMore,
+                hasPrev,
+                nextCursor,
+                prevCursor
+            },
+            data: transformIds(data)
+        });
+    } catch (error) {
+        console.error("Get Nearby Real Estate Error:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+        });
+    }
+};
+
+export const getDeletedRealEstates = async (req, res) => {
+    try {
+        const baseQuery = { deletedAt: { $ne: null } };
+
+        if (req.query.status && req.query.status !== "all") {
+            baseQuery.status = req.query.status;
+        }
+
+        const searchText = normalize(req.query.search);
+        if (searchText) {
+            baseQuery.$text = { $search: searchText };
+        }
+
+        const { sortBy, sortOrder } = parseSort(req.query, ["price", "createdAt"]);
+        const options = {
+            select: "propertyType address price deletedAt",
+            sortBy,
+            sortOrder,
+            cursor: req.query.cursor,
+            direction: req.query.direction,
+            limit: req.query.limit,
+            populate: {
+                path: "deletedBy",
+                select: "fullName"
+            },
+            lean: true
+        }
+
+        const { data, hasMore, hasPrev, nextCursor, prevCursor } = await executeCursorPaginatedQuery(RealEstate, baseQuery, options);
+
+        return res.status(200).json({
+            success: true,
+            code: "DELETED_REAL_ESTATES_FETCHED",
+            pagination: {
+                hasMore,
+                hasPrev,
+                nextCursor,
+                prevCursor
+            },
+            data: transformIds(data)
         });
     } catch (error) {
         console.error("Get Real Estate Error:", error);
@@ -118,8 +182,16 @@ export const getRealEstate = async (req, res) => {
 export const getRealEstateById = async (req, res) => {
     try {
         const { id } = req.params;
-
         if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_REAL_ESTATE_ID",
+                message: "Thiếu Real Estate Id"
+            });
+        }
+
+        const item = await RealEstate.findById(id).lean();
+        if (!item) {
             return res.status(404).json({
                 success: false,
                 code: "REAL_ESTATE_NOT_FOUND",
@@ -127,24 +199,27 @@ export const getRealEstateById = async (req, res) => {
             });
         }
 
-        const item = await RealEstate.findById(id).lean();
-
-        const processedItem = { ...item };
-        if (item.images?.length) {
-            processedItem.images = await Promise.all(
-                item.images.map(img =>
-                    img && !img.startsWith("http") ? getCachedImageUrl(img) : Promise.resolve(img)
-                )
-            );
-        }
+        const processedItem = {
+            ...item,
+            ...(item.images?.length && {
+                images: await Promise.all(item.images.map(img => img && !img.startsWith("http") ? getCachedImageUrl(img) : img))
+            })
+        };
 
         return res.status(200).json({
             success: true,
             code: "REAL_ESTATE_FOUND",
-            data: processedItem,
+            data: transformIds(processedItem)
         });
     } catch (error) {
         console.error("Get Real Estate Error:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "REAL_ESTATE_NOT_FOUND",
+                message: "Không tìm thấy bất động sản",
+            });
+        }
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -158,27 +233,25 @@ export const deleteRealEstateById = async (req, res) => {
         const { id } = req.params;
         const currentUser = req.user;
 
-        const item = await RealEstate.findOne({ _id: id, deletedAt: null });
+        const filter = { _id: id, deletedAt: null };
+        if (currentUser.role === "User") {
+            filter.postedBy = currentUser.id;
+        }
 
-        if (!item) {
+        const result = await RealEstate.updateOne(
+            filter,
+            { $set: { deletedAt: new Date(), deletedBy: currentUser.id } }
+        );
+
+        if (!result.matchedCount) {
             return res.status(404).json({
                 success: false,
-                code: "REAL_ESTATE_NOT_FOUND",
-                message: "Không tìm thấy bất động sản",
+                code: "REAL_ESTATE_NOT_FOUND_OR_FORBIDDEN",
+                message: "Không tìm thấy bất động sản hoặc bạn không có quyền xóa",
             });
         }
 
-        if (currentUser.role === "User" && (String(item.postedBy) !== String(currentUser.id))) {
-            return res.status(403).json({
-                success: false,
-                code: "FORBIDDEN_IDOR",
-                message: "Không được phép xóa bất động sản không thuộc sở hữu của bạn",
-            });
-        }
-
-        await item.softDelete(currentUser.id);
-
-        io.to("User").emit("realEstateDeleted", { id });
+        io.to("User").emit("realEstateDeleted");
 
         return res.status(200).json({
             success: true,
@@ -186,55 +259,16 @@ export const deleteRealEstateById = async (req, res) => {
             message: "Xóa bất động sản thành công",
             data: { id },
         });
-
     } catch (error) {
         console.error("Delete Real Estate Error:", error);
-        return res.status(500).json({
-            success: false,
-            code: "SERVER_ERROR",
-            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
-        });
-    }
-};
-
-export const getDeletedRealEstates = async (req, res) => {
-    try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
-        const skip = (page - 1) * limit;
-        const currentUser = req.user;
-
-        let query = { deletedAt: { $ne: null } };
-
-        if (currentUser.role === "User") {
-            query.postedBy = currentUser.id;
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "REAL_ESTATE_NOT_FOUND",
+                message: "Không tìm thấy bất động sản",
+            });
         }
-
-        const deletedItems = await RealEstate.findDeleted()
-            .select("propertyType address province district price status images deletedAt deletedBy postedBy")
-            .populate("deletedBy", "fullName email")
-            .populate("postedBy", "fullName email")
-            .sort({ deletedAt: -1 })
-            .skip(skip)
-            .limit(limit);
-
-        const total = await RealEstate.countDocuments(query);
-
-        return res.status(200).json({
-            success: true,
-            code: "DELETED_REAL_ESTATES_FETCHED",
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages: Math.ceil(total / limit),
-                hasMore: page * limit < total,
-            },
-            data: deletedItems,
-        });
-    } catch (error) {
-        console.error("Error fetching deleted real estates:", error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
             message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
@@ -245,38 +279,52 @@ export const getDeletedRealEstates = async (req, res) => {
 export const restoreRealEstate = async (req, res) => {
     try {
         const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_APPRAISAL_ID",
+                message: "Thiếu Appraisal Id"
+            });
+        }
+
         const currentUser = req.user;
 
-        const item = await RealEstate.findOne({ _id: id, deletedAt: { $ne: null } });
+        const filter = {
+            _id: id,
+            deletedAt: { $ne: null },
+            ...(currentUser.role === "User" && { postedBy: currentUser.id })
+        };
 
-        if (!item) {
+        const result = await RealEstate.updateOne(
+            filter,
+            { $set: { deletedAt: null, deletedBy: null } }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({
+                success: false,
+                code: "REAL_ESTATE_NOT_FOUND_OR_FORBIDDEN",
+                message: "Không tìm thấy hoặc bạn không có quyền khôi phục bất động sản này",
+            });
+        }
+
+        io.to("User").emit("realEstateRestored");
+
+        return res.status(200).json({
+            success: true,
+            code: "REAL_ESTATE_RESTORED",
+            message: "Khôi phục bất động sản thành công",
+            data: { id }
+        });
+    } catch (error) {
+        console.error("Error restoring real estate:", error);
+        if (error.name === "CastError") {
             return res.status(404).json({
                 success: false,
                 code: "REAL_ESTATE_NOT_FOUND",
                 message: "Không tìm thấy bất động sản đã xóa",
             });
         }
-
-        if (currentUser.role === "User" && (String(item.postedBy) !== String(currentUser.id))) {
-            return res.status(403).json({
-                success: false,
-                code: "FORBIDDEN",
-                message: "Không được phép khôi phục bất động sản không thuộc sở hữu của bạn",
-            });
-        }
-
-        await item.restore();
-
-        io.to("User").emit("realEstateRestored", { id });
-
-        return res.status(200).json({
-            success: true,
-            code: "REAL_ESTATE_RESTORED",
-            message: "Khôi phục bất động sản thành công",
-            data: { id },
-        });
-    } catch (error) {
-        console.error("Error restoring real estate:", error);
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -288,10 +336,16 @@ export const restoreRealEstate = async (req, res) => {
 export const permanentDeleteRealEstate = async (req, res) => {
     try {
         const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_REAL_ESTATE_ID",
+                message: "Thiếu Real Estate Id"
+            });
+        }
 
-        const item = await RealEstate.findOne({ _id: id, deletedAt: { $ne: null } });
-
-        if (!item) {
+        const result = await RealEstate.deleteOne({ _id: id, deletedAt: { $ne: null } });
+        if (!result.deletedCount) {
             return res.status(404).json({
                 success: false,
                 code: "REAL_ESTATE_NOT_FOUND",
@@ -299,11 +353,7 @@ export const permanentDeleteRealEstate = async (req, res) => {
             });
         }
 
-        if (item.images?.length) {
-            await deleteMultipleImages(item.images);
-        }
-
-        await item.deleteOne();
+        io.to("Admin").emit("realEstatePermanentlyDeleted");
 
         return res.status(200).json({
             success: true,
@@ -313,6 +363,13 @@ export const permanentDeleteRealEstate = async (req, res) => {
         });
     } catch (error) {
         console.error("Error permanently deleting real estate:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "REAL_ESTATE_NOT_FOUND",
+                message: "Không tìm thấy bất động sản đã xóa",
+            });
+        }
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -356,7 +413,7 @@ export const createRealEstate = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "VALIDATION_ERROR",
-                message: processing.env.APP_MODE === "development" ? `Validation errors: ${validationErrors.join(", ")}` : "Các trường bắt buộc bị thiếu",
+                message: process.env.APP_MODE === "development" ? `Validation errors: ${validationErrors.join(", ")}` : "Các trường bắt buộc bị thiếu",
             });
         }
 
@@ -425,7 +482,7 @@ export const createRealEstate = async (req, res) => {
         }
 
         if (req.files?.length) {
-            objectNames = await uploadMultipleImages(req.files, "real-estate");
+            objectNames = await uploadMultipleImages(req.files, "real-estates");
         }
 
         const location = {
@@ -442,7 +499,7 @@ export const createRealEstate = async (req, res) => {
 
         const postedBy = req.user.id;
 
-        const newRealEstate = new RealEstate({
+        const item = await RealEstate.create({
             propertyType,
             price: price || "",
             length: lengthNum.toString(),
@@ -455,7 +512,6 @@ export const createRealEstate = async (req, res) => {
             district: removePrefix(district),
             ward: removePrefix(ward),
             street: removePrefix(street),
-            address: `${street}, ${ward}, ${district}, ${province}`,
             description: description || "",
             images: objectNames,
             contacts,
@@ -465,23 +521,20 @@ export const createRealEstate = async (req, res) => {
             listedAt: new Date()
         });
 
-        const created = await newRealEstate.save();
+        const processedItem = {
+            ...item,
+            ...(item.images?.length && {
+                images: await Promise.all(item.images.map(img => img && !img.startsWith("http") ? getCachedImageUrl(img) : img))
+            })
+        };
 
-        const createdObj = created.toObject();
-
-        let processedCreated = createdObj;
-        if (createdObj.images?.length) {
-            const processedImages = await Promise.all(createdObj.images.map(img => img && !img.startsWith("http") ? getCachedImageUrl(img) : Promise.resolve(img)));
-            processedCreated = { ...createdObj, images: processedImages.filter(Boolean) };
-        }
-
-        io.to("User").emit("realEstateCreated", processedCreated);
+        io.to("User").emit("realEstateCreated");
 
         return res.status(201).json({
             success: true,
             code: "REAL_ESTATE_CREATED",
             message: "Tạo bất động sản thành công",
-            data: processedCreated
+            data: transformIds(processedItem)
         });
     } catch (error) {
         console.error("Create Real Estate Error:", error);
@@ -496,16 +549,16 @@ export const createRealEstate = async (req, res) => {
 export const modifyRealEstateById = async (req, res) => {
     try {
         const { id } = req.params;
-        const currentUser = req.user;
-        const updateData = req.body;
-
         if (!id) {
             return res.status(400).json({
                 success: false,
-                code: "MISSING_ID",
-                message: "ID bất động sản là bắt buộc",
+                code: "MISSING_REAL_ESTATE_ID",
+                message: "Thiếu Real Estate Id"
             });
         }
+
+        const currentUser = req.user;
+        const updateData = req.body;
 
         const ALLOWED_STATUS = ["Chờ duyệt", "Đang bán", "Đã bán"];
         if (updateData.status !== undefined && !ALLOWED_STATUS.includes(updateData.status)) {
@@ -513,24 +566,6 @@ export const modifyRealEstateById = async (req, res) => {
                 success: false,
                 code: "INVALID_STATUS",
                 message: `Trạng thái phải là một trong các giá trị: ${ALLOWED_STATUS.join(", ")}`,
-            });
-        }
-
-        const item = await RealEstate.findById(id);
-
-        if (!item) {
-            return res.status(404).json({
-                success: false,
-                code: "REAL_ESTATE_NOT_FOUND",
-                message: "Không tìm thấy bất động sản",
-            });
-        }
-
-        if (currentUser.role === "User" && String(item.postedBy) !== String(currentUser.id)) {
-            return res.status(403).json({
-                success: false,
-                code: "FORBIDDEN_IDOR",
-                message: "Không được phép cập nhật bất động sản không thuộc sở hữu của bạn",
             });
         }
 
@@ -543,30 +578,49 @@ export const modifyRealEstateById = async (req, res) => {
             }
         }
 
-        const updated = await RealEstate.findByIdAndUpdate(
-            id,
-            { $set: sanitizedData },
-            { new: true }
-        );
-
-        const updatedObj = updated.toObject();
-
-        let processedUpdated = updatedObj;
-        if (updatedObj.images?.length) {
-            const processedImages = await Promise.all(updatedObj.images.map(img => img && !img.startsWith("http") ? getCachedImageUrl(img) : Promise.resolve(img)));
-            processedUpdated = { ...updatedObj, images: processedImages.filter(Boolean) };
+        const filter = { _id: id };
+        if (currentUser.role === "User") {
+            filter.postedBy = currentUser.id;
         }
 
-        io.to("User").emit("realEstateUpdated", processedUpdated);
+        const item = await RealEstate.findOneAndUpdate(
+            filter,
+            { $set: sanitizedData },
+            { new: true }
+        ).lean();
+
+        if (!item) {
+            return res.status(404).json({
+                success: false,
+                code: "REAL_ESTATE_NOT_FOUND_OR_FORBIDDEN",
+                message: "Không tìm thấy hoặc không có quyền cập nhật",
+            });
+        }
+
+        const processedItem = {
+            ...item,
+            ...(item.images?.length && {
+                images: await Promise.all(item.images.map(img => img && !img.startsWith("http") ? getCachedImageUrl(img) : img))
+            })
+        };
+
+        io.to("User").emit("realEstateUpdated");
 
         return res.status(200).json({
             success: true,
             code: "REAL_ESTATE_UPDATED",
             message: "Cập nhật bất động sản thành công",
-            data: processedUpdated,
+            data: transformIds(processedItem),
         });
     } catch (error) {
         console.error(error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "REAL_ESTATE_NOT_FOUND",
+                message: "Không tìm thấy bất động sản",
+            });
+        }
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -579,192 +633,16 @@ export const getRealEstateStats = async (req, res) => {
     try {
         const totalRealEstate = await RealEstate.countDocuments();
 
-        const topProvinces = await RealEstate.aggregate([
-            {
-                $group: {
-                    _id: "$province",
-                    count: { $sum: 1 }
-                }
-            },
-            { $sort: { count: -1 } },
-            { $limit: 5 },
-            {
-                $project: {
-                    _id: 0,
-                    province: "$_id",
-                    count: 1
-                }
-            }
-        ]);
-
-        const propertyTypeAggregation = await RealEstate.aggregate([
-            {
-                $group: {
-                    _id: "$propertyType",
-                    count: { $sum: 1 }
-                }
-            },
-            { $sort: { count: -1 } }
-        ]);
-
-        const propertyTypeDistribution = propertyTypeAggregation.map(item => ({
-            propertyType: item._id,
-            count: item.count,
-            percent: ((item.count / totalRealEstate) * 100).toFixed(1) + "%"
-        }));
-
         return res.status(200).json({
             success: true,
             code: "REAL_ESTATE_STATS",
             data: {
-                total: totalRealEstate,
-                topProvinces,
-                propertyTypeDistribution
+                total: totalRealEstate
             }
         });
-
     } catch (error) {
         console.error("Error fetching real estate statistics:", error);
         return res.status(500).json({
-            success: false,
-            code: "SERVER_ERROR",
-            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
-        });
-    }
-};
-
-const buildMatchPipeline = ({ street, ward, district, province, locationFilter }) => {
-    const streetSearch = normalize(street);
-    const wardSearch = normalize(ward);
-    const districtSearch = normalize(district);
-    const provinceSearch = normalize(province);
-
-    return [
-        {
-            $match: {
-                provinceSearch: { $exists: true, $nin: [null, ""] },
-                districtSearch: { $exists: true, $nin: [null, ""] },
-                wardSearch: { $exists: true, $nin: [null, ""] },
-                streetSearch: { $exists: true, $nin: [null, ""] },
-                ...locationFilter
-            }
-        },
-        {
-            $addFields: {
-                priority: {
-                    $switch: {
-                        branches: [
-                            {
-                                case: {
-                                    $and: [
-                                        { $eq: [{ $toLower: "$provinceSearch" }, provinceSearch] },
-                                        { $eq: [{ $toLower: "$districtSearch" }, districtSearch] },
-                                        { $eq: [{ $toLower: "$wardSearch" }, wardSearch] },
-                                        { $eq: [{ $toLower: "$streetSearch" }, streetSearch] }
-                                    ]
-                                },
-                                then: 2
-                            },
-                            {
-                                case: {
-                                    $and: [
-                                        { $eq: [{ $toLower: "$provinceSearch" }, provinceSearch] },
-                                        { $eq: [{ $toLower: "$districtSearch" }, districtSearch] },
-                                        { $eq: [{ $toLower: "$wardSearch" }, wardSearch] }
-                                    ]
-                                },
-                                then: 1
-                            }
-                        ],
-                        default: 0
-                    }
-                }
-            }
-        },
-        { $match: { priority: { $gt: 0 } } }
-    ];
-};
-
-const buildPipeline = ({ street, ward, district, province, page, limit, locationFilter }) => {
-    const skip = (page - 1) * limit;
-
-    return [
-        ...buildMatchPipeline({ street, ward, district, province, locationFilter }),
-        { $sort: { priority: -1, street: 1, listedAt: -1 } },
-        { $skip: skip },
-        { $limit: limit }
-    ];
-};
-
-export const getNearbyRealEstate = async (req, res) => {
-    try {
-        const { street, ward, district, province, page = 1, limit = 12 } = req.query;
-
-        if (!province || !district || !ward || !street) {
-            return res.status(400).json({
-                success: false,
-                code: "MISSING_PARAMS",
-                message: "Thiếu tham số địa chỉ cần thiết"
-            });
-        }
-
-        const locationFilter = {};
-        const pageNum = parseInt(page);
-        const limitNum = parseInt(limit);
-
-        const [countResult, data] = await Promise.all([
-            RealEstate.aggregate([
-                ...buildMatchPipeline({ street, ward, district, province, locationFilter }),
-                { $count: "total" }
-            ]),
-            RealEstate.aggregate([
-                ...buildPipeline({
-                    street,
-                    ward,
-                    district,
-                    province,
-                    page: pageNum,
-                    limit: limitNum,
-                    locationFilter
-                })
-            ])
-        ]);
-
-        const total = countResult.length > 0 ? countResult[0].total : 0;
-
-        const processedData = await Promise.all(
-            data.map(async (item) => {
-                if (item.images?.length) {
-                    const processedImages = await Promise.all(
-                        item.images.map(img =>
-                            img && !img.startsWith("http") ? getCachedImageUrl(img) : Promise.resolve(img)
-                        )
-                    );
-                    return {
-                        ...item,
-                        images: processedImages.filter(Boolean)
-                    };
-                }
-                return item;
-            })
-        );
-
-        return res.status(200).json({
-            success: true,
-            code: "NEARBY_REAL_ESTATE",
-            message: "Lấy bất động sản gần đây thành công",
-            pagination: {
-                page: pageNum,
-                limit: limitNum,
-                total,
-                totalPages: Math.ceil(total / limitNum),
-                hasMore: pageNum * limitNum < total
-            },
-            data: processedData
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
             message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"

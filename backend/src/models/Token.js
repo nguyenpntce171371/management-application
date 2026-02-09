@@ -2,36 +2,24 @@ import mongoose from "mongoose";
 import crypto from "crypto";
 
 const tokenSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true, required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     refreshToken: { type: String, default: null },
     accessTokenExpiresAt: { type: Date, required: true },
     refreshTokenExpiresAt: { type: Date, required: true },
     deviceName: { type: String, default: "Unknown device" },
-    deviceId: { type: String, required: true, index: true },
+    deviceId: { type: String, required: true },
     ipAddress: { type: String, default: "" },
-    createdAt: { type: Date, default: Date.now },
     remember: { type: Boolean, default: false },
+}, {
+    timestamps: true,
+    versionKey: false,
 });
 
-tokenSchema.pre("save", function (next) {
-    if (this.isModified("refreshToken") && this.refreshToken) {
-        this.refreshToken = crypto.createHash("sha256").update(this.refreshToken).digest("hex");
-    }
-
-    if (this.isModified("deviceId") && this.deviceId) {
-        this.deviceId = crypto.createHash("sha256").update(this.deviceId).digest("hex");
-    }
-
-    next();
-});
-tokenSchema.methods.compareRefreshToken = function (plainToken) {
-    return this.refreshToken === crypto.createHash("sha256").update(plainToken).digest("hex");
-};
-
-tokenSchema.methods.compareDeviceId = function (rawDeviceId) {
-    return this.deviceId === crypto.createHash("sha256").update(rawDeviceId).digest("hex");
-};
-
+tokenSchema.index({ userId: 1, deviceId: 1, refreshToken: 1 });
 tokenSchema.index({ refreshTokenExpiresAt: 1 }, { expireAfterSeconds: 0 });
+
+tokenSchema.statics.hashValue = function (value) {
+    return crypto.createHash("sha256").update(value).digest("hex");
+};
 
 export default mongoose.model("Token", tokenSchema);

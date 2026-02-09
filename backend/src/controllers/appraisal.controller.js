@@ -1,53 +1,155 @@
 import Appraisal from "../models/Appraisal.js";
 import RealEstate from "../models/RealEstate.js";
 import { io } from "../index.js";
+import { executeCursorPaginatedQuery, parseSort } from "../utils/query.js";
+import { normalize } from "../utils/string.js";
+import { transformIds } from "../utils/normalizeMongoIds.js";
 
 export const getAppraisals = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
-        const skip = (page - 1) * limit;
+        const baseQuery = {};
 
-        const search = req.query.search || "";
-        const status = req.query.status || "all";
-        const sortBy = req.query.sortBy || "createdDate";
-        const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
-
-        const filter = {};
-
-        if (status !== "all") {
-            filter.status = status;
+        if (req.query.status && req.query.status !== "all") {
+            baseQuery.status = req.query.status;
         }
 
-        if (search.trim()) {
-            filter.$or = [
-                { code: { $regex: search, $options: "i" } },
-                { customerName: { $regex: search, $options: "i" } },
-                { "assets.name": { $regex: search, $options: "i" } },
-            ];
+        const searchText = normalize(req.query.search);
+        if (searchText) {
+            baseQuery.$text = { $search: searchText };
         }
 
-        const query = Appraisal.find(filter).select("code customerName propertyType appraiser createdDate completedDate status notes").sort({ [sortBy]: sortOrder, _id: sortOrder }).skip(skip).limit(limit);
+        const { sortBy, sortOrder } = parseSort(req.query, ["createdAt"]);
 
-        const [data, total] = await Promise.all([
-            query,
-            Appraisal.countDocuments(filter)
-        ]);
+        const options = {
+            select: "code customerName propertyType appraiser createdAt completedAt status notes",
+            sortBy,
+            sortOrder,
+            cursor: req.query.cursor,
+            direction: req.query.direction,
+            limit: req.query.limit,
+            lean: true
+        }
+
+        const { data, hasMore, hasPrev, nextCursor, prevCursor } = await executeCursorPaginatedQuery(Appraisal, baseQuery, options);
+
+        const processedData = data.map(({ _id, ...rest }) => ({
+            ...rest,
+            id: _id.toString()
+        }));
 
         return res.status(200).json({
             success: true,
-            code: "APPRAISALS_FETCHED",
+            code: "APPRAISAL_LIST",
             pagination: {
-                page,
-                limit,
-                total,
-                totalPages: Math.ceil(total / limit),
-                hasMore: page * limit < total
+                hasMore,
+                hasPrev,
+                nextCursor,
+                prevCursor
             },
-            data
+            data: processedData
         });
     } catch (error) {
         console.error("Error fetching appraisals:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+        });
+    }
+};
+
+export const getDeletedAppraisals = async (req, res) => {
+    try {
+        const baseQuery = { deletedAt: { $ne: null } };
+
+        if (req.query.status && req.query.status !== "all") {
+            baseQuery.status = req.query.status;
+        }
+
+        const searchText = normalize(req.query.search);
+        if (searchText) {
+            baseQuery.$text = { $search: searchText };
+        }
+
+        const { sortBy, sortOrder } = parseSort(req.query, ["createdAt"]);
+
+        const options = {
+            select: "code customerName propertyType status deletedAt",
+            sortBy,
+            sortOrder,
+            cursor: req.query.cursor,
+            direction: req.query.direction,
+            limit: req.query.limit,
+            populate: {
+                path: "deletedBy",
+                select: "fullName"
+            },
+            lean: true
+        }
+
+        const { data, hasMore, hasPrev, nextCursor, prevCursor } = await executeCursorPaginatedQuery(Appraisal, baseQuery, options);
+
+        const processedData = data.map(({ _id, ...rest }) => ({
+            ...rest,
+            id: _id.toString()
+        }));
+
+        return res.status(200).json({
+            success: true,
+            code: "DELETED_APPRAISAL_LIST",
+            pagination: {
+                hasMore,
+                hasPrev,
+                nextCursor,
+                prevCursor
+            },
+            data: processedData
+        });
+    } catch (error) {
+        console.error("Error fetching appraisals:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+        });
+    }
+};
+
+export const getAppraisalById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_APPRAISAL_ID",
+                message: "Thiếu Appraisal Id"
+            });
+        }
+
+        const appraisal = await Appraisal.findById(id).lean();
+
+        if (!appraisal) {
+            return res.status(404).json({
+                success: false,
+                code: "APPRAISAL_NOT_FOUND",
+                message: "Không tìm thấy hồ sơ"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            code: "APPRAISAL_FOUND",
+            data: transformIds(appraisal)
+        });
+    } catch (error) {
+        console.error("Error fetching appraisal:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "APPRAISAL_NOT_FOUND",
+                message: "Không tìm thấy hồ sơ"
+            });
+        }
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -62,8 +164,9 @@ export const createAppraisal = async (req, res) => {
         const year = now.getFullYear();
 
         const lastAppraisal = await Appraisal.findOne({
-            code: { $regex: `^HS-${year}-` }
-        }).sort({ code: -1 }).select("code");
+            code: { $regex: `^HS-${year}-` },
+            deletedAt: { $exists: true }
+        }).sort({ code: -1 }).select("code").lean();
 
         let nextNumber = 1;
         if (lastAppraisal) {
@@ -71,18 +174,14 @@ export const createAppraisal = async (req, res) => {
             nextNumber = lastSeq + 1;
         }
 
-        const code = `HS-${year}-${String(nextNumber).padStart(3, "0")}`;
-        const status = "pending";
         const newAppraisal = new Appraisal({
-            ...req.body,
-            code,
-            status,
-            createdDate: now
+            code: `HS-${year}-${String(nextNumber).padStart(3, "0")}`,
+            status: "pending"
         });
 
         await newAppraisal.save();
 
-        io.to("Staff").emit("appraisalCreated", JSON.parse(JSON.stringify(newAppraisal)));
+        io.to("Staff").emit("appraisalCreated");
 
         return res.status(201).json({
             success: true,
@@ -100,38 +199,9 @@ export const createAppraisal = async (req, res) => {
     }
 };
 
-export const getAppraisalById = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        const appraisal = await Appraisal.findById(id);
-
-        if (!appraisal)
-            return res.status(404).json({
-                success: false,
-                code: "APPRAISAL_NOT_FOUND",
-                message: "Không tìm thấy hồ sơ"
-            });
-
-        return res.status(200).json({
-            success: true,
-            code: "REAL_ESTATE_STATS",
-            data: appraisal
-        });
-    } catch (error) {
-        console.error("Error fetching appraisal:", error);
-        return res.status(500).json({
-            success: false,
-            code: "SERVER_ERROR",
-            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
-        });
-    }
-};
-
 export const updateAppraisal = async (req, res) => {
     try {
         const { id } = req.params;
-
         if (!id) {
             return res.status(400).json({
                 success: false,
@@ -140,35 +210,40 @@ export const updateAppraisal = async (req, res) => {
             });
         }
 
-        const allowedFields = ["customerName", "propertyType", "status", "appraiser"];
-        const updateData = {};
+        const { customerName, propertyType, status, appraiser } = req.body;
 
-        allowedFields.forEach(field => {
-            if (req.body[field] !== undefined) {
-                updateData[field] = req.body[field];
-            }
-        });
+        const update = {};
 
-        if (Object.keys(updateData).length === 0) {
+        if (customerName) {
+            update.customerName = customerName;
+        }
+
+        if (propertyType) {
+            update.propertyType = propertyType;
+        }
+
+        if (status) {
+            update.status = status;
+        }
+
+        if (appraiser) {
+            update.appraiser = appraiser;
+        }
+
+        if (!Object.keys(update).length) {
             return res.status(400).json({
                 success: false,
                 code: "NO_FIELDS_TO_UPDATE",
-                message: "Không có trường nào để cập nhật"
+                message: "Không có dữ liệu để cập nhật"
             });
         }
 
-        updateData.updatedAt = new Date();
-
-        const appraisal = await Appraisal.findByIdAndUpdate(
-            id,
-            { $set: updateData },
-            {
-                new: true,
-                runValidators: true
-            }
+        const result = await Appraisal.updateOne(
+            { _id: id },
+            { $set: update }
         );
 
-        if (!appraisal) {
+        if (!result.matchedCount) {
             return res.status(404).json({
                 success: false,
                 code: "APPRAISAL_NOT_FOUND",
@@ -176,16 +251,23 @@ export const updateAppraisal = async (req, res) => {
             });
         }
 
-        io.to("Staff").emit("appraisalUpdated", JSON.parse(JSON.stringify(appraisal)));
+        io.to("Staff").emit("appraisalUpdated");
 
         return res.status(200).json({
             success: true,
             code: "APPRAISAL_UPDATED",
             message: "Cập nhật hồ sơ thành công",
-            data: appraisal
+            data: { id }
         });
     } catch (error) {
         console.error("Error updating appraisal:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "APPRAISAL_NOT_FOUND",
+                message: "Không tìm thấy hồ sơ"
+            });
+        }
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -197,10 +279,20 @@ export const updateAppraisal = async (req, res) => {
 export const deleteAppraisal = async (req, res) => {
     try {
         const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_APPRAISAL_ID",
+                message: "Thiếu Appraisal ID"
+            });
+        }
 
-        const appraisal = await Appraisal.findOne({ _id: id, deletedAt: null });
+        const appraisal = await Appraisal.updateOne(
+            { _id: id, deletedAt: null },
+            { $set: { deletedAt: new Date(), deletedBy: req.user.id } }
+        );
 
-        if (!appraisal) {
+        if (!appraisal.matchedCount) {
             return res.status(404).json({
                 success: false,
                 code: "APPRAISAL_NOT_FOUND",
@@ -208,9 +300,7 @@ export const deleteAppraisal = async (req, res) => {
             });
         }
 
-        await appraisal.softDelete(req.user.id);
-
-        io.to("Staff").emit("appraisalDeleted", id);
+        io.to("Staff").emit("appraisalDeleted");
 
         return res.status(200).json({
             success: true,
@@ -220,43 +310,13 @@ export const deleteAppraisal = async (req, res) => {
         });
     } catch (error) {
         console.error("Error deleting appraisal:", error);
-        res.status(500).json({
-            success: false,
-            code: "SERVER_ERROR",
-            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
-        });
-    }
-};
-
-export const getDeletedAppraisals = async (req, res) => {
-    try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
-        const skip = (page - 1) * limit;
-
-        const deletedAppraisals = await Appraisal.findDeleted()
-            .select("code customerName propertyType status deletedAt deletedBy")
-            .populate("deletedBy", "fullName email")
-            .sort({ deletedAt: -1 })
-            .skip(skip)
-            .limit(limit);
-
-        const total = await Appraisal.countDocuments({ deletedAt: { $ne: null } });
-
-        return res.status(200).json({
-            success: true,
-            code: "DELETED_APPRAISALS_FETCHED",
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages: Math.ceil(total / limit),
-                hasMore: page * limit < total,
-            },
-            data: deletedAppraisals,
-        });
-    } catch (error) {
-        console.error("Error fetching deleted appraisals:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "APPRAISAL_NOT_FOUND",
+                message: "Không tìm thấy hồ sơ"
+            });
+        }
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -268,10 +328,20 @@ export const getDeletedAppraisals = async (req, res) => {
 export const restoreAppraisal = async (req, res) => {
     try {
         const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_APPRAISAL_ID",
+                message: "Thiếu Appraisal Id"
+            });
+        }
 
-        const appraisal = await Appraisal.findOne({ _id: id, deletedAt: { $ne: null } });
+        const result = await Appraisal.updateOne(
+            { _id: id, deletedAt: { $ne: null } },
+            { $set: { deletedAt: null, deletedBy: null } }
+        );
 
-        if (!appraisal) {
+        if (!result.matchedCount) {
             return res.status(404).json({
                 success: false,
                 code: "APPRAISAL_NOT_FOUND",
@@ -279,18 +349,23 @@ export const restoreAppraisal = async (req, res) => {
             });
         }
 
-        await appraisal.restore();
-
-        io.to("Staff").emit("appraisalRestored", id);
+        io.to("Staff").emit("appraisalRestored");
 
         return res.status(200).json({
             success: true,
             code: "APPRAISAL_RESTORED",
             message: "Khôi phục hồ sơ thành công",
-            data: { id, code: appraisal.code },
+            data: { id }
         });
     } catch (error) {
         console.error("Error restoring appraisal:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "APPRAISAL_NOT_FOUND",
+                message: "Không tìm thấy hồ sơ đã xóa",
+            });
+        }
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -302,10 +377,16 @@ export const restoreAppraisal = async (req, res) => {
 export const permanentDeleteAppraisal = async (req, res) => {
     try {
         const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_APPRAISAL_ID",
+                message: "Thiếu Appraisal Id"
+            });
+        }
 
-        const appraisal = await Appraisal.findOne({ _id: id, deletedAt: { $ne: null } });
-
-        if (!appraisal) {
+        const result = await Appraisal.deleteOne({ _id: id, deletedAt: { $ne: null } });
+        if (!result.deletedCount) {
             return res.status(404).json({
                 success: false,
                 code: "APPRAISAL_NOT_FOUND",
@@ -313,7 +394,7 @@ export const permanentDeleteAppraisal = async (req, res) => {
             });
         }
 
-        await appraisal.deleteOne();
+        io.to("Admin").emit("appraisalPermanentlyDeleted");
 
         return res.status(200).json({
             success: true,
@@ -323,6 +404,13 @@ export const permanentDeleteAppraisal = async (req, res) => {
         });
     } catch (error) {
         console.error("Error permanently deleting appraisal:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "APPRAISAL_NOT_FOUND",
+                message: "Không tìm thấy hồ sơ đã xóa",
+            });
+        }
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -348,12 +436,12 @@ export const updateAppraisalAssets = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 code: "INVALID_ASSETS",
-                message: "Thiếu thông tin assets hoặc assets không đúng định dạng"
+                message: "Thiếu thông tin hoặc không đúng định dạng"
             });
         }
 
-        const requiredAssetFields = ["district", "guidedPriceAverage", "id", "land", "location", "name", "province", "selectedComparisons", "street", "ward", "_id"];
-        const requiredComparisonFields = ["id", "_id"];
+        const requiredAssetFields = ["district", "guidedPriceAverage", "land", "location", "name", "province", "selectedComparisons", "street", "ward"];
+        const requiredComparisonFields = ["id"];
         const requiredConstructionFields = ["id"];
 
         for (let i = 0; i < assets.length; i++) {
@@ -422,9 +510,7 @@ export const updateAppraisalAssets = async (req, res) => {
             }
         }
 
-        const assetsForAppraisal = assets.map(asset => ({
-            _id: asset._id,
-            id: asset.id,
+        const assetsForAppraisal = assets.map((asset) => ({
             name: asset.name,
             area: asset.area,
             businessAdvantage: asset.businessAdvantage,
@@ -448,9 +534,8 @@ export const updateAppraisalAssets = async (req, res) => {
                 landParcel: asset.location.landParcel
             },
             province: asset.province,
-            selectedComparisons: asset.selectedComparisons.map(comp => ({
-                id: comp.id,
-                _id: comp._id,
+            selectedComparisons: asset.selectedComparisons.map((comp) => ({
+                realEstateId: comp.id,
                 areaRate: comp.areaRate,
                 businessRate: comp.businessRate,
                 environmentRate: comp.environmentRate,
@@ -463,18 +548,15 @@ export const updateAppraisalAssets = async (req, res) => {
             })),
             shape: asset.shape,
             street: asset.street,
-            updatedAt: new Date(),
             ward: asset.ward,
             width: asset.width
         }));
 
-        const constructionsForAppraisal = constructions && Array.isArray(constructions) ? constructions.map(construction => ({
-            id: construction.id,
+        const constructionsForAppraisal = (constructions && Array.isArray(constructions)) ? constructions.map((construction) => ({
             area: construction.area,
             description: construction.description,
             qualityRemaining: construction.qualityRemaining,
             unitPrice: construction.unitPrice,
-            updatedAt: new Date()
         })) : [];
 
         const appraisal = await Appraisal.findByIdAndUpdate(
@@ -482,15 +564,14 @@ export const updateAppraisalAssets = async (req, res) => {
             {
                 $set: {
                     assets: assetsForAppraisal,
-                    constructions: constructionsForAppraisal,
-                    updatedAt: new Date()
+                    constructions: constructionsForAppraisal
                 }
             },
             {
                 new: true,
                 runValidators: true
             }
-        );
+        ).lean();
 
         if (!appraisal) {
             return res.status(404).json({
@@ -506,7 +587,7 @@ export const updateAppraisalAssets = async (req, res) => {
             if (!Array.isArray(asset.selectedComparisons)) continue;
 
             for (const comp of asset.selectedComparisons) {
-                const currentRealEstate = await RealEstate.findById(comp._id);
+                const currentRealEstate = await RealEstate.findById(comp.id).select({ location: 1 }).lean();
 
                 const realEstateData = {
                     area: comp.area,
@@ -517,12 +598,12 @@ export const updateAppraisalAssets = async (req, res) => {
                     currentUsageStatus: comp.currentUsageStatus,
                     estimatedPrice: comp.estimatedPrice,
                     infrastructure: comp.infrastructure,
-                    land: comp.land.map(l => ({
-                        landArea: l.landArea,
-                        landType: l.landType,
-                        location: l.location,
-                        ontLandPrice: l.ontLandPrice,
-                        streetDescription: l.streetDescription
+                    land: comp.land.map((land) => ({
+                        landArea: land.landArea,
+                        landType: land.landType,
+                        location: land.location,
+                        ontLandPrice: land.ontLandPrice,
+                        streetDescription: land.streetDescription
                     })),
                     landUseRightUnitPrice: comp.landUseRightUnitPrice,
                     legalStatus: comp.legalStatus,
@@ -540,14 +621,13 @@ export const updateAppraisalAssets = async (req, res) => {
                     shape: comp.shape,
                     source: comp.source,
                     transactionTime: comp.transactionTime,
-                    updatedAt: new Date(),
                     usableArea: comp.usableArea,
                     width: comp.width
                 };
 
                 realEstatePromises.push(
                     RealEstate.findOneAndUpdate(
-                        { _id: comp._id },
+                        { _id: comp.id },
                         [
                             { $set: realEstateData },
                             {
@@ -570,21 +650,24 @@ export const updateAppraisalAssets = async (req, res) => {
 
         await Promise.all(realEstatePromises);
 
-        io.to("Staff").emit("appraisalUpdated", JSON.parse(JSON.stringify(appraisal)));
-        for (const asset of assets) {
-            for (const comp of asset.selectedComparisons) {
-                io.to("User").emit("realEstateUpdated", JSON.parse(JSON.stringify(comp)));
-            }
-        }
+        io.to("Staff").emit("appraisalUpdated");
+        io.to("User").emit("realEstateUpdated");
 
         return res.status(200).json({
             success: true,
             code: "APPRAISAL_ASSETS_UPDATED",
             message: "Cập nhật tài sản hồ sơ thành công",
-            data: appraisal
+            data: transformIds(appraisal)
         });
     } catch (error) {
         console.error(error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "APPRAISAL_NOT_FOUND",
+                message: "Không tìm thấy hồ sơ"
+            });
+        }
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",

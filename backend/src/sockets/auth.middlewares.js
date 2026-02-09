@@ -13,7 +13,15 @@ export const socketAuthMiddleware = () => {
             const cookies = cookie.parse(rawCookie);
             const accessToken = cookies.accessToken;
             const refreshToken = cookies.refreshToken;
+            if (!refreshToken) {
+                return next(new Error("REFRESH_TOKEN_MISSING"));
+            }
+            const hashedRefreshToken = Token.hashValue(refreshToken);
             const deviceId = cookies.deviceId;
+            if (!deviceId) {
+                return next(new Error("DEVICE_ID_MISSING"));
+            }
+            const hashedDeviceId = Token.hashValue(deviceId);
 
             if (!accessToken) {
                 return next(new Error(refreshToken ? "TOKEN_EXPIRED" : "NO_TOKEN"));
@@ -22,7 +30,7 @@ export const socketAuthMiddleware = () => {
             let decoded;
             try {
                 decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
-            } catch (err) {
+            } catch (error) {
                 return next(new Error("INVALID_TOKEN"));
             }
 
@@ -30,8 +38,9 @@ export const socketAuthMiddleware = () => {
                 return next(new Error("DEVICE_ID_MISSING"));
             }
 
-            const sessions = await Token.find({ userId: decoded.id });
-            const session = sessions.find(s => s.compareDeviceId(deviceId));
+            const session = await Token.findOne(
+                { userId: decoded.id, deviceId: hashedDeviceId, refreshToken: hashedRefreshToken }
+            ).select({ _id: 1, accessTokenExpiresAt: 1 }).lean();
 
             if (!session) {
                 return next(new Error("TOKEN_NOT_FOUND"));
@@ -45,11 +54,14 @@ export const socketAuthMiddleware = () => {
                 id: decoded.id,
                 role: decoded.role
             };
-            socket.deviceId = deviceId;
+            socket.session = {
+                id: session._id.toString(),
+                deviceId: hashedDeviceId
+            };
 
             next();
-        } catch (err) {
-            console.log(err);
+        } catch (error) {
+            console.log(error);
             return next(new Error("SERVER_ERROR"));
         }
     };

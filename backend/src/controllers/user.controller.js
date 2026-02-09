@@ -1,35 +1,18 @@
 import { io } from "../index.js";
 import User from "../models/User.js";
-import NodeCache from "node-cache";
 import { normalize } from "../utils/string.js";
-import { uploadMultipleImages, deleteMultipleImages, generatePresignedUrl } from "../services/storage.service.js";
-
-const imageUrlCache = new NodeCache({
-    stdTTL: 1800,
-    checkperiod: 600,
-    useClones: false,
-    maxKeys: 10000
-});
-
-const getCachedImageUrl = async (imagePath) => {
-    if (!(imagePath && !imagePath.startsWith("http"))) return imagePath;
-
-    const cachedUrl = imageUrlCache.get(imagePath);
-    if (cachedUrl) return cachedUrl;
-
-    try {
-        const url = await generatePresignedUrl(imagePath, 30);
-        imageUrlCache.set(imagePath, url);
-        return url;
-    } catch (error) {
-        console.error(`Failed to generate URL for ${imagePath}:`, error);
-        return null;
-    }
-};
+import { uploadMultipleImages, deleteImage, deleteMultipleImages } from "../services/storage.service.js";
+import { getCachedImageUrl } from "../utils/cachedImage.js";
+import Token from "../models/Token.js";
+import { parseSort } from "../utils/query.js";
+import { executeCursorPaginatedQuery } from "../utils/query.js";
+import { transformIds } from "../utils/normalizeMongoIds.js";
 
 export const getUser = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).lean();
+        const id = req.user.id;
+        const sessionId = req.session.id;
+        const user = await User.findById(id).select({ email: 1, role: 1, fullName: 1, address: 1, avatar: 1, provider: 1 }).lean();
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -48,7 +31,8 @@ export const getUser = async (req, res) => {
             success: true,
             code: "USER_FETCHED",
             data: {
-                userId: user._id.toString(),
+                id,
+                sessionId,
                 email: user.email,
                 role: user.role,
                 fullName: user.fullName,
@@ -67,82 +51,216 @@ export const getUser = async (req, res) => {
     }
 };
 
-export const updateUserProfile = async (req, res) => {
+export const getUsers = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
+        const baseQuery = {};
 
-        const { fullName, address } = req.body;
-        const updateData = {};
-        let hasChange = false;
-
-        if (fullName !== undefined && fullName !== user.fullName) {
-            updateData.fullName = fullName;
-            hasChange = true;
+        if (req.query.role && req.query.role !== "all") {
+            baseQuery.role = req.query.role;
         }
 
-        if (address !== undefined && address !== user.address) {
-            updateData.address = address;
-            hasChange = true;
+        const searchText = normalize(req.query.search);
+        if (searchText) {
+            baseQuery.$text = { $search: searchText };
         }
 
-        if (req.file) {
-            const [avatarPath] = await uploadMultipleImages([req.file], "avatars");
-
-            if (user.avatar) {
-                await deleteMultipleImages([user.avatar]);
-            }
-
-            updateData.avatar = avatarPath;
-            hasChange = true;
+        const { sortBy, sortOrder } = parseSort(req.query, ["createdAt"]);
+        const options = {
+            select: "fullName email address role",
+            sortBy,
+            sortOrder,
+            cursor: req.query.cursor,
+            direction: req.query.direction,
+            limit: req.query.limit,
+            lean: true
         }
 
-        if (!hasChange) {
-            return res.status(200).json({
-                success: true,
-                code: "NO_CHANGES",
-                message: "Không có thay đổi nào được thực hiện",
-                data: user
+        const { data, hasMore, hasPrev, nextCursor, prevCursor } = await executeCursorPaginatedQuery(User, baseQuery, options);
+
+        return res.status(200).json({
+            success: true,
+            code: "USER_LIST",
+            pagination: {
+                hasMore,
+                hasPrev,
+                nextCursor,
+                prevCursor
+            },
+            data: transformIds(data)
+        });
+    } catch (error) {
+        console.error("Get User Error:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+        });
+    }
+};
+
+export const getDeletedUsers = async (req, res) => {
+    try {
+        const baseQuery = { deletedAt: { $ne: null } };
+
+        if (req.query.role && req.query.role !== "all") {
+            baseQuery.role = req.query.role;
+        }
+
+        const searchText = normalize(req.query.search);
+        if (searchText) {
+            baseQuery.$text = { $search: searchText };
+        }
+
+        const { sortBy, sortOrder } = parseSort(req.query, ["createdAt"]);
+        const options = {
+            select: "fullName email address role deletedAt",
+            sortBy,
+            sortOrder,
+            cursor: req.query.cursor,
+            direction: req.query.direction,
+            limit: req.query.limit,
+            populate: {
+                path: "deletedBy",
+                select: "fullName"
+            },
+            lean: true
+        }
+
+        const { data, hasMore, hasPrev, nextCursor, prevCursor } = await executeCursorPaginatedQuery(User, baseQuery, options);
+
+        return res.status(200).json({
+            success: true,
+            code: "DELETED_USER_LIST",
+            pagination: {
+                hasMore,
+                hasPrev,
+                nextCursor,
+                prevCursor
+            },
+            data: transformIds(data)
+        });
+    } catch (error) {
+        console.error("Get User Error:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+        });
+    }
+};
+
+export const getUserById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_USER_ID",
+                message: "Thiếu User Id"
             });
         }
 
-        Object.assign(user, updateData);
-        await user.save();
+        const user = await User.findById(id).lean();
 
-        let avatarUrl = user.avatar;
-
-        if (user.avatar && !user.avatar.startsWith("http")) {
-            avatarUrl = await getCachedImageUrl(user.avatar);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                code: "USER_NOT_FOUND",
+                message: "Không tìm thấy bản ghi"
+            });
         }
 
-        io.to(user._id.toString()).emit("profileUpdated", {
-            _id: user._id.toString(),
-            email: user.email,
-            role: user.role,
-            fullName: user.fullName,
-            address: user.address,
-            avatar: avatarUrl
+        return res.status(200).json({
+            success: true,
+            code: "USER_FOUND",
+            data: transformIds(user)
         });
+    } catch (error) {
+        console.error("Error fetching user:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "USER_NOT_FOUND",
+                message: "Không tìm thấy bản ghi"
+            });
+        }
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+        });
+    }
+};
 
-        io.to("Admin").emit("userUpdated", {
-            _id: user._id.toString(),
-            email: user.email,
-            role: user.role,
-            fullName: user.fullName,
-            address: user.address,
-            avatar: avatarUrl
-        });
+export const updateUserProfile = async (req, res) => {
+    try {
+        const id = req.user.id;
+        const sessionId = req.session.id;
+
+        const { fullName: rawFullName, address } = req.body;
+
+        const update = {};
+        let avatarPath;
+
+        if (rawFullName !== undefined) {
+            const fullName = rawFullName.trim();
+            if (fullName) {
+                update.fullName = fullName;
+            }
+        }
+
+        if (address !== undefined) {
+            update.address = address;
+        }
+
+        if (req.file) {
+            [avatarPath] = await uploadMultipleImages([req.file], "avatars");
+            update.avatar = avatarPath;
+        }
+
+        if (!Object.keys(update).length) {
+            return res.status(200).json({
+                success: true,
+                code: "NO_CHANGES",
+                message: "Không có thay đổi nào"
+            });
+        }
+
+        const result = await User.updateOne(
+            { _id: id },
+            { $set: update }
+        );
+
+        if (!result.matchedCount) {
+            return res.status(404).json({
+                success: false,
+                code: "USER_NOT_FOUND",
+                message: "Không tìm thấy người dùng"
+            });
+        }
+
+        if (avatarPath) {
+            const user = await User.findById(id).select({ avatar: 1 }).lean();
+            if (user?.avatar && user.avatar !== avatarPath) {
+                await deleteMultipleImages([user.avatar]);
+            }
+        }
+
+        const avatarUrl = await getCachedImageUrl(update.avatar);
+
+        io.to(id).emit("profileUpdated");
+        io.to("Admin").emit("userUpdated");
 
         return res.status(200).json({
             success: true,
             code: "USER_UPDATED",
             message: "Cập nhật hồ sơ người dùng thành công",
             data: {
-                id: user._id,
-                fullName: user.fullName,
-                address: user.address,
-                email: user.email,
-                avatar: avatarUrl,
-                role: user.role
+                id,
+                sessionId,
+                fullName: update.fullName,
+                address: update.address,
+                avatar: avatarUrl
             }
         });
     } catch (error) {
@@ -157,7 +275,10 @@ export const updateUserProfile = async (req, res) => {
 
 export const deleteUserAvatar = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
+        const id = req.user.id;
+        const sessionId = req.session.id;
+
+        const user = await User.findById(id);
 
         if (!user) {
             return res.status(404).json({
@@ -178,36 +299,27 @@ export const deleteUserAvatar = async (req, res) => {
         const avatarPath = user.avatar;
 
         if (avatarPath && !avatarPath.startsWith("http")) {
-            await deleteMultipleImages([avatarPath]);
-            imageUrlCache.del(avatarPath);
+            await deleteImage([avatarPath]);
         }
 
         user.avatar = null;
         await user.save();
 
-        io.to(user._id).emit("profileUpdated", {
-            id: user.userId,
-            email: user.email,
-            role: user.role,
-            fullName: user.fullName,
-            address: user.address,
-            avatar: null
-        });
+        io.to(id).emit("profileUpdated");
 
         return res.status(200).json({
             success: true,
             code: "AVATAR_DELETED",
             message: "Xóa avatar thành công",
             data: {
-                id: user._id,
+                id,
+                sessionId,
                 fullName: user.fullName,
                 address: user.address,
                 email: user.email,
-                avatar: null,
                 role: user.role
             }
         });
-
     } catch (error) {
         console.error("Delete Avatar Error:", error);
         return res.status(500).json({
@@ -220,9 +332,8 @@ export const deleteUserAvatar = async (req, res) => {
 
 export const updateUserRole = async (req, res) => {
     try {
-        let { email, role } = req.body;
-
-        if (!email || !role) {
+        const { id, role } = req.body;
+        if (!id || !role) {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_FIELDS",
@@ -230,102 +341,46 @@ export const updateUserRole = async (req, res) => {
             });
         }
 
-        const validRoles = ["User", "Staff", "Admin"];
-        if (!validRoles.includes(role)) {
-            return res.status(400).json({
-                success: false,
-                code: "INVALID_ROLE",
-                message: "Vai trò không hợp lệ",
-            });
-        }
-
         const updatedUser = await User.findOneAndUpdate(
-            { email: email },
+            { _id: id, role: { $ne: role } },
             { $set: { role: role } },
-            { new: true }
-        ).lean();
+            { new: true, runValidators: true }
+        ).select({ email: 1 }).lean();
 
         if (!updatedUser) {
             return res.status(404).json({
                 success: false,
-                code: "USER_NOT_FOUND",
-                message: "User not found",
+                code: "USER_NOT_FOUND_OR_NO_CHANGE",
+                message: "User không tồn tại hoặc vai trò không đổi"
             });
         }
 
-        io.to(updatedUser._id.toString()).emit("roleUpdated");
-        io.to("Admin").emit("userRoleChanged", {
-            userId: updatedUser._id.toString(),
-            email: updatedUser.email,
-            role: role
-        });
+        await Token.deleteMany({ userId: id });
+
+        io.to(id).emit("usergedOut");
+        io.to("Admin").emit("userUpdated");
 
         return res.status(200).json({
             success: true,
             code: "ROLE_UPDATED",
             message: "Cập nhật vai trò thành công",
-            data: {
-                id: updatedUser._id,
-                email: updatedUser.email,
-                role: updatedUser.role,
-            },
+            data: { id }
         });
     } catch (error) {
         console.error("Error fetching user stats:", error);
-        res.status(500).json({
-            success: false,
-            code: "SERVER_ERROR",
-            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
-        });
-    }
-};
-
-export const getUsers = async (req, res) => {
-    try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
-        const skip = (page - 1) * limit;
-        const search = (req.query.search || "").trim();
-        const role = req.query.role || "all";
-        const sortBy = req.query.sortBy || "createdAt";
-        const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
-
-        const query = {};
-
-        if (search) {
-            const normalizedSearch = normalize(search);
-            query.$or = [
-                { fullNameSearch: { $regex: normalizedSearch, $options: "i" } },
-                { addressSearch: { $regex: normalizedSearch, $options: "i" } },
-                { email: { $regex: search, $options: "i" } },
-            ];
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "USER_NOT_FOUND_OR_NO_CHANGE",
+                message: "User không tồn tại hoặc vai trò không đổi"
+            });
+        } else if (error.name === "ValidationError") {
+            return res.status(400).json({
+                success: false,
+                code: "INVALID_ROLE",
+                message: "Vai trò không hợp lệ"
+            });
         }
-
-        if (role !== "all") {
-            query.role = role;
-        }
-
-        const data = await User.find(query, "fullName email role address _id createdAt avatar").sort({ [sortBy]: sortOrder, _id: sortOrder }).skip(skip).limit(limit).lean();;
-        const users = data.map(({ _id, ...rest }) => ({
-            id: _id.toString(),
-            ...rest,
-        }));
-        const total = await User.countDocuments(query);
-
-        return res.status(200).json({
-            success: true,
-            code: "USERS_FETCHED",
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages: Math.ceil(total / limit),
-                hasMore: page * limit < total,
-            },
-            data: users,
-        });
-    } catch (error) {
-        console.error("Error fetching user stats:", error);
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -337,84 +392,53 @@ export const getUsers = async (req, res) => {
 export const deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
-
-        const user = await User.findById(req.user.id);
-        const userToDelete = await User.findOne({ _id: id, deletedAt: null });
-
-        if (!userToDelete) {
-            return res.status(404).json({
+        if (!id) {
+            return res.status(400).json({
                 success: false,
-                code: "USER_NOT_FOUND",
-                message: "Không tìm thấy người dùng",
+                code: "MISSING_USER_ID",
+                message: "Thiếu User Id"
             });
         }
 
-        if (currentUser.role !== "Admin" && !user.equals(userToDelete)) {
+        if (req.user.role !== "Admin" && req.user.id !== id) {
             return res.status(403).json({
                 success: false,
                 code: "FORBIDDEN",
-                message: "Quyền truy cập không đủ.",
+                message: "Không được phép"
             });
         }
 
-        await userToDelete.softDelete(userToDelete._id);
+        const result = await User.updateOne(
+            { _id: id, deletedAt: null },
+            { $set: { deletedAt: new Date(), deletedBy: req.user.id } }
+        );
 
-        io.to(userToDelete._id.toString()).emit("accountDeleted", { _id: userToDelete._id });
-        io.to("Admin").emit("userDeleted", {
-            id: userToDelete._id,
-            email: userToDelete.email,
-            role: userToDelete.role
-        });
+        if (!result.matchedCount) {
+            return res.status(404).json({
+                success: false,
+                code: "USER_NOT_FOUND",
+                message: "Không tìm thấy người dùng"
+            });
+        }
+
+        io.to(id).emit("accountDeleted");
+        io.to("Admin").emit("userDeleted");
 
         return res.status(200).json({
             success: true,
             code: "USER_DELETED",
-            message: `User ${userToDelete.email} has been deleted successfully`,
-            data: {
-                id: userToDelete._id,
-                email: userToDelete.email,
-                role: userToDelete.role,
-            },
+            message: `Xóa tài khoản thành công`,
+            data: { id }
         });
     } catch (error) {
         console.error("Error deleting user:", error);
-        res.status(500).json({
-            success: false,
-            code: "SERVER_ERROR",
-            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
-        });
-    }
-};
-
-export const getDeletedUsers = async (req, res) => {
-    try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
-        const skip = (page - 1) * limit;
-
-        const deletedUsers = await User.findDeleted()
-            .select("fullName email role deletedAt deletedBy")
-            .populate("deletedBy", "fullName email")
-            .sort({ deletedAt: -1 })
-            .skip(skip)
-            .limit(limit);
-
-        const total = await User.countDocuments({ deletedAt: { $ne: null } });
-
-        return res.status(200).json({
-            success: true,
-            code: "DELETED_USERS_FETCHED",
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages: Math.ceil(total / limit),
-                hasMore: page * limit < total,
-            },
-            data: deletedUsers,
-        });
-    } catch (error) {
-        console.error("Error fetching deleted users:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "USER_NOT_FOUND",
+                message: "Không tìm thấy người dùng"
+            });
+        }
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -426,10 +450,20 @@ export const getDeletedUsers = async (req, res) => {
 export const restoreUser = async (req, res) => {
     try {
         const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_USER_ID",
+                message: "Thiếu User Id"
+            });
+        }
 
-        const user = await User.findOne({ _id: id, deletedAt: { $ne: null } });
+        const result = await User.updateOne(
+            { _id: id, deletedAt: { $ne: null } },
+            { $set: { deletedAt: null, deletedBy: null } }
+        );
 
-        if (!user) {
+        if (!result.matchedCount) {
             return res.status(404).json({
                 success: false,
                 code: "USER_NOT_FOUND",
@@ -437,26 +471,23 @@ export const restoreUser = async (req, res) => {
             });
         }
 
-        await user.restore();
-
-        io.to("Admin").emit("userRestored", {
-            userId: user._id,
-            email: user.email,
-            role: user.role
-        });
+        io.to("Admin").emit("userRestored");
 
         return res.status(200).json({
             success: true,
             code: "USER_RESTORED",
             message: "Khôi phục người dùng thành công",
-            data: {
-                id: user._id,
-                email: user.email,
-                role: user.role,
-            },
+            data: { id }
         });
     } catch (error) {
         console.error("Error restoring user:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "USER_NOT_FOUND",
+                message: "Không tìm thấy người dùng đã xóa",
+            });
+        }
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -468,10 +499,16 @@ export const restoreUser = async (req, res) => {
 export const permanentDeleteUser = async (req, res) => {
     try {
         const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_USER_ID",
+                message: "Thiếu User Id"
+            });
+        }
 
-        const user = await User.findOne({ _id: id, deletedAt: { $ne: null } });
-
-        if (!user) {
+        const result = await User.deleteOne({ _id: id, deletedAt: { $ne: null } });
+        if (!result.deletedCount) {
             return res.status(404).json({
                 success: false,
                 code: "USER_NOT_FOUND",
@@ -479,7 +516,7 @@ export const permanentDeleteUser = async (req, res) => {
             });
         }
 
-        await user.deleteOne();
+        io.to("Admin").emit("userPermanentlyDeleted");
 
         return res.status(200).json({
             success: true,
@@ -489,6 +526,13 @@ export const permanentDeleteUser = async (req, res) => {
         });
     } catch (error) {
         console.error("Error permanently deleting user:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "USER_NOT_FOUND",
+                message: "Không tìm thấy người dùng đã xóa",
+            });
+        }
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",

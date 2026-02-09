@@ -4,38 +4,97 @@ import styles from "./UserManagement.module.css";
 import { Role } from "../../config/role.js";
 import PageHeader from "../../components/layout/PageHeader.jsx";
 import axiosInstance from "../../services/axiosInstance.jsx";
-import { Trash2, Search, ChevronDown } from "lucide-react";
+import { Trash2, ChevronDown } from "lucide-react";
 import { useSocket } from "../../context/SocketContext.jsx";
+import Pagination from "../../components/common/Pagination.jsx";
+import SearchField from "../../components/common/SearchField.jsx";
 
 function UserManagement() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const pageFromUrl = parseInt(searchParams.get("page") || "1");
+    const socket = useSocket();
+
     const searchFromUrl = searchParams.get("search") || "";
     const roleFromUrl = searchParams.get("role") || "all";
-    const [page, setPage] = useState(pageFromUrl);
+
     const [searchTerm, setSearchTerm] = useState(searchFromUrl);
-    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchFromUrl);
+    const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
     const [selectedFilter, setSelectedFilter] = useState(roleFromUrl);
-    const [users, setUsers] = useState([]);
-    const [totalPages, setTotalPages] = useState(1);
-    const socket = useSocket();
-    const [limit] = useState(20);
+    const filterTabs = [
+        { id: "all", label: "Tất cả" },
+        ...Object.entries(Role).filter(([key]) => key !== "GUEST").map(([key, info]) => ({
+            id: info.class,
+            label: info.label
+        }))
+    ];
+
+    const [items, setItems] = useState([]);
+    const [cursor, setCursor] = useState(null);
+    const [direction, setDirection] = useState("next");
+    const [nextCursor, setNextCursor] = useState(null);
+    const [prevCursor, setPrevCursor] = useState(null);
+    const [hasMore, setHasMore] = useState(false);
+    const [hasPrev, setHasPrev] = useState(false);
+    const limit = 21;
 
     useEffect(() => {
-        setPage(pageFromUrl);
         setSearchTerm(searchFromUrl);
-        setDebouncedSearchTerm(searchFromUrl);
+        setDebouncedSearch(searchFromUrl);
         setSelectedFilter(roleFromUrl);
-    }, [pageFromUrl, searchFromUrl, roleFromUrl]);
+    }, [searchFromUrl, roleFromUrl]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            setDebouncedSearchTerm(searchTerm);
-            updateParams({ search: searchTerm, page: 1 });
+            setDebouncedSearch(searchTerm);
+            updateParams({ search: searchTerm });
         }, 400);
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    useEffect(() => {
+        setCursor(null);
+        setDirection("next");
+    }, [debouncedSearch, selectedFilter]);
+
+    const fetchData = useCallback(async () => {
+        const res = await axiosInstance.get("/api/users", {
+            params: {
+                limit,
+                cursor,
+                direction,
+                search: debouncedSearch,
+                role: selectedFilter
+            }
+        });
+        const { data, pagination } = res.data;
+        setItems(data || []);
+        setHasMore(!!pagination?.hasMore);
+        setHasPrev(!!pagination?.hasPrev);
+        setNextCursor(pagination?.nextCursor || null);
+        setPrevCursor(pagination?.prevCursor || null);
+    }, [limit, cursor, direction, debouncedSearch, selectedFilter]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const refresh = () => fetchData();
+
+        socket.on("userCreated", refresh);
+        socket.on("userRestored", refresh);
+        socket.on("userDeleted", refresh);
+        socket.on("userUpdated", refresh);
+
+        return () => {
+            socket.off("userCreated", refresh);
+            socket.off("userRestored", refresh);
+            socket.off("userDeleted", refresh);
+            socket.off("userUpdated", refresh);
+        };
+    }, [socket, fetchData]);
 
     const updateParams = (newParams) => {
         const params = new URLSearchParams(searchParams);
@@ -46,207 +105,75 @@ function UserManagement() {
         navigate(`?${params.toString()}`);
     };
 
-    const fetchUsers = useCallback(async () => {
-        const res = await axiosInstance.get("/api/users", {
-            params: {
-                page,
-                limit,
-                role: selectedFilter === "all" ? undefined : selectedFilter,
-                search: debouncedSearchTerm || undefined,
-                sortBy: "createdAt",
-                sortOrder: "desc"
-            }
-        });
-
-        const newData = res.data?.data ?? [];
-        const pagination = res.data?.pagination;
-
-        setUsers(newData);
-        setTotalPages(pagination?.totalPages ?? 1);
-    }, [page, selectedFilter, debouncedSearchTerm, limit]);
-
-    useEffect(() => {
-        fetchUsers();
-    }, [fetchUsers]);
-
-    useEffect(() => {
-        if (!socket) return;
-
-        const onUserCreated = () => {
-            fetchUsers();
-        };
-
-        const onUserUpdated = (updatedUser) => {
-            setUsers(prev =>
-                prev.map(u => (u._id === updatedUser._id ? updatedUser : u))
-            );
-        };
-
-        const onUserDeleted = () => {
-            fetchUsers();
-        };
-
-        socket.on("newUserRegistered", onUserCreated);
-        socket.on("userRoleChanged", onUserUpdated);
-        socket.on("userUpdated", onUserUpdated);
-        socket.on("userDeleted", onUserDeleted);
-        return () => {
-            socket.off("newUserRegistered", onUserCreated);
-            socket.off("userRoleChanged", onUserUpdated);
-            socket.off("userUpdated", onUserUpdated);
-            socket.off("userDeleted", onUserDeleted);
-        };
-    }, [socket, fetchUsers]);
-
-    const getRoleInfo = (role) => {
-        if (!role) return Role.GUEST;
-        const key = String(role).trim().toUpperCase();
-        return Role[key] || Role.GUEST;
-    };
-
-    const filterTabs = [
-        { id: "all", label: "Tất cả" },
-        ...Object.entries(Role)
-            .filter(([key]) => key !== "GUEST")
-            .map(([key, info]) => ({
-                id: info.class,
-                label: info.label
-            }))
-    ];
-
-    const handlePageChange = (newPage) => {
-        if (newPage >= 1 && newPage <= totalPages) {
-            updateParams({ page: newPage });
-            window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-    };
-
     const handleDeleteUser = async (id) => {
         await axiosInstance.delete(`/api/users/${id}`);
     };
 
-    const handleRoleChange = async (email, newRole) => {
-        const response = await axiosInstance.post("/api/users/role", {
-            email,
-            role: newRole
-        });
-
-        if (response.data?.success) {
-            setUsers(prev => prev.map(u => (u.email === email ? { ...u, role: newRole } : u)));
-        }
+    const handleRoleChange = async (id, newRole) => {
+        await axiosInstance.post("/api/users/role", { id, role: newRole });
     };
 
-    const availableRoles = [
-        { value: "User", label: "User" },
-        { value: "Staff", label: "Staff" },
-        { value: "Admin", label: "Admin" }
-    ];
-
     return (
-        <div className={styles.container}>
-            <main className={styles.main}>
-                <PageHeader title="Quản Lý Người Dùng" />
-
-                <div className={styles.content}>
-                    <div className={styles.searchFilterBar}>
-                        <div className={styles.searchWrapper}>
-                            <Search className={styles.searchIcon} />
-                            <input type="text" placeholder="Tìm kiếm theo tên, email..." className={styles.searchInput} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                        </div>
-                        <div className={styles.filterTabs}>
-                            {filterTabs.map(filter => (
-                                <button key={filter.id} onClick={() => updateParams({ role: filter.id, page: 1 })} className={`${styles.filterTab} ${selectedFilter === filter.id ? styles.filterTabActive : ""}`}>
-                                    {filter.label}
-                                </button>
-                            ))}
-                        </div>
+        <>
+            <PageHeader title="Danh Sách Bất Động Sản" />
+            <div className={styles.content}>
+                <div className={styles.searchFilterBar}>
+                    <div className={styles.searchWrapper}>
+                        <SearchField searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Tìm kiếm theo tên, email hoặc địa điểm..." />
                     </div>
-                    <div className={styles.tableContainer}>
-                        <table className={styles.usersTable}>
-                            <thead className={styles.tableHead}>
-                                <tr>
-                                    <th className={styles.tableHeader}>Tên</th>
-                                    <th className={styles.tableHeader}>Email</th>
-                                    <th className={styles.tableHeader}>Địa chỉ</th>
-                                    <th className={styles.tableHeader}>Vai trò</th>
-                                    <th className={styles.tableHeader}>Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody className={styles.tableBody}>
-                                {users.map(user => (
-                                    <tr key={user._id} className={styles.tableRow}>
-                                        <td className={styles.tableCell}>{user.fullName}</td>
-                                        <td className={styles.tableCell}>{user.email}</td>
-                                        <td className={styles.tableCell}>{user.address}</td>
-                                        <td className={styles.tableCell}>
-                                            <div className={styles.userActions}>
-                                                <div className={styles.roleSelectWrapper}>
-                                                    <select value={user.role} onChange={(e) => handleRoleChange(user.email, e.target.value, user._id)} className={`${styles.roleSelect} ${styles[`role${user.role}`]}`}>
-                                                        {availableRoles.map(role => (
-                                                            <option key={role.value} value={role.value}>
-                                                                {role.label}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <ChevronDown className={styles.roleSelectIcon} />
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className={styles.tableCell}>
-                                            <div className={styles.userActions}>
-                                                <button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} title="Xóa" onClick={() => handleDeleteUser(user.id)}>
-                                                    <Trash2 />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className={styles.filterTabs}>
+                        {filterTabs.map(filter => (
+                            <button key={filter.id} onClick={() => updateParams({ role: filter.id, page: 1 })} className={`${styles.filterTab} ${selectedFilter === filter.id ? styles.filterTabActive : ""}`}>
+                                {filter.label}
+                            </button>
+                        ))}
                     </div>
-
-                    {totalPages > 1 && (
-                        <div className={styles.paginationContainer}>
-                            <button onClick={() => handlePageChange(page - 1)} disabled={page === 1} className={styles.pageNavButton}>
-                                Trước
-                            </button>
-
-                            <div className={styles.pageNumbers}>
-                                {(() => {
-                                    const pages = [];
-                                    const maxVisible = 5;
-                                    let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
-                                    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-                                    if (endPage - startPage < maxVisible - 1) {
-                                        startPage = Math.max(1, endPage - maxVisible + 1);
-                                    }
-                                    if (startPage > 1) {
-                                        pages.push(<button key={1} onClick={() => handlePageChange(1)} className={styles.pageButton}>1</button>);
-                                        if (startPage > 2)
-                                            pages.push(<span key="dots1" className={styles.pageDots}>...</span>);
-                                    }
-                                    for (let i = startPage; i <= endPage; i++) {
-                                        pages.push(<button key={i} onClick={() => handlePageChange(i)} className={`${styles.pageButton} ${i === page ? styles.pageButtonActive : ""}`}>{i}</button>);
-                                    }
-
-                                    if (endPage < totalPages) {
-                                        if (endPage < totalPages - 1)
-                                            pages.push(<span key="dots2" className={styles.pageDots}>...</span>);
-                                        pages.push(<button key={totalPages} onClick={() => handlePageChange(totalPages)} className={styles.pageButton}>{totalPages}</button>);
-                                    }
-
-                                    return pages;
-                                })()}
-                            </div>
-
-                            <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages} className={styles.pageNavButton}>
-                                Sau
-                            </button>
-                        </div>
-                    )}
                 </div>
-            </main>
-        </div>
+                <div className={styles.tableContainer}>
+                    <table className={styles.usersTable}>
+                        <thead className={styles.tableHead}>
+                            <tr>
+                                <th className={styles.tableHeader}>Tên</th>
+                                <th className={styles.tableHeader}>Email</th>
+                                <th className={styles.tableHeader}>Địa chỉ</th>
+                                <th className={styles.tableHeader}>Vai trò</th>
+                                <th className={styles.tableHeader}>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody className={styles.tableBody}>
+                            {(items ?? []).map((user) => (
+                                <tr key={user.id} className={styles.tableRow}>
+                                    <td className={styles.tableCell}>{user.fullName}</td>
+                                    <td className={styles.tableCell}>{user.email}</td>
+                                    <td className={styles.tableCell}>{user.address}</td>
+                                    <td className={styles.tableCell}>
+                                        <div className={styles.userActions}>
+                                            <div className={styles.roleSelectWrapper}>
+                                                <select value={user.role} onChange={(e) => handleRoleChange(user.id, e.target.value, user.id)} className={`${styles.roleSelect} ${styles[`role${user.role}`]}`}>
+                                                    <option value={"User"}>{"User"}</option>
+                                                    <option value={"Staff"}>{"Staff"}</option>
+                                                    <option value={"Admin"}>{"Admin"}</option>
+                                                </select>
+                                                <ChevronDown className={styles.roleSelectIcon} />
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className={styles.tableCell}>
+                                        <div className={styles.userActions}>
+                                            <button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} title="Xóa" onClick={() => handleDeleteUser(user.id)}>
+                                                <Trash2 />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <Pagination prevCursor={prevCursor} nextCursor={nextCursor} hasPrev={hasPrev} hasMore={hasMore} setCursor={setCursor} setDirection={setDirection} />
+            </div>
+        </>
     );
 }
 

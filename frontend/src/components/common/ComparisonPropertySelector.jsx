@@ -14,7 +14,7 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
     const containerRef = useRef(null);
 
     const selectedProperties = useMemo(() => (
-        (selectedComparisons[appraisal.id] || []).map(id => allCachedProperties.find(p => p.id === id || p._id === id)).filter(Boolean)
+        (selectedComparisons[appraisal.id] || []).map(id => allCachedProperties.find(p => p.id === id)).filter(Boolean)
     ), [selectedComparisons, appraisal.id, allCachedProperties]);
 
     useLayoutEffect(() => {
@@ -30,31 +30,31 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
     }, [hoveredProperty]);
 
     const fetchSearch = useCallback(async (search) => {
-        const res = await axiosInstance.get("/api/real-estate", {
+        const res = await axiosInstance.get("/api/real-estates", {
             params: {
-                page: 1,
                 limit: 50,
                 search,
                 sortBy: "createdAt",
                 sortOrder: "desc",
             },
-        }).catch(() => { });
-        const data = res.data?.data ?? [];
-        setSearchResults(data.map(p => ({ ...p, id: p._id })));
+        });
+        setSearchResults(res.data?.data ?? []);
     }, []);
 
     const fetchNearby = useCallback(async () => {
         if (!appraisal) return [];
-        const res = await axiosInstance.get("/real-estates/nearby", {
+        const res = await axiosInstance.get("/api/real-estates/nearby", {
             params: {
                 province: appraisal.province,
                 district: appraisal.district,
                 ward: appraisal.ward,
                 street: appraisal.street,
                 limit: 20,
+                sortBy: "createdAt",
+                sortOrder: "desc",
             },
-        }).catch(() => { });;
-        return (res.data?.data ?? []).map(p => ({ ...p, id: p._id }));
+        });
+        return res.data?.data ?? [];
     }, [appraisal]);
 
     useEffect(() => {
@@ -109,7 +109,7 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
     );
 
     const handleToggle = useCallback(
-        (propertyId) => onToggleComparison(appraisal.id, propertyId),
+        (id) => onToggleComparison(appraisal.id, id),
         [appraisal.id, onToggleComparison]
     );
 

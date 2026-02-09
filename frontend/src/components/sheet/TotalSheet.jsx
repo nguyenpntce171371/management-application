@@ -52,8 +52,8 @@ function TotalSheet({ appraisalProperties, constructionWorks, addConstruction, d
                     {(() => {
                         let counter = 1;
                         return appraisalProperties?.flatMap((appraisal, i) =>
-                            appraisal.land?.map((item, index) => (
-                                <tr key={`${i}-${index}`}>
+                            appraisal.land?.map((item) => (
+                                <tr key={item.id}>
                                     <td>1.{counter++}</td>
                                     <td>{appraisal.location?.landParcel || ""}</td>
                                     <td>{item.landType}</td>

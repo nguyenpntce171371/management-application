@@ -54,7 +54,7 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
         const selectedCompIds = appraisal.selectedComparisons || [];
         if (selectedCompIds.length === 0) return 0;
 
-        const selectedComps = allComparisons.filter(comp => selectedCompIds.includes(comp._id || comp.id));
+        const selectedComps = allComparisons.filter(comp => selectedCompIds.includes(comp.id));
         if (selectedComps.length === 0) return 0;
 
         const totalGuidedPrice = selectedComps.reduce((sum, comp) => sum + (comp.guidedPrice || 0), 0);
@@ -73,7 +73,7 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
         });
 
         const recalculatedComparisons = updatedComparisons.map(comp => {
-            const compId = comp._id || comp.id;
+            const compId = comp.id;
             const relatedAppraisal = compToAppraisalMap.get(compId);
 
             if (relatedAppraisal) {
@@ -115,11 +115,11 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
 
     useEffect(() => {
         const currentSnapshot = (appraisalProperties ?? []).map(p => ({
-            id: p._id || p.id,
+            id: p.id,
             selectedComparisons: JSON.stringify((p.selectedComparisons || []).sort())
         }));
 
-        const currentComparisonIds = properties?.map(p => p._id || p.id).sort().join(',') || '';
+        const currentComparisonIds = properties?.map(p => p.id).sort().join(',') || '';
 
         const appraisalsChanged = JSON.stringify(currentSnapshot) !== JSON.stringify(prevAppraisalIdsRef.current);
         const comparisonsChanged = currentComparisonIds !== prevComparisonIdsRef.current;
@@ -128,7 +128,7 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
             const updatedAppraisals = appraisalProperties.map(p => ({
                 ...p,
                 appraisalId,
-                _id: p._id || p.id || uuidv4(),
+                id: p.id || uuidv4(),
                 selectedComparisons: p.selectedComparisons || []
             }));
 
@@ -136,7 +136,7 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
             prevAppraisalIdsRef.current = currentSnapshot;
 
             setTimeout(() => {
-                const currentComps = latestDataRef.current.comparisons.length > 0 ? latestDataRef.current.comparisons : properties?.map(p => ({ ...p, _id: p._id || p.id || uuidv4() })) || [];
+                const currentComps = latestDataRef.current.comparisons.length > 0 ? latestDataRef.current.comparisons : properties?.map(p => ({ ...p, id: p.id || uuidv4() })) || [];
 
                 const { appraisals: recalcAppraisals, comparisons: recalcComparisons } = recalculateAll(updatedAppraisals, currentComps);
 
@@ -155,7 +155,7 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
         }
 
         if (comparisonsChanged) {
-            setComparisonsData(properties?.map(p => ({ ...p, _id: p._id || p.id || uuidv4() })) || []);
+            setComparisonsData(properties?.map(p => ({ ...p, id: p.id || uuidv4() })) || []);
             prevComparisonIdsRef.current = currentComparisonIds;
         }
     }, [appraisalProperties, properties, recalculateAll, batchSave]);
@@ -251,10 +251,10 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
         return updated;
     }, [updateLandByType, setLandAreaIfSingle, cleanupLands, updateNestedField]);
 
-    const handleComparisonChange = useCallback(async (_id, field, value) => {
+    const handleComparisonChange = useCallback(async (id, field, value) => {
         setComparisonsData(prevComparisons => {
             const updated = prevComparisons.map(comp => {
-                if (comp._id !== _id) return comp;
+                if (comp.id !== id) return comp;
 
                 const newComp = { ...comp };
 
@@ -353,8 +353,6 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
             const currentComparisons = latestDataRef.current.comparisons;
 
             const { appraisals: recalcAppraisals, comparisons: recalcComparisons } = recalculateAll(currentAppraisals, currentComparisons);
-            console.log(currentAppraisals);
-            console.log(currentComparisons);
             setComparisonsData(recalcComparisons);
             setAppraisalPropertiesData(recalcAppraisals);
 
@@ -370,9 +368,9 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
 
     }, [updateLandByType, setLandAreaIfSingle, cleanupLands, updateNestedField, recalculateAll, batchSave]);
 
-    const handleAppraisalChange = useCallback(async (_id, field, value) => {
+    const handleAppraisalChange = useCallback(async (id, field, value) => {
         setAppraisalPropertiesData(prev => {
-            const targetIndex = prev.findIndex(ap => (ap.id === _id || ap._id === _id));
+            const targetIndex = prev.findIndex(ap => ap.id === id);
 
             if (targetIndex === -1) {
                 return prev;
@@ -388,7 +386,7 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
         if (field.endsWith(".ontLandPrice") || field === "convertibleAreaLimit") {
             setComparisonsData(prevComps => {
                 const currentAppraisals = latestDataRef.current.appraisals;
-                const changedAppraisal = currentAppraisals.find(ap => ap.id === _id || ap._id === _id);
+                const changedAppraisal = currentAppraisals.find(ap => ap.id === id);
 
                 if (!changedAppraisal) return prevComps;
 
@@ -397,7 +395,7 @@ export function usePropertyComparison(appraisalId, appraisalProperties, properti
                 const landType = parts[1];
 
                 return prevComps.map(comp => {
-                    const isSelected = selectedCompIds.includes(comp._id || comp.id);
+                    const isSelected = selectedCompIds.includes(comp.id);
                     if (!isSelected) return comp;
 
                     const newComp = { ...comp };

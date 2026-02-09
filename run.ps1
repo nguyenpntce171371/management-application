@@ -75,7 +75,7 @@ function Load-Environment {
     if (Test-Path .env) {
         try {
             Get-Content .env | ForEach-Object {
-                if ($_ -match '^\s*([^#][^=]*)\s*=\s*(.*)$') {
+                if ($_ -match "^\s*([^#][^=]*)\s*=\s*(.*)$") {
                     $name = $matches[1].Trim()
                     $value = $matches[2].Trim()
                     [Environment]::SetEnvironmentVariable($name, $value, "Process")
@@ -137,7 +137,7 @@ function Test-DockerRunning {
     Print-Step "Checking Docker Status"
     
     try {
-        $dockerVersion = docker version --format '{{.Server.Version}}' 2>$null
+        $dockerVersion = docker version --format "{{.Server.Version}}" 2>$null
         
         if ($LASTEXITCODE -eq 0 -and $dockerVersion) {
             Print-Success "Docker is running (version: $dockerVersion)"
@@ -519,7 +519,7 @@ function Clean-Docker {
         if ($oldImages) {
             Print-Info "Found $($oldImages.Count) old image(s) to remove..."
             $oldImages | ForEach-Object {
-                $imageId = ($_ -split ' ')[0]
+                $imageId = ($_ -split " ")[0]
                 docker rmi -f $imageId 2>&1 | Out-Null
             }
             Print-Success "Old images removed"

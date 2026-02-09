@@ -4,29 +4,6 @@
     margin: 0 auto;
 }
 
-/* Info Box */
-.infoBox {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border: 1px solid #f59e0b;
-    border-radius: 12px;
-    padding: 1rem 1.5rem;
-    margin-bottom: 2rem;
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    color: #92400e;
-}
-
-.infoBox svg {
-    flex-shrink: 0;
-    margin-top: 2px;
-}
-
-.infoBox strong {
-    font-weight: 700;
-}
-
-/* Tabs */
 .tabs {
     display: flex;
     gap: 0.5rem;
@@ -60,6 +37,10 @@
     flex-shrink: 0;
 }
 
+.searchWrapper {
+    margin-bottom: 1.5rem;
+}
+
 .activeTab {
     color: #0ea5e9;
     border-bottom-color: #0ea5e9;
@@ -70,13 +51,13 @@
     background: #e0f2fe;
 }
 
-/* Table */
 .tableWrapper {
     background: white;
     border-radius: 12px;
     border: 1px solid #e5e7eb;
     overflow: hidden;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1.5rem;
 }
 
 .table {
@@ -118,29 +99,6 @@
     border-bottom: none;
 }
 
-/* Expiring Soon Row */
-.table tbody tr.expiring {
-    background: #fef3c7;
-}
-
-.table tbody tr.expiring:hover {
-    background: #fde68a;
-}
-
-/* Special Cells */
-.address {
-    max-width: 300px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.code {
-    font-family: 'Courier New', monospace;
-    font-weight: 600;
-    color: #0f172a;
-}
-
 .dateInfo,
 .userInfo {
     display: flex;
@@ -154,59 +112,6 @@
     flex-shrink: 0;
 }
 
-/* Days Left Badge */
-.daysLeft {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.25rem 0.75rem;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.8125rem;
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.daysLeft.warning {
-    background: #fef3c7;
-    color: #92400e;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.7;
-    }
-}
-
-/* Role/Status Badges */
-.badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.badge.admin {
-    background: #fee2e2;
-    color: #991b1b;
-}
-
-.badge.staff {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.badge.user {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-/* Actions */
 .actions {
     display: flex;
     gap: 0.5rem;
@@ -231,6 +136,7 @@
     background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
     color: white;
     box-shadow: 0 2px 8px rgba(14, 165, 233, 0.2);
+    padding: 0.5rem;
 }
 
 .btnRestore:hover:not(:disabled) {
@@ -260,76 +166,9 @@
 .btnDelete:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    transform: none;
 }
 
-/* Loading & Empty States */
-.loading,
-.empty {
-    text-align: center;
-    padding: 3rem 1rem;
-    color: #64748b;
-    font-size: 0.9375rem;
-}
-
-.loading {
-    animation: fadeIn 0.3s;
-}
-
-.empty {
-    color: #94a3b8;
-}
-
-/* Pagination */
-.pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    padding: 1.5rem;
-    background: white;
-    border-top: 1px solid #e5e7eb;
-    border-radius: 0 0 12px 12px;
-}
-
-.paginationBtn {
-    padding: 0.5rem 1rem;
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    color: #334155;
-    font-weight: 600;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.paginationBtn:hover:not(:disabled) {
-    background: #f8fafc;
-    border-color: #cbd5e1;
-}
-
-.paginationBtn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.pageInfo {
-    color: #64748b;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-/* Animations */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-/* Responsive */
 @media (max-width: 1024px) {
     .table {
         min-width: 1000px;
@@ -355,7 +194,7 @@
     }
 
     .tab svg {
-        display: none; /* Hide icons on mobile */
+        display: none;
     }
 
     .infoBox {

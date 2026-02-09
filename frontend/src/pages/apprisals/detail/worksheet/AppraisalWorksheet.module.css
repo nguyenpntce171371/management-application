@@ -65,7 +65,7 @@
     flex-wrap: wrap;
 }
 
-.button{
+.button {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -77,19 +77,18 @@
     color: var(--color-text-primary);
     font-weight: 500;
     font-size: 14px;
-    
-    /* Tối ưu hover */
+
     will-change: transform;
     transition: transform 0.15s ease-out, border-color 0.15s ease-out;
 }
 
-.button:hover{
+.button:hover {
     background: var(--color-bg-hover);
     border-color: var(--color-text-muted);
     transform: translateY(-1px);
 }
 
-.button:active{
+.button:active {
     transform: translateY(0);
 }
 
@@ -122,7 +121,7 @@
     cursor: pointer;
     font-size: 14px;
     color: var(--color-text-primary);
-    
+
     /* Tối ưu */
     will-change: transform, border-color;
     contain: layout style paint;
@@ -250,6 +249,7 @@
     color: #1f2937;
     font-weight: 600;
     letter-spacing: -0.01em;
+    white-space: nowrap;
 }
 
 .comparisonTable td {
@@ -304,7 +304,7 @@
     align-items: center;
     justify-content: center;
     box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
-    
+
     will-change: transform;
     transition: transform 0.15s ease-out;
 }
@@ -330,7 +330,7 @@
     align-items: center;
     justify-content: center;
     box-shadow: var(--shadow-md);
-    
+
     will-change: transform;
     transition: background-color 0.15s ease-out, color 0.15s ease-out, transform 0.15s ease-out;
 }
@@ -350,7 +350,7 @@
     white-space: pre-wrap;
     color: #374151;
     resize: none;
-    
+
     transition: border-color 0.15s ease-out;
 }
 
@@ -399,11 +399,11 @@ textarea.cellInput {
     background: white;
     color: #374151;
     cursor: pointer;
-    
+
     /* Tối ưu quan trọng cho select */
     will-change: border-color;
     contain: layout style;
-    
+
     /* Chỉ transition border-color */
     transition: border-color 0.12s ease-out;
 }
@@ -498,7 +498,7 @@ textarea.cellInput {
     background: #f8fafc;
     color: #0f172a;
     font-weight: 400;
-    
+
     transition: border-color 0.15s ease-out, background-color 0.15s ease-out;
 }
 
@@ -542,7 +542,7 @@ textarea.cellInput {
     max-height: 90vh;
     overflow: hidden;
     animation: slideUp 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    
+
     transform: translateZ(0);
     backface-visibility: hidden;
     will-change: transform;
@@ -573,7 +573,7 @@ textarea.cellInput {
     display: inline-flex;
     align-items: center;
     border-radius: var(--radius-sm);
-    
+
     transition: background-color 0.15s ease-out, color 0.15s ease-out;
 }
 
@@ -586,7 +586,7 @@ textarea.cellInput {
     padding: 28px;
     overflow-y: auto;
     max-height: calc(90vh - 180px);
-    
+
     /* Smooth scrolling */
     -webkit-overflow-scrolling: touch;
 }
@@ -616,7 +616,7 @@ textarea.cellInput {
     font-size: 14px;
     color: var(--color-text-primary);
     background: var(--color-bg-white);
-    
+
     transition: border-color 0.15s ease-out;
 }
 
@@ -651,7 +651,7 @@ textarea.cellInput {
     font-weight: 500;
     cursor: pointer;
     border: none;
-    
+
     will-change: transform;
     transition: transform 0.15s ease-out, background-color 0.15s ease-out;
 }
@@ -684,11 +684,12 @@ textarea.cellInput {
 
 /* Tối ưu cho mobile */
 @media (hover: none) and (pointer: coarse) {
+
     .formSelect,
     .cellSelect {
         will-change: auto;
     }
-    
+
     .button,
     .propertyChip {
         will-change: auto;
@@ -697,6 +698,7 @@ textarea.cellInput {
 
 /* Tối ưu cho reduced motion */
 @media (prefers-reduced-motion: reduce) {
+
     *,
     *::before,
     *::after {
@@ -710,6 +712,7 @@ textarea.cellInput {
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -720,6 +723,7 @@ textarea.cellInput {
         transform: translateY(20px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;

@@ -3,8 +3,8 @@ import Log from "../models/Log.js";
 
 export const logEvent = async (data) => {
     try {
-        const created = await Log.create(data);
-        io.to("Admin").emit("logCreated", JSON.parse(JSON.stringify(created)));
+        await Log.create(data);
+        io.to("Admin").emit("logCreated");
     } catch (err) {
         console.error("LogService error:", err.message);
     }

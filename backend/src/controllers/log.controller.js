@@ -1,55 +1,95 @@
 import Log from "../models/Log.js";
+import { transformIds } from "../utils/normalizeMongoIds.js";
+import { parseSort, executeCursorPaginatedQuery } from "../utils/query.js";
 import { normalize } from "../utils/string.js";
 
 export const getLogs = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
-        const skip = (page - 1) * limit;
-        const search = req.query.search || "";
-        const method = req.query.method || "all";
-        const statusCode = req.query.statusCode || "all";
-        const sortBy = req.query.sortBy || "createdAt";
-        const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+        const baseQuery = {};
 
-        const query = {};
-        if (search.trim()) {
-            const normalizedSearch = normalize(search);
-            query.$text = { $search: normalizedSearch };
+        if (req.query.method && req.query.method !== "all") {
+            baseQuery.method = req.query.method;
         }
 
-        if (method !== "all") {
-            query.method = method;
+        if (req.query.statusCode && req.query.statusCode !== "all") {
+            baseQuery.statusCode = req.query.statusCode;
         }
 
-        if (statusCode !== "all") {
-            query.statusCode = parseInt(statusCode);
+        const searchText = normalize(req.query.search);
+        if (searchText) {
+            baseQuery.searchText = { $regex: searchText, $options: "i" };
         }
 
-        const data = await Log
-            .find(query)
-            .populate("userId", "email role")
-            .sort({ [sortBy]: sortOrder, _id: sortOrder })
-            .skip(skip)
-            .limit(limit);
+        const { sortBy, sortOrder } = parseSort(req.query, ["createdAt"]);
+        const options = {
+            select: "method endpoint statusCode message email role userAgent ipAddress referrer createdAt searchText",
+            sortBy,
+            sortOrder,
+            cursor: req.query.cursor,
+            direction: req.query.direction,
+            limit: req.query.limit,
+            lean: true
+        }
 
-        const total = await Log.countDocuments(query);
+        const { data, hasMore, hasPrev, nextCursor, prevCursor } = await executeCursorPaginatedQuery(Log, baseQuery, options);
 
         return res.status(200).json({
             success: true,
-            code: "LOGS_FETCHED",
+            code: "LOG_LIST",
             pagination: {
-                page,
-                limit,
-                total,
-                totalPages: Math.ceil(total / limit),
-                hasMore: page * limit < total
+                hasMore,
+                hasPrev,
+                nextCursor,
+                prevCursor
             },
-            data,
+            data: transformIds(data)
         });
     } catch (error) {
-        console.error("Error fetching user stats:", error);
-        res.status(500).json({
+        console.error("Get Real Estate Error:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+        });
+    }
+};
+
+export const getLogById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_LOG_ID",
+                message: "Thiếu Log Id"
+            });
+        }
+
+        const log = await Log.findById(id).lean();
+
+        if (!log) {
+            return res.status(404).json({
+                success: false,
+                code: "LOG_NOT_FOUND",
+                message: "Không tìm thấy bản ghi"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            code: "LOG_FOUND",
+            data: transformIds(log)
+        });
+    } catch (error) {
+        console.error("Error fetching log:", error);
+        if (error.name === "CastError") {
+            return res.status(404).json({
+                success: false,
+                code: "LOG_NOT_FOUND",
+                message: "Không tìm thấy bản ghi"
+            });
+        }
+        return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
             message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"

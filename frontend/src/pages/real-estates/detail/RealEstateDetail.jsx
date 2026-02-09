@@ -6,7 +6,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import axiosInstance from "../../../services/axiosInstance";
 import { Role } from "../../../config/role";
-import { notify } from "../../../context/NotificationContext";
 
 function RealEstateDetail() {
     const { id } = useParams();

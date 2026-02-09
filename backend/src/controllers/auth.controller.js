@@ -7,31 +7,8 @@ import axios from "axios";
 import { io } from "../index.js";
 import { OAuth2Client } from "google-auth-library";
 import { OTPService } from "../services/otp.service.js";
-import NodeCache from "node-cache";
-import { generatePresignedUrl } from "../services/storage.service.js";
-
-const imageUrlCache = new NodeCache({
-    stdTTL: 1800,
-    checkperiod: 600,
-    useClones: false,
-    maxKeys: 10000
-});
-
-const getCachedImageUrl = async (imagePath) => {
-    if (!(imagePath && !imagePath.startsWith("http"))) return imagePath;
-
-    const cachedUrl = imageUrlCache.get(imagePath);
-    if (cachedUrl) return cachedUrl;
-
-    try {
-        const url = await generatePresignedUrl(imagePath, 30);
-        imageUrlCache.set(imagePath, url);
-        return url;
-    } catch (error) {
-        console.error(`Failed to generate URL for ${imagePath}:`, error);
-        return null;
-    }
-};
+import { getCachedImageUrl } from "../utils/cachedImage.js";
+import { transformIds } from "../utils/normalizeMongoIds.js";
 
 export const googleCallback = async (req, res) => {
     const DOMAIN = `https://${process.env.DOMAIN}`;
@@ -84,7 +61,7 @@ export const googleCallback = async (req, res) => {
             });
         }
 
-        const email = payload.email;
+        const email = payload.email.trim().toLowerCase();
         const fullName = payload.name;
         const avatar = payload.picture;
         const providerId = payload.sub;
@@ -97,13 +74,20 @@ export const googleCallback = async (req, res) => {
             });
         }
 
-        let user = await User.findOne({ email });
+        let user = await User.findOne({ email, deletedAt: { $exists: true } });
         if (!user) {
             const count = await User.countDocuments();
             const role = count === 0 ? "Admin" : "User";
 
             user = new User({ fullName, email, provider: "google", providerId, avatar, role });
         } else {
+            if (user.deletedAt) {
+                return res.status(401).json({
+                    success: false,
+                    code: "INVALID_CREDENTIALS",
+                    message: "Thông tin đăng nhập không hợp lệ"
+                });
+            }
             if (!user.providerId) {
                 user.providerId = providerId;
             }
@@ -112,36 +96,43 @@ export const googleCallback = async (req, res) => {
             }
         }
         await user.save();
-
+        const id = user._id.toString();
         const rawDeviceId = req.cookies.deviceId || crypto.randomUUID();
         const deviceName = req.headers["user-agent"] || "Unknown device";
         const accessToken = jwt.sign(
-            { id: user._id.toString(), email: user.email, role: user.role },
+            { id, email: user.email, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: "15m" }
         );
         const accessExp = new Date(Date.now() + 15 * 60 * 1000);
         const remember = true;
-        const refreshToken = remember ? jwt.sign({ id: user._id.toString() }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" }) : jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "1h" });
+        const refreshToken = remember ? jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" }) : jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "1h" });
         const refreshExp = remember ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : new Date(Date.now() + 60 * 60 * 1000);
 
-        const session = await Token.create({
+        const session = await Token.findOneAndUpdate({
             userId: user._id,
-            refreshToken,
-            accessTokenExpiresAt: accessExp,
-            refreshTokenExpiresAt: refreshExp,
-            deviceId: rawDeviceId,
-            deviceName,
-            ipAddress: req.ip || "",
-            remember: remember,
+            deviceId: Token.hashValue(rawDeviceId)
+        }, {
+            $set: {
+                refreshToken: Token.hashValue(refreshToken),
+                accessTokenExpiresAt: accessExp,
+                refreshTokenExpiresAt: refreshExp,
+                deviceName,
+                ipAddress: req.ip || "",
+                remember,
+            },
+        }, {
+            new: true,
+            upsert: true,
+            setDefaultsOnInsert: true,
         });
 
-        io.to(user._id.toString()).emit("loggedInElsewhere", { _id: session._id.toString() });
+        io.to(id).emit("loggedInElsewhere", { id: session._id.toString() });
 
         res.cookie("deviceId", rawDeviceId, {
             httpOnly: true,
             sameSite: "Lax",
-            expires: new Date("9999-12-31"),
+            maxAge: 10 * 365 * 24 * 60 * 60 * 1000,
             secure: process.env.APP_MODE === "production",
         });
 
@@ -176,84 +167,108 @@ export const googleLogin = (req, res) => {
     return res.redirect(url);
 };
 
-export const logout = async (req, res) => {
+export const login = async (req, res) => {
     try {
-        const deviceId = req.cookies.deviceId;
+        const { password, remember } = req.body;
+        const email = req.body.email.trim().toLowerCase();
 
-        if (deviceId) {
-            const sessions = await Token.find({ userId: req.user.id });
-            const session = sessions.find(s => s.compareDeviceId(deviceId));
-            if (session) {
-                await session.deleteOne();
-                io.to(req.user.id).emit("loggedOut", { id: session._id.toString() });
-            }
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_FIELDS",
+                message: "Các trường bắt buộc bị thiếu"
+            });
         }
 
-        res.clearCookie("deviceId");
-        res.clearCookie("accessToken", { path: "/" });
-        res.clearCookie("refreshToken", { path: "/" });
+        const user = await User.findOne({ email }).select({ email: 1, role: 1, fullName: 1, address: 1, avatar: 1, provider: 1 });
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                code: "INVALID_CREDENTIALS",
+                message: "Thông tin đăng nhập không hợp lệ"
+            });
+        }
+
+        const validPassword = user.provider !== "local" ? false : await user.comparePassword(password);
+        if (!validPassword) {
+            return res.status(401).json({
+                success: false,
+                code: "INVALID_CREDENTIALS",
+                message: "Thông tin đăng nhập không hợp lệ"
+            });
+        }
+
+        const id = user._id.toString();
+
+        const accessToken = jwt.sign(
+            { id, email: user.email, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: "15m" }
+        );
+        const accessExp = new Date(Date.now() + 15 * 60 * 1000);
+
+        const refreshToken = remember ? jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" }) : jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "1h" });
+
+        const refreshExp = remember ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : new Date(Date.now() + 60 * 60 * 1000);
+
+        const rawDeviceId = req.cookies.deviceId || crypto.randomUUID();
+        const deviceName = req.headers["user-agent"] || "Unknown device";
+
+        const session = await Token.findOneAndUpdate({
+            userId: user._id,
+            deviceId: Token.hashValue(rawDeviceId),
+        }, {
+            $set: {
+                refreshToken: Token.hashValue(refreshToken),
+                accessTokenExpiresAt: accessExp,
+                refreshTokenExpiresAt: refreshExp,
+                deviceName,
+                ipAddress: req.ip || "",
+                remember
+            },
+        }, {
+            new: true,
+            upsert: true,
+            setDefaultsOnInsert: true
+        });
+
+        io.to(id).emit("loggedInElsewhere");
+
+        res.cookie("deviceId", rawDeviceId, {
+            httpOnly: true,
+            sameSite: "Lax",
+            maxAge: 10 * 365 * 24 * 60 * 60 * 1000,
+            secure: process.env.APP_MODE === "production"
+        });
+
+        res.cookie("accessToken", accessToken, {
+            httpOnly: true,
+            sameSite: "Lax",
+            maxAge: process.env.APP_MODE === "production" ? 15 * 60 * 1000 : 10 * 365 * 24 * 60 * 60 * 1000,
+            secure: process.env.APP_MODE === "production"
+        });
+
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            sameSite: "Lax",
+            maxAge: remember ? 7 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000,
+            secure: process.env.APP_MODE === "production"
+        });
+
+        const processedData = transformIds(user);
+
+        if (processedData.avatar && !processedData.avatar.startsWith("http")) {
+            processedData.avatar = await getCachedImageUrl(user.avatar);
+        }
 
         return res.status(200).json({
             success: true,
-            code: "LOGOUT_OK",
-            message: "Đăng xuất thành công",
+            code: "LOGIN_OK",
+            message: "Đăng nhập thành công",
+            data: { ...processedData, sessionId: session._id.toString() }
         });
     } catch (error) {
-        console.error("Logout error:", error);
-        res.status(500).json({
-            success: false,
-            code: "SERVER_ERROR",
-            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
-        });
-    }
-};
-
-export const logoutAll = async (req, res) => {
-    try {
-        const currentUser = req.user;
-        const sessions = await Token.find({ userId: currentUser.id });
-        const sessionIds = sessions.map(s => s._id.toString());
-        await Token.deleteMany({ userId: currentUser.id });
-
-        io.to(currentUser.id).emit("loggedOut", { sessionIds });
-
-        res.clearCookie("deviceId");
-        res.clearCookie("accessToken", { path: "/" });
-        res.clearCookie("refreshToken", { path: "/" });
-
-        return res.status(200).json({
-            success: true,
-            code: "LOGOUT_ALL_OK",
-            message: "Tất cả các phiên đã được đăng xuất thành công",
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            code: "SERVER_ERROR",
-            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
-        });
-    }
-};
-
-export const listSessions = async (req, res) => {
-    try {
-        const rawDeviceId = req.cookies.deviceId;
-
-        const sessions = await Token.find({ userId: req.user.id }, { refreshToken: 0 }).sort({ createdAt: -1 });
-
-        return res.status(200).json({
-            success: true,
-            code: "SESSIONS_OK",
-            data: sessions.map(s => ({
-                id: s._id.toString(),
-                deviceName: s.deviceName,
-                ipAddress: s.ipAddress,
-                createdAt: s.createdAt,
-                expiresAt: s.refreshTokenExpiresAt,
-                isCurrent: s.compareDeviceId(rawDeviceId)
-            }))
-        });
-    } catch (error) {
+        console.error("Login error:", error);
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -264,8 +279,7 @@ export const listSessions = async (req, res) => {
 
 export const register = async (req, res) => {
     try {
-        let { fullName, email, password } = req.body;
-
+        const { fullName, email, password } = req.body;
         if (!fullName || !email || !password) {
             return res.status(400).json({
                 success: false,
@@ -283,15 +297,6 @@ export const register = async (req, res) => {
             });
         }
 
-        const exists = await User.findOne({ email });
-        if (exists) {
-            return res.status(400).json({
-                success: false,
-                code: "USER_EXISTS",
-                message: "Người dùng này đã tồn tại",
-            });
-        }
-
         const verified = await OTPService.isVerified(email, "register");
         if (!verified) {
             return res.status(400).json({
@@ -303,7 +308,7 @@ export const register = async (req, res) => {
         OTPService.clearVerified(email, "register");
         const count = await User.countDocuments();
         const role = (count === 0) ? "Admin" : "User";
-        const user = new User({ fullName, email, role });
+        const user = new User({ fullName, email: email.trim().toLowerCase(), role });
         await user.setPassword(password);
         await user.save();
 
@@ -314,9 +319,16 @@ export const register = async (req, res) => {
             code: "REGISTER_OK",
             message: "Đăng ký thành công",
         });
-
     } catch (error) {
         console.error("Register error:", error);
+        if (error.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                code: "USER_EXISTS",
+                message: "Người dùng này đã tồn tại",
+            });
+        }
+
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -327,33 +339,33 @@ export const register = async (req, res) => {
 
 export const sendOtpRegister = async (req, res) => {
     try {
-        let { email } = req.body;
-
+        const { email: rawEmail } = req.body;
+        const email = normalizeEmail(rawEmail);
         if (!email) {
             return res.status(400).json({
                 success: false,
                 code: "EMAIL_REQUIRED",
-                message: "Các trường bắt buộc bị thiếu",
+                message: "Các trường bắt buộc bị thiếu"
             });
         }
 
-        const exists = await User.findOne({ email });
+        const exists = await User.exists({ email, deletedAt: { $exists: true } });
         if (exists) {
             return res.status(400).json({
                 success: false,
                 code: "USER_EXISTS",
-                message: "Người dùng này đã tồn tại",
+                message: "Người dùng này đã tồn tại"
             });
         }
 
         const { code, expiresIn } = await OTPService.create(email, "register");
-        console.log(code)
+
         await sendOTPRegisterEmail(email, code, expiresIn);
 
         return res.status(200).json({
             success: true,
             code: "OTP_SENT",
-            message: "Đã gửi mã OTP",
+            message: "Đã gửi mã OTP"
         });
     } catch (error) {
         if (error.code === "OTP_LIMIT") {
@@ -375,8 +387,8 @@ export const sendOtpRegister = async (req, res) => {
 
 export const verifyOtpRegister = async (req, res) => {
     try {
-        let { email, otp } = req.body;
-
+        const { email: rawEmail, otp } = req.body;
+        const email = normalizeEmail(rawEmail);
         if (!email || !otp) {
             return res.status(400).json({
                 success: false,
@@ -416,210 +428,92 @@ export const verifyOtpRegister = async (req, res) => {
     }
 };
 
-export const login = async (req, res) => {
-    try {
-        let { email, password, remember } = req.body;
-
-        if (!email || !password) {
-            return res.status(400).json({
-                success: false,
-                code: "MISSING_FIELDS",
-                message: "Các trường bắt buộc bị thiếu",
-            });
-        }
-
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(401).json({
-                success: false,
-                code: "INVALID_CREDENTIALS",
-                message: "Thông tin đăng nhập không hợp lệ",
-            });
-        }
-
-        const validPassword = await user.comparePassword(password);
-        if (!validPassword) {
-            return res.status(401).json({
-                success: false,
-                code: "INVALID_CREDENTIALS",
-                message: "Thông tin đăng nhập không hợp lệ",
-            });
-        }
-
-        const accessToken = jwt.sign(
-            { id: user._id.toString(), email: user.email, role: user.role },
-            process.env.JWT_SECRET,
-            { expiresIn: "15m" }
-        );
-        const accessExp = new Date(Date.now() + 15 * 60 * 1000);
-
-        const refreshToken = remember ? jwt.sign({ id: user._id.toString() }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" }) : jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "1h" });
-
-        const refreshExp = remember ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : new Date(Date.now() + 60 * 60 * 1000);
-
-        const rawDeviceId = req.cookies.deviceId || crypto.randomUUID();
-        const deviceName = req.headers["user-agent"] || "Unknown device";
-
-        const session = await Token.create({
-            userId: user._id,
-            refreshToken,
-            accessTokenExpiresAt: accessExp,
-            refreshTokenExpiresAt: refreshExp,
-            deviceId: rawDeviceId,
-            deviceName,
-            ipAddress: req.ip || "",
-            remember: remember,
-        });
-
-        io.to(user._id.toString()).emit("loggedInElsewhere", { _id: session._id.toString() });
-
-        res.cookie("deviceId", rawDeviceId, {
-            httpOnly: true,
-            sameSite: "Lax",
-            expires: new Date("9999-12-31"),
-            secure: process.env.APP_MODE === "production",
-        });
-
-        res.cookie("accessToken", accessToken, {
-            httpOnly: true,
-            sameSite: "Lax",
-            maxAge: process.env.APP_MODE === "production" ? 15 * 60 * 1000 : 10 * 365 * 24 * 60 * 60 * 1000,
-            secure: process.env.APP_MODE === "production",
-        });
-
-        res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            sameSite: "Lax",
-            maxAge: remember ? 7 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000,
-            secure: process.env.APP_MODE === "production",
-        });
-
-        let avatarUrl = user.avatar;
-
-        if (user.avatar && !user.avatar.startsWith("http")) {
-            avatarUrl = await getCachedImageUrl(user.avatar);
-        }
-
-        return res.status(200).json({
-            success: true,
-            code: "LOGIN_OK",
-            message: "Đăng nhập thành công",
-            data: {
-                userId: user._id.toString(),
-                email: user.email,
-                role: user.role,
-                fullName: user.fullName,
-                address: user.address,
-                avatar: avatarUrl,
-                provider: user.provider
-            }
-        });
-    } catch (error) {
-        console.error("Login error:", error);
-        res.status(500).json({
-            success: false,
-            code: "SERVER_ERROR",
-            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
-        });
-    }
-};
-
 export const refreshToken = async (req, res) => {
     try {
         const refreshToken = req.cookies.refreshToken;
         if (!refreshToken) {
-            return res.status(400).json({
+            return res.status(401).json({
                 success: false,
                 code: "NO_REFRESH_TOKEN",
-                message: "Không có token làm mới.",
+                message: "Không có token làm mới."
             });
         }
-
-        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        let hashedRefreshToken = Token.hashValue(refreshToken);
 
         const deviceId = req.cookies.deviceId;
         if (!deviceId) {
             return res.status(401).json({
                 success: false,
                 code: "DEVICE_ID_MISSING",
-                message: "Thiết bị không được nhận dạng.",
+                message: "Thiết bị không được nhận dạng."
             });
         }
+        const hashedDeviceId = Token.hashValue(deviceId);
 
-        const sessions = await Token.find({ userId: decoded.id });
-        const currentSession = sessions.find(s => s.compareDeviceId(deviceId));
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        const id = decoded.id;
 
-        if (!currentSession) {
+        const session = await Token.findOne({ userId: id, deviceId: hashedDeviceId, refreshToken: hashedRefreshToken });
+
+        if (!session) {
             res.clearCookie("accessToken", { path: "/" });
             res.clearCookie("refreshToken", { path: "/" });
             res.clearCookie("deviceId", { path: "/" });
             return res.status(401).json({
                 success: false,
                 code: "CURRENT_SESSION_NOT_FOUND",
-                message: "Phiên đăng nhập không tồn tại hoặc đã bị thu hồi.",
+                message: "Phiên đăng nhập không tồn tại hoặc đã bị thu hồi."
             });
         }
 
-        const isMatch = await currentSession.compareRefreshToken(refreshToken);
-        if (!isMatch) {
-            await Token.deleteOne({ _id: currentSession._id });
-            res.clearCookie("accessToken", { path: "/" });
-            res.clearCookie("refreshToken", { path: "/" });
-            res.clearCookie("deviceId", { path: "/" });
-            return res.status(401).json({
-                success: false,
-                code: "REUSED_TOKEN_DETECTED",
-                message: "Phát hiện sử dụng lại token. Phiên đăng nhập đã bị thu hồi.",
-            });
-        }
-
-        const user = await User.findById(decoded.id);
+        const user = await User.findById(id, { email: 1, role: 1, }).lean();
         if (!user) {
             return res.status(404).json({
                 success: false,
                 code: "USER_NOT_FOUND",
-                message: "Người dùng không tồn tại",
+                message: "Người dùng không tồn tại"
             });
         }
 
         const newAccessToken = jwt.sign(
-            { id: user._id.toString(), email: user.email, role: user.role },
+            { id, email: user.email, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: "15m" }
         );
 
         const newRefreshToken = jwt.sign(
-            { id: user._id.toString() },
+            { id },
             process.env.JWT_REFRESH_SECRET,
-            { expiresIn: currentSession.remember ? "7d" : "1h" }
+            { expiresIn: session.remember ? "7d" : "1h" }
         );
+        hashedRefreshToken = Token.hashValue(newRefreshToken);
 
         const newAccessExp = new Date(Date.now() + 15 * 60 * 1000);
-        const newRefreshExp = currentSession.remember ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : new Date(Date.now() + 60 * 60 * 1000);
+        const newRefreshExp = session.remember ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : new Date(Date.now() + 60 * 60 * 1000);
 
-        currentSession.refreshToken = newRefreshToken;
-        currentSession.accessTokenExpiresAt = newAccessExp;
-        currentSession.refreshTokenExpiresAt = newRefreshExp;
-        await currentSession.save();
+        session.refreshToken = hashedRefreshToken;
+        session.accessTokenExpiresAt = newAccessExp;
+        session.refreshTokenExpiresAt = newRefreshExp;
+        await session.save();
 
         res.cookie("accessToken", newAccessToken, {
             httpOnly: true,
             sameSite: "Lax",
             maxAge: process.env.APP_MODE === "production" ? 15 * 60 * 1000 : 10 * 365 * 24 * 60 * 60 * 1000,
-            secure: process.env.APP_MODE === "production",
+            secure: process.env.APP_MODE === "production"
         });
 
         res.cookie("refreshToken", newRefreshToken, {
             httpOnly: true,
             sameSite: "Lax",
-            maxAge: currentSession.remember ? 7 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000,
-            secure: process.env.APP_MODE === "production",
+            maxAge: session.remember ? 7 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000,
+            secure: process.env.APP_MODE === "production"
         });
 
         return res.status(200).json({
             success: true,
             code: "REFRESH_OK",
-            message: "Phiên đã được làm mới thành công",
+            message: "Phiên đã được làm mới thành công"
         });
     } catch (error) {
         console.error("Refresh error:", error);
@@ -632,7 +526,7 @@ export const refreshToken = async (req, res) => {
             return res.status(401).json({
                 success: false,
                 code: "REFRESH_TOKEN_EXPIRED",
-                message: "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại",
+                message: "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại"
             });
         }
 
@@ -644,10 +538,31 @@ export const refreshToken = async (req, res) => {
             return res.status(401).json({
                 success: false,
                 code: "INVALID_REFRESH_TOKEN",
-                message: "Refresh token không hợp lệ",
+                message: "Refresh token không hợp lệ"
             });
         }
 
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+        });
+    }
+};
+
+export const listSessions = async (req, res) => {
+    try {
+        const sessions = await Token.find({ userId: req.user.id }).select({ deviceId: 1, deviceName: 1, ipAddress: 1, createdAt: 1, refreshTokenExpiresAt: 1 }).sort({ createdAt: -1 }).lean();
+
+        const processedSessions = transformIds(sessions).map(session => ({ ...session, isCurrent: session.deviceId === req.session.deviceId }));
+
+        return res.status(200).json({
+            success: true,
+            code: "SESSIONS_OK",
+            data: processedSessions
+        });
+    } catch (error) {
+        console.error("List sessions error:", error);
         return res.status(500).json({
             success: false,
             code: "SERVER_ERROR",
@@ -656,65 +571,96 @@ export const refreshToken = async (req, res) => {
     }
 };
 
+export const logout = async (req, res) => {
+    try {
+        const session = await Token.findOneAndDelete({ userId: req.user.id, deviceId: req.session.deviceId });
+        if (session) {
+            io.to(req.user.id).emit("sessionLoggedOut", [session._id.toString()]);
+        }
+
+        res.clearCookie("deviceId");
+        res.clearCookie("accessToken", { path: "/" });
+        res.clearCookie("refreshToken", { path: "/" });
+
+        return res.status(200).json({
+            success: true,
+            code: "LOGOUT_OK",
+            message: "Đăng xuất thành công"
+        });
+    } catch (error) {
+        console.error("Logout error:", error);
+        res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+        });
+    }
+};
+
 export const logoutSession = async (req, res) => {
     try {
-        const currentUser = req.user;
         const { id } = req.params;
         if (!id) {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_SESSION_ID",
-                message: "Các trường bắt buộc bị thiếu",
+                message: "Các trường bắt buộc bị thiếu"
             });
         }
 
-        const deviceId = req.cookies.deviceId;
-
-        const sessions = await Token.find({ userId: currentUser.id });
-
-        const currentSession = sessions.find(s =>
-            s.compareDeviceId(deviceId)
-        );
-
-        if (!currentSession) {
-            return res.status(401).json({
-                success: false,
-                code: "INVALID_DEVICEID",
-                message: "Thiết bị không hợp lệ."
-            });
-        }
-
-        if (currentSession._id.toString() === id) {
-            return res.status(400).json({
-                success: false,
-                code: "CANNOT_LOGOUT_CURRENT_SESSION",
-                message: "Không thể đăng xuất phiên hiện tại",
-            });
-        }
-
-        const session = sessions.find(
-            s => s._id.toString() === id
-        );
+        const session = await Token.findOneAndDelete({
+            _id: id,
+            userId: req.user.id,
+            deviceId: { $ne: req.session.deviceId }
+        });
 
         if (!session) {
             return res.status(404).json({
                 success: false,
                 code: "TARGET_SESSION_NOT_FOUND",
-                message: "Phien không tồn tại",
+                message: "Không thể đăng xuất phiên này"
             });
         }
 
-        await session.deleteOne();
-
-        io.to(currentUser.id).emit("sessionLoggedOut", { id });
+        io.to(req.user.id).emit("loggedOut", [id]);
+        io.to(req.user.id).emit("sessionLoggedOut", [id]);
 
         return res.status(200).json({
             success: true,
             code: "LOGOUT_SESSION_OK",
-            message: "Đăng xuất phiên thành công",
+            message: "Đăng xuất phiên thành công"
         });
     } catch (error) {
         console.error("logoutSession error:", error);
+        res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+        });
+    }
+};
+
+export const logoutAll = async (req, res) => {
+    try {
+        const id = req.user.id;
+        const deviceId = req.session.deviceId;
+
+        const sessions = await Token.find({ userId: id, deviceId: { $ne: deviceId } }, { _id: 1 }).lean();
+        await Token.deleteMany({ userId: id });
+
+        io.to(id).emit("loggedOut", sessions.map(s => s._id.toString()));
+
+        res.clearCookie("deviceId");
+        res.clearCookie("accessToken", { path: "/" });
+        res.clearCookie("refreshToken", { path: "/" });
+
+        return res.status(200).json({
+            success: true,
+            code: "LOGOUT_ALL_OK",
+            message: "Tất cả các phiên đã được đăng xuất thành công"
+        });
+    } catch (error) {
+        console.error("Logout error:", error);
         res.status(500).json({
             success: false,
             code: "SERVER_ERROR",

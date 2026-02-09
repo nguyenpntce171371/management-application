@@ -10,17 +10,28 @@ let backupJob = null;
 let cleanupJob = null;
 let tokenCleanupJob = null;
 
-export const initializeBackupCronJob = async () => {
+export async function initializeBackupCronJob() {
     try {
-        const config = await BackupConfig.getConfig();
+        if (backupJob) {
+            backupJob.stop();
+            backupJob = null;
+        }
+
+        const config = await BackupConfig.findOneAndUpdate(
+            {},
+            {
+                $setOnInsert: {
+                    schedule: "0 0 * * *",
+                    enabled: true,
+                    retention: 7,
+                }
+            },
+            { new: true, upsert: true }
+        );
 
         if (!config.enabled) {
             console.log("Auto backup is disabled");
             return;
-        }
-
-        if (backupJob) {
-            backupJob.stop();
         }
 
         if (!cron.validate(config.schedule)) {
@@ -65,7 +76,7 @@ export const initializeBackupCronJob = async () => {
     }
 };
 
-export const initializeSoftDeleteCleanupJob = () => {
+export async function initializeSoftDeleteCleanupJob() {
     try {
         if (cleanupJob) {
             cleanupJob.stop();
@@ -89,31 +100,39 @@ export const initializeSoftDeleteCleanupJob = () => {
     }
 };
 
-export const initializeTempTokenCleanupJob = () => {
+export function initializeTempTokenCleanupJob() {
     try {
         if (tokenCleanupJob) {
             tokenCleanupJob.stop();
         }
 
-        tokenCleanupJob = cron.schedule("0 * * * *", () => {
-            console.log("Cleaning up expired temporary tokens...");
-            
+        tokenCleanupJob = cron.schedule("*/30 * * * *", () => {
+            console.log("Starting expired temp tokens cleanup...");
+
             try {
-                cleanupExpiredTokens();
-                console.log("Temporary tokens cleanup completed");
+                const result = cleanupExpiredTokens();
+                console.log(`Temp tokens cleanup completed - Cleaned: ${result.cleaned}, Remaining: ${result.remaining}`);
             } catch (error) {
-                console.error("Temporary tokens cleanup failed:", error);
+                console.error("Temp tokens cleanup failed:", error);
             }
         }, { timezone: "Asia/Ho_Chi_Minh" });
 
         console.log("Temp token cleanup scheduler initialized");
-        console.log("Cleanup runs every hour");
+        console.log("Cleanup runs every 30 minutes");
+
+        console.log("Running initial temp tokens cleanup...");
+        try {
+            const result = cleanupExpiredTokens();
+            console.log(`Initial cleanup completed - Cleaned: ${result.cleaned}, Remaining: ${result.remaining}`);
+        } catch (error) {
+            console.error("Initial temp tokens cleanup failed:", error);
+        }
     } catch (error) {
         console.error("Failed to initialize temp token cleanup job:", error);
     }
 };
 
-export const initializeCronJobs = async () => {
+export async function initializeCronJobs() {
     console.log("Initializing cron jobs...");
     await initializeBackupCronJob();
     initializeSoftDeleteCleanupJob();
@@ -121,12 +140,12 @@ export const initializeCronJobs = async () => {
     console.log("All cron jobs initialized");
 };
 
-export const updateBackupCronJob = async () => {
+export async function updateBackupCronJob() {
     console.log("Updating backup cron job...");
     await initializeBackupCronJob();
 };
 
-export const stopCronJobs = () => {
+export function stopCronJobs() {
     if (backupJob) {
         backupJob.stop();
         backupJob = null;
@@ -138,8 +157,10 @@ export const stopCronJobs = () => {
         cleanupJob = null;
         console.log("Cleanup scheduler stopped");
     }
-};
 
-export const initializeCronJob = initializeBackupCronJob;
-export const updateCronJob = updateBackupCronJob;
-export const stopCronJob = stopCronJobs;
+    if (tokenCleanupJob) {
+        tokenCleanupJob.stop();
+        tokenCleanupJob = null;
+        console.log("Token cleanup scheduler stopped");
+    }
+};

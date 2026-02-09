@@ -5,84 +5,98 @@ import { Search, Trash2, Plus } from "lucide-react";
 import styles from "./PropertyValuation.module.css";
 import { useSocket } from "../../context/SocketContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
-
-const statusConfig = {
-    draft: { label: "Nháp", className: styles.statusDraft },
-    pending: { label: "Chờ xử lý", className: styles.statusPending },
-    "in-progress": { label: "Đang thẩm định", className: styles.statusInProgress },
-    completed: { label: "Hoàn thành", className: styles.statusCompleted },
-    rejected: { label: "Từ chối", className: styles.statusRejected },
-};
+import PageHeader from "../../components/layout/PageHeader";
+import SearchField from "../../components/common/SearchField";
+import Pagination from "../../components/common/Pagination";
 
 function PropertyValuation() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const pageFromUrl = parseInt(searchParams.get("page") || "1");
+    const socket = useSocket();
+
     const searchFromUrl = searchParams.get("search") || "";
-    const [page, setPage] = useState(pageFromUrl);
+
     const [searchTerm, setSearchTerm] = useState(searchFromUrl);
     const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
-    const [appraisals, setAppraisals] = useState([]);
-    const socket = useSocket();
-    const debounceTimers = useRef({})
-    const [limit] = useState(10);
-    const [totalPages, setTotalPages] = useState(1);
+
+    const [items, setItems] = useState([]);
+    const [cursor, setCursor] = useState(null);
+    const [direction, setDirection] = useState("next");
+    const [nextCursor, setNextCursor] = useState(null);
+    const [prevCursor, setPrevCursor] = useState(null);
+    const [hasMore, setHasMore] = useState(false);
+    const [hasPrev, setHasPrev] = useState(false);
+    const limit = 21;
 
     useEffect(() => {
-        setPage(pageFromUrl);
         setSearchTerm(searchFromUrl);
         setDebouncedSearch(searchFromUrl);
-    }, [pageFromUrl, searchFromUrl]);
-
-    const fetchAppraisals = useCallback(async () => {
-        const res = await axiosInstance.get("/api/appraisals", {
-            params: {
-                page,
-                limit,
-                search: debouncedSearch,
-            },
-        });
-
-        setAppraisals(res.data.data);
-        setTotalPages(res.data.pagination.totalPages);
-    }, [page, limit, debouncedSearch]);
+    }, [searchFromUrl]);
 
     useEffect(() => {
-        fetchAppraisals();
-    }, [fetchAppraisals]);
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+            updateParams({ search: searchTerm });
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        setCursor(null);
+        setDirection("next");
+    }, [debouncedSearch]);
+
+    const fetchData = useCallback(async () => {
+        const res = await axiosInstance.get("/api/appraisals", {
+            params: {
+                limit,
+                cursor,
+                direction,
+                search: debouncedSearch
+            }
+        });
+        const { data, pagination } = res.data;
+        setItems(data || []);
+        setHasMore(!!pagination?.hasMore);
+        setHasPrev(!!pagination?.hasPrev);
+        setNextCursor(pagination?.nextCursor || null);
+        setPrevCursor(pagination?.prevCursor || null);
+    }, [limit, cursor, direction, debouncedSearch]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     useEffect(() => {
         if (!socket) return;
 
-        const onUpdated = (updated) => {
-            setAppraisals(prev =>
-                prev.map(a => a._id === updated._id ? updated : a)
-            );
-        };
+        const refresh = () => fetchData();
 
-        socket.on("appraisalCreated", fetchAppraisals);
-        socket.on("appraisalUpdated", onUpdated);
-        socket.on("appraisalDeleted", fetchAppraisals);
+        socket.on("appraisalCreated", refresh);
+        socket.on("appraisalRestored", refresh);
+        socket.on("appraisalDeleted", refresh);
+        socket.on("appraisalUpdated", refresh);
 
         return () => {
-            socket.off("appraisalCreated", fetchAppraisals);
-            socket.off("appraisalUpdated", onUpdated);
-            socket.off("appraisalDeleted", fetchAppraisals);
+            socket.off("appraisalCreated", refresh);
+            socket.off("appraisalRestored", refresh);
+            socket.off("appraisalDeleted", refresh);
+            socket.off("appraisalUpdated", refresh);
         };
-    }, [socket, page, debouncedSearch, limit]);
+    }, [socket, fetchData]);
 
-    useEffect(() => {
-        const t = setTimeout(() => {
-            setDebouncedSearch(searchTerm);
-            updateParams({ search: searchTerm, page: 1 });
-        }, 400);
-
-        return () => clearTimeout(t);
-    }, [searchTerm]);
+    const updateParams = (newParams) => {
+        const params = new URLSearchParams(searchParams);
+        Object.entries(newParams).forEach(([key, value]) => {
+            if (value === "" || value === "all") params.delete(key);
+            else params.set(key, value);
+        });
+        navigate(`?${params.toString()}`);
+    };
 
     const handleChange = useCallback((id, field, value) => {
-        setAppraisals(prev =>
-            prev.map(a => a._id === id ? { ...a, [field]: value } : a)
+        setItems((appraisal) =>
+            appraisal.map(a => a.id === id ? { ...a, [field]: value } : a)
         );
 
         if (!socket) return;
@@ -98,182 +112,115 @@ function PropertyValuation() {
         }, 500);
     }, [socket]);
 
-    const updateParams = (newParams) => {
-        const params = new URLSearchParams(searchParams);
-        Object.entries(newParams).forEach(([key, value]) => {
-            if (value === "" || value === "all") params.delete(key);
-            else params.set(key, value);
-        });
-        navigate(`?${params.toString()}`);
-    };
-
     const handleCreate = async () => {
-        await axiosInstance.post("/api/appraisals", {
-            customerName: "",
-            propertyType: ""
-        });
+        await axiosInstance.post("/api/appraisals");
     };
 
     const handleDelete = async (id) => {
-        const appraisal = appraisals.find(a => a._id === id);
-        if (!appraisal) return;
-        setAppraisals(prev => prev.filter(a => a._id !== id));
         await axiosInstance.delete(`/api/appraisals/${id}`);
     };
 
-    const handlePageChange = (newPage) => {
-        if (newPage >= 1 && newPage <= totalPages) {
-            updateParams({ page: newPage });
-            window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-    };
-
     return (
-        <div className={styles.container}>
-            <div className={styles.pageHeader}>
-                <div className={styles.headerTop}>
-                    <div className={styles.headerLeft}>
-                        <div className={styles.titleWrapper}>
-                            <h1 className={styles.title}>Quản lý thẩm định giá</h1>
-                            <p className={styles.subtitle}>Theo dõi và quản lý tất cả hồ sơ thẩm định bất động sản</p>
-                        </div>
-                    </div>
-                    <div className={styles.searchBox}>
-                        <Search className={styles.searchIcon} size={18} />
-                        <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={styles.searchInput} />
+        <>
+            <PageHeader title="Quản lý thẩm định giá" />
+            <div className={styles.content}>
+                <div className={styles.searchBar}>
+                    <div className={styles.searchWrapper}>
+                        <SearchField searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Tìm kiếm theo mã hồ sơ, khách hàng hoặc thẩm định viên ..." />
                     </div>
                     <button className={styles.addButton} onClick={handleCreate}>
                         <Plus size={20} strokeWidth={2.5} />
                         <span>Tạo hồ sơ mới</span>
                     </button>
                 </div>
-            </div>
 
-            <div className={styles.tableContainer}>
-                <div className={styles.tableWrapper}>
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th className={styles.thCode}>
-                                    <div className={styles.thContent}>
-                                        <span>Mã hồ sơ</span>
-                                    </div>
-                                </th>
-                                <th>
-                                    <div className={styles.thContent}>
-                                        <span>Khách hàng</span>
-                                    </div>
-                                </th>
-                                <th>
-                                    <div className={styles.thContent}>
-                                        <span>Thẩm định viên</span>
-                                    </div>
-                                </th>
-                                <th>
-                                    <div className={styles.thContent}>
-                                        <span>Ngày tạo</span>
-                                    </div>
-                                </th>
-                                <th>
-                                    <div className={styles.thContent}>
-                                        <span>Hoàn thành</span>
-                                    </div>
-                                </th>
-                                <th>
-                                    <div className={styles.thContent}>
-                                        <span>Trạng thái</span>
-                                    </div>
-                                </th>
-                                <th>
-                                    <div className={styles.thContent}>
-                                        <span>Ghi chú</span>
-                                    </div>
-                                </th>
-                                <th className={styles.thActions}></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {appraisals.map((appraisal) => (
-                                <tr key={appraisal._id} className={styles.row}>
-                                    <td className={styles.codeCell}>
-                                        <Link to={`/appraisals/${appraisal._id}`} className={styles.code}>{appraisal.code}</Link>
-                                    </td>
-                                    <td>
-                                        <input value={appraisal.customerName || ""} onChange={(e) => handleChange(appraisal._id, "customerName", e.target.value)} className={styles.tableInput} />
-                                    </td>
-                                    <td>
-                                        <input value={appraisal.appraiser || ""} onChange={(e) => handleChange(appraisal._id, "appraiser", e.target.value)} className={styles.tableInput} />
-                                    </td>
-                                    <td className={styles.dateCell}>
-                                        <input type="date" value={appraisal.createdDate ? appraisal.createdDate.slice(0, 10) : ""} onChange={(e) => handleChange(appraisal._id, "createdDate", e.target.value)} className={styles.dateInput} />
-                                    </td>
-                                    <td className={styles.dateCell}>
-                                        <input type="date" value={appraisal.completedDate ? appraisal.completedDate.slice(0, 10) : ""} onChange={(e) => handleChange(appraisal._id, "completedDate", e.target.value)} className={styles.dateInput} />
-                                    </td>
-                                    <td>
-                                        <select value={appraisal.status} onChange={(e) => handleChange(appraisal._id, "status", e.target.value)} className={`${styles.statusSelect} ${statusConfig[appraisal.status]?.className}`}>
-                                            <option className={styles.option} value="draft">Nháp</option>
-                                            <option className={styles.option} value="pending">Chờ xử lý</option>
-                                            <option className={styles.option} value="in-progress">Đang thẩm định</option>
-                                            <option className={styles.option} value="completed">Hoàn thành</option>
-                                            <option className={styles.option} value="rejected">Từ chối</option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <input value={appraisal.notes || ""} onChange={(e) => handleChange(appraisal._id, "notes", e.target.value)} className={styles.tableInput} />
-                                    </td>
-                                    <td className={styles.actionsCell}>
-                                        <button onClick={() => handleDelete(appraisal._id)} className={styles.deleteButton} title="Xóa hồ sơ" aria-label="Xóa" >
-                                            <Trash2 size={16} strokeWidth={2} />
-                                        </button>
-                                    </td>
+                <div className={styles.tableContainer}>
+                    <div className={styles.tableWrapper}>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th className={styles.thCode}>
+                                        <div className={styles.thContent}>
+                                            <span>Mã hồ sơ</span>
+                                        </div>
+                                    </th>
+                                    <th>
+                                        <div className={styles.thContent}>
+                                            <span>Khách hàng</span>
+                                        </div>
+                                    </th>
+                                    <th>
+                                        <div className={styles.thContent}>
+                                            <span>Thẩm định viên</span>
+                                        </div>
+                                    </th>
+                                    <th>
+                                        <div className={styles.thContent}>
+                                            <span>Ngày tạo</span>
+                                        </div>
+                                    </th>
+                                    <th>
+                                        <div className={styles.thContent}>
+                                            <span>Hoàn thành</span>
+                                        </div>
+                                    </th>
+                                    <th>
+                                        <div className={styles.thContent}>
+                                            <span>Trạng thái</span>
+                                        </div>
+                                    </th>
+                                    <th>
+                                        <div className={styles.thContent}>
+                                            <span>Ghi chú</span>
+                                        </div>
+                                    </th>
+                                    <th className={styles.thActions}></th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {(items || []).map((appraisal) => (
+                                    <tr key={appraisal.id} className={styles.row}>
+                                        <td className={styles.codeCell}>
+                                            <Link to={`/appraisals/${appraisal.id}`} className={styles.code}>{appraisal.code}</Link>
+                                        </td>
+                                        <td>
+                                            <input value={appraisal.customerName || ""} onChange={(e) => handleChange(appraisal.id, "customerName", e.target.value)} className={styles.tableInput} />
+                                        </td>
+                                        <td>
+                                            <input value={appraisal.appraiser || ""} onChange={(e) => handleChange(appraisal.id, "appraiser", e.target.value)} className={styles.tableInput} />
+                                        </td>
+                                        <td className={styles.dateCell}>
+                                            <input type="date" value={appraisal.createdAt ? appraisal.createdAt.slice(0, 10) : ""} onChange={(e) => handleChange(appraisal.id, "createdAt", e.target.value)} className={styles.dateInput} />
+                                        </td>
+                                        <td className={styles.dateCell}>
+                                            <input type="date" value={appraisal.completedAt ? appraisal.completedAt.slice(0, 10) : ""} onChange={(e) => handleChange(appraisal.id, "completedAt", e.target.value)} className={styles.dateInput} />
+                                        </td>
+                                        <td>
+                                            <select value={appraisal.status} onChange={(e) => handleChange(appraisal.id, "status", e.target.value)} className={styles.statusSelect}>
+                                                <option className={styles.option} value="draft">Nháp</option>
+                                                <option className={styles.option} value="pending">Chờ xử lý</option>
+                                                <option className={styles.option} value="in-progress">Đang thẩm định</option>
+                                                <option className={styles.option} value="completed">Hoàn thành</option>
+                                                <option className={styles.option} value="rejected">Từ chối</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input value={appraisal.notes || ""} onChange={(e) => handleChange(appraisal.id, "notes", e.target.value)} className={styles.tableInput} />
+                                        </td>
+                                        <td className={styles.actionsCell}>
+                                            <button onClick={() => handleDelete(appraisal.id)} className={styles.deleteButton} title="Xóa hồ sơ" aria-label="Xóa" >
+                                                <Trash2 size={16} strokeWidth={2} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <Pagination prevCursor={prevCursor} nextCursor={nextCursor} hasPrev={hasPrev} hasMore={hasMore} setCursor={setCursor} setDirection={setDirection} />
                 </div>
             </div>
-
-            {totalPages > 1 && (
-                <div className={styles.paginationContainer}>
-                    <button onClick={() => handlePageChange(page - 1)} disabled={page === 1} className={styles.pageNavButton}>
-                        Trước
-                    </button>
-
-                    <div className={styles.pageNumbers}>
-                        {(() => {
-                            const pages = [];
-                            const maxVisible = 5;
-                            let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
-                            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-                            if (endPage - startPage < maxVisible - 1) {
-                                startPage = Math.max(1, endPage - maxVisible + 1);
-                            }
-                            if (startPage > 1) {
-                                pages.push(<button key={1} onClick={() => handlePageChange(1)} className={styles.pageButton}>1</button>);
-                                if (startPage > 2)
-                                    pages.push(<span key="dots1" className={styles.pageDots}>...</span>);
-                            }
-                            for (let i = startPage; i <= endPage; i++) {
-                                pages.push(<button key={i} onClick={() => handlePageChange(i)} className={`${styles.pageButton} ${i === page ? styles.pageButtonActive : ""}`}>{i}</button>);
-                            }
-
-                            if (endPage < totalPages) {
-                                if (endPage < totalPages - 1)
-                                    pages.push(<span key="dots2" className={styles.pageDots}>...</span>);
-                                pages.push(<button key={totalPages} onClick={() => handlePageChange(totalPages)} className={styles.pageButton}>{totalPages}</button>);
-                            }
-
-                            return pages;
-                        })()}
-                    </div>
-
-                    <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages} className={styles.pageNavButton}>
-                        Sau
-                    </button>
-                </div>
-            )}
-        </div>
+        </>
     );
 }
 

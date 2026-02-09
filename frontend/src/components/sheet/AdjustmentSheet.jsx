@@ -13,7 +13,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <th>Đơn vị</th>
                         <th>TSTĐ</th>
                         {comparisonsData.map((comp, i) => (
-                            <th key={comp._id}>
+                            <th key={comp.id}>
                                 <Link to={`/real-estates/${comp.id}`} className={styles.TSSS} target="_blank">
                                     TSSS{i + 1}
                                 </Link>
@@ -28,7 +28,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td />
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id} style={{ fontWeight: "bold" }}>
+                            <td key={comp.id} style={{ fontWeight: "bold" }}>
                                 {formatNumber(comp.estimatedPrice) || ""}
                             </td>
                         ))}
@@ -40,7 +40,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td style={{ fontWeight: "bold" }}>VND/m2</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id} style={{ fontWeight: "bold" }}>
+                            <td key={comp.id} style={{ fontWeight: "bold" }}>
                                 {formatNumber(comp.adjustedLandUnitPrice)}
                             </td>
                         ))}
@@ -59,7 +59,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                             {appraisalData.location?.description || ""}
                         </td>
                         {comparisonsData.map((comp, i) => (
-                            <td key={comp._id} style={{ fontWeight: "bold" }}>
+                            <td key={comp.id} style={{ fontWeight: "bold" }}>
                                 {comp.location?.description || ""}
                             </td>
                         ))}
@@ -69,8 +69,8 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td>%</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <PercentInput className={styles.cellInput} value={comp.locationRate || ""} onChange={(value) => handleComparisonChange(comp._id, "locationRate", value)} />
+                            <td key={comp.id}>
+                                <PercentInput className={styles.cellInput} value={comp.locationRate || ""} onChange={(value) => handleComparisonChange(comp.id, "locationRate", value)} />
                             </td>
                         ))}
                     </tr>
@@ -79,7 +79,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td>Đồng</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {formatNumber(comp.adjustedLandUnitPrice * parseFloat(comp.locationRate) / 100) || ""}
                             </td>
                         ))}
@@ -89,7 +89,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td style={{ fontWeight: "bold" }}>Đồng</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {formatNumber(comp.adjustedLandUnitPrice * (1 + parseFloat(comp.locationRate) / 100)) || ""}
                             </td>
                         ))}
@@ -107,7 +107,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                             </div>
                         </td>
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 <div className={styles.dimensionInput} style={{ fontWeight: "bold" }}>
                                     <span>{formatNumber(comp.width || "")}</span>
                                     <span>x</span>
@@ -121,8 +121,8 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td>%</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <PercentInput className={styles.cellInput} value={comp.sizeRate || ""} onChange={(value) => handleComparisonChange(comp._id, "sizeRate", value)} />
+                            <td key={comp.id}>
+                                <PercentInput className={styles.cellInput} value={comp.sizeRate || ""} onChange={(value) => handleComparisonChange(comp.id, "sizeRate", value)} />
                             </td>
                         ))}
                     </tr>
@@ -131,7 +131,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td>Đồng</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {formatNumber(comp.adjustedLandUnitPrice * (parseFloat(comp.sizeRate) / 100)) || ""}
                             </td>
                         ))}
@@ -141,7 +141,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td style={{ fontWeight: "bold" }}>Đồng</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {formatNumber(comp.adjustedLandUnitPrice * (1 + (parseFloat(comp.sizeRate) + parseFloat(comp.locationRate)) / 100)) || ""}
                             </td>
                         ))}
@@ -155,7 +155,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                             {appraisalData.area || ""}
                         </td>
                         {comparisonsData.map((comp, i) => (
-                            <td key={comp._id} style={{ fontWeight: "bold" }}>
+                            <td key={comp.id} style={{ fontWeight: "bold" }}>
                                 {comp.area || ""}
                             </td>
                         ))}
@@ -165,8 +165,8 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td>%</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <PercentInput className={styles.cellInput} value={comp.areaRate || ""} onChange={(value) => handleComparisonChange(comp._id, "areaRate", value)} />
+                            <td key={comp.id}>
+                                <PercentInput className={styles.cellInput} value={comp.areaRate || ""} onChange={(value) => handleComparisonChange(comp.id, "areaRate", value)} />
                             </td>
                         ))}
                     </tr>
@@ -175,7 +175,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td>Đồng</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {formatNumber(comp.adjustedLandUnitPrice * parseFloat(comp.areaRate) / 100) || ""}
                             </td>
                         ))}
@@ -185,7 +185,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td style={{ fontWeight: "bold" }}>Đồng</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {formatNumber(comp.adjustedLandUnitPrice * (1 + (parseFloat(comp.areaRate) + parseFloat(comp.sizeRate) + parseFloat(comp.locationRate)) / 100)) || ""}
                             </td>
                         ))}
@@ -199,7 +199,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                             {appraisalData.shape || ""}
                         </td>
                         {comparisonsData.map((comp, i) => (
-                            <td key={comp._id} style={{ fontWeight: "bold" }}>
+                            <td key={comp.id} style={{ fontWeight: "bold" }}>
                                 {comp.shape || ""}
                             </td>
                         ))}
@@ -209,8 +209,8 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td>%</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <PercentInput className={styles.cellInput} value={comp.shapeRate || ""} onChange={(value) => handleComparisonChange(comp._id, "shapeRate", value)} />
+                            <td key={comp.id}>
+                                <PercentInput className={styles.cellInput} value={comp.shapeRate || ""} onChange={(value) => handleComparisonChange(comp.id, "shapeRate", value)} />
                             </td>
                         ))}
                     </tr>
@@ -219,7 +219,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td>Đồng</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {formatNumber(comp.adjustedLandUnitPrice * parseFloat(comp.shapeRate) / 100) || ""}
                             </td>
                         ))}
@@ -229,7 +229,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td style={{ fontWeight: "bold" }}>Đồng</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {formatNumber(comp.adjustedLandUnitPrice * (1 + (parseFloat(comp.shapeRate) + parseFloat(comp.areaRate) + parseFloat(comp.sizeRate) + parseFloat(comp.locationRate)) / 100)) || ""}
                             </td>
                         ))}
@@ -243,7 +243,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                             {appraisalData.businessAdvantage || ""}
                         </td>
                         {comparisonsData.map((comp, i) => (
-                            <td key={comp._id} style={{ fontWeight: "bold" }}>
+                            <td key={comp.id} style={{ fontWeight: "bold" }}>
                                 {comp.businessAdvantage || ""}
                             </td>
                         ))}
@@ -253,8 +253,8 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td>%</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <PercentInput className={styles.cellInput} value={comp.businessRate || ""} onChange={(value) => handleComparisonChange(comp._id, "businessRate", value)} />
+                            <td key={comp.id}>
+                                <PercentInput className={styles.cellInput} value={comp.businessRate || ""} onChange={(value) => handleComparisonChange(comp.id, "businessRate", value)} />
                             </td>
                         ))}
                     </tr>
@@ -263,7 +263,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td>Đồng</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {formatNumber(comp.adjustedLandUnitPrice * parseFloat(comp.businessRate) / 100) || ""}
                             </td>
                         ))}
@@ -273,7 +273,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td style={{ fontWeight: "bold" }}>Đồng</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {formatNumber(comp.adjustedLandUnitPrice * (1 + (parseFloat(comp.businessRate) + parseFloat(comp.shapeRate) + parseFloat(comp.areaRate) + parseFloat(comp.sizeRate) + parseFloat(comp.locationRate)) / 100)) || ""}
                             </td>
                         ))}
@@ -287,7 +287,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                             {appraisalData.livingEnvironment || ""}
                         </td>
                         {comparisonsData.map((comp, i) => (
-                            <td key={comp._id} style={{ fontWeight: "bold" }}>
+                            <td key={comp.id} style={{ fontWeight: "bold" }}>
                                 {comp.livingEnvironment || ""}
                             </td>
                         ))}
@@ -297,8 +297,8 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td>%</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
-                                <PercentInput className={styles.cellInput} value={comp.environmentRate || ""} onChange={(value) => handleComparisonChange(comp._id, "environmentRate", value)} />
+                            <td key={comp.id}>
+                                <PercentInput className={styles.cellInput} value={comp.environmentRate || ""} onChange={(value) => handleComparisonChange(comp.id, "environmentRate", value)} />
                             </td>
                         ))}
                     </tr>
@@ -307,7 +307,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td>Đồng</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {formatNumber(comp.adjustedLandUnitPrice * parseFloat(comp.environmentRate) / 100) || ""}
                             </td>
                         ))}
@@ -317,7 +317,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td style={{ fontWeight: "bold" }}>Đồng</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {formatNumber(comp.adjustedLandUnitPrice * (1 + (parseFloat(comp.environmentRate) + parseFloat(comp.businessRate) + parseFloat(comp.shapeRate) + parseFloat(comp.areaRate) + parseFloat(comp.sizeRate) + parseFloat(comp.locationRate)) / 100)) || ""}
                             </td>
                         ))}
@@ -329,7 +329,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td style={{ fontWeight: "bold" }}>VND/m2</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id} style={{ fontWeight: "bold" }}>
+                            <td key={comp.id} style={{ fontWeight: "bold" }}>
                                 {formatNumber(comp.guidedPrice) || ""}
                             </td>
                         ))}
@@ -349,7 +349,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td>%</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {formatPercent((comp.guidedPrice - appraisalData.guidedPriceAverage) * 100 / appraisalData.guidedPriceAverage) || ""}
                             </td>
                         ))}
@@ -368,7 +368,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         {comparisonsData.map((comp) => {
                             const rates = [comp.areaRate, comp.sizeRate, comp.shapeRate, comp.businessRate, comp.locationRate, comp.environmentRate].map(r => parseFloat(r) || 0);
                             const totalAdjustment = rates.reduce((sum, rate) => sum + Math.abs(comp.adjustedLandUnitPrice * rate / 100), 0);
-                            return <td key={comp._id}>{formatNumber(totalAdjustment)}</td>;
+                            return <td key={comp.id}>{formatNumber(totalAdjustment)}</td>;
                         })}
                     </tr>
 
@@ -379,7 +379,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td />
                         {comparisonsData.map((comp) => {
                             const rates = [comp.areaRate, comp.sizeRate, comp.shapeRate, comp.businessRate, comp.locationRate, comp.environmentRate];
-                            return <td key={comp._id}>{rates.filter(rate => rate && parseFloat(rate) !== 0).length}</td>;
+                            return <td key={comp.id}>{rates.filter(rate => rate && parseFloat(rate) !== 0).length}</td>;
                         })}
                     </tr>
 
@@ -392,7 +392,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                             const rates = [comp.areaRate, comp.sizeRate, comp.shapeRate, comp.businessRate, comp.locationRate, comp.environmentRate].map(r => parseFloat(r) || 0);
                             const min = Math.min(...rates);
                             const max = Math.max(...rates);
-                            return <td key={comp._id}>{Math.round(min)}-{Math.round(max)}%</td>;
+                            return <td key={comp.id}>{Math.round(min)}-{Math.round(max)}%</td>;
                         })}
                     </tr>
 
@@ -402,7 +402,7 @@ function AdjustmentSheet({ appraisalData, comparisonsData, handleComparisonChang
                         <td>Đồng</td>
                         <td />
                         {comparisonsData.map((comp) => (
-                            <td key={comp._id}>
+                            <td key={comp.id}>
                                 {formatNumber(comp.guidedPrice - comp.adjustedLandUnitPrice) || ""}
                             </td>
                         ))}

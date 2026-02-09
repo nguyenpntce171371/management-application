@@ -10,7 +10,7 @@ if (!fs.existsSync(UPLOADS_DIR)) {
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
 
-const SUBDIRS = ["real-estate", "avatars", "backups/mongodb", "temp"];
+const SUBDIRS = ["real-estates", "avatars", "backups/mongodb"];
 SUBDIRS.forEach(subdir => {
     const fullPath = path.join(UPLOADS_DIR, subdir);
     if (!fs.existsSync(fullPath)) {
@@ -72,26 +72,80 @@ export const verifyTempToken = (token) => {
     }
 };
 
-export const cleanupExpiredTokens = () => {
+export const isTokenExpired = (token) => {
     if (!fs.existsSync(TEMP_LINKS_FILE)) {
-        return;
+        return true;
+    }
+    
+    try {
+        const tempLinks = JSON.parse(fs.readFileSync(TEMP_LINKS_FILE, "utf-8"));
+        const link = tempLinks[token];
+        
+        if (!link) {
+            return true;
+        }
+        
+        return Date.now() > link.expiresAt;
+    } catch (err) {
+        console.error("Error checking token expiry:", err);
+        return true;
+    }
+};
+
+export const findValidTokenForFile = (fileName) => {
+    if (!fs.existsSync(TEMP_LINKS_FILE)) {
+        return null;
     }
     
     try {
         const tempLinks = JSON.parse(fs.readFileSync(TEMP_LINKS_FILE, "utf-8"));
         const now = Date.now();
         
+        for (const [token, link] of Object.entries(tempLinks)) {
+            if (link.filePath === fileName && now <= link.expiresAt) {
+                return token;
+            }
+        }
+        
+        return null;
+    } catch (err) {
+        console.error("Error finding valid token:", err);
+        return null;
+    }
+};
+
+export const cleanupExpiredTokens = () => {
+    if (!fs.existsSync(TEMP_LINKS_FILE)) {
+        return { cleaned: 0, remaining: 0 };
+    }
+    
+    try {
+        const tempLinks = JSON.parse(fs.readFileSync(TEMP_LINKS_FILE, "utf-8"));
+        const now = Date.now();
+        
+        const totalBefore = Object.keys(tempLinks).length;
+        
         const validLinks = Object.fromEntries(
             Object.entries(tempLinks).filter(([_, link]) => now <= link.expiresAt)
         );
         
+        const cleaned = totalBefore - Object.keys(validLinks).length;
+        
         fs.writeFileSync(TEMP_LINKS_FILE, JSON.stringify(validLinks, null, 2));
+        
+        console.log(`Cleaned ${cleaned} expired tokens, ${Object.keys(validLinks).length} remaining`);
+        
+        return { 
+            cleaned, 
+            remaining: Object.keys(validLinks).length 
+        };
     } catch (err) {
         console.error("Error cleaning up expired tokens:", err);
+        return { cleaned: 0, remaining: 0 };
     }
 };
 
-export const uploadImage = async (buffer, folder = "real-estate") => {
+export const uploadImage = async (buffer, folder = "real-estates") => {
     const SOFT_TARGET_SIZE = 35 * 1024;
     const MAX_ITERATIONS = 10;
     let quality = 88;
@@ -182,13 +236,19 @@ export const generatePresignedUrl = async (fileName, expirySeconds = 3600) => {
         throw new Error(`File not found: ${fileName}`);
     }
 
+    const existingToken = findValidTokenForFile(fileName);
+    
+    if (existingToken) {
+        return `https://${process.env.DOMAIN}/api/files/temp/${existingToken}`;
+    }
+
     const token = generateTempToken(fileName, expirySeconds);
     const url = `https://${process.env.DOMAIN}/api/files/temp/${token}`;
 
     return url;
 };
 
-export const uploadFile = async (filePath, fileName, contentType = "application/gzip") => {
+export const uploadFile = async (filePath, fileName) => {
     try {
         const stats = fs.statSync(filePath);
         const destinationPath = path.join(UPLOADS_DIR, fileName);

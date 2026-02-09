@@ -8,3 +8,7 @@ export function normalize(str) {
     const cleaned = removePrefix(str);
     return cleaned?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim() || "";
 }
+
+export function normalizeEmail(email) {
+    return email?.trim().toLowerCase();
+}
