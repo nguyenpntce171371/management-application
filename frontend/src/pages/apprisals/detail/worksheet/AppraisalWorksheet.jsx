@@ -64,17 +64,7 @@ function AppraisalWorksheet() {
 
         const processedAssets = await Promise.all(assets.map(async (asset) => {
             const assetId = asset.id;
-            const selectedComparisonIds = (asset.selectedComparisons || [])
-                .map(comp => {
-                    const realEstateId = comp.realEstateId;
-                    if (typeof realEstateId === 'string') {
-                        return realEstateId;
-                    } else if (realEstateId?.id) {
-                        return realEstateId.id;
-                    }
-                    return null;
-                })
-                .filter(Boolean);
+            const selectedComparisonIds = (asset.selectedComparisons || []).map(comp => comp.realEstateId).filter(Boolean);
 
             const apiAssetData = {
                 ...asset,
@@ -103,15 +93,7 @@ function AppraisalWorksheet() {
             const apiComparisons = apiAsset?.selectedComparisons || [];
 
             for (const compId of comparisonIds) {
-                const comparisonExtraData = apiComparisons.find(comp => {
-                    const realEstateId = comp.realEstateId;
-                    if (typeof realEstateId === 'string') {
-                        return realEstateId === compId;
-                    } else if (realEstateId?.id) {
-                        return realEstateId.id === compId;
-                    }
-                    return false;
-                });
+                const comparisonExtraData = apiComparisons.find(comp => comp.realEstateId === compId);
 
                 const compRes = await axiosInstance.get(`/api/real-estates/${compId}`);
                 const compData = compRes.data.data;
@@ -536,17 +518,7 @@ function AppraisalWorksheet() {
 
         const processedAssets = await Promise.all(assets.map(async (asset) => {
             const assetId = asset.id;
-            const selectedComparisonIds = (asset.selectedComparisons || [])
-                .map(comp => {
-                    const realEstateId = comp.realEstateId;
-                    if (typeof realEstateId === 'string') {
-                        return realEstateId;
-                    } else if (realEstateId?.id) {
-                        return realEstateId.id;
-                    }
-                    return null;
-                })
-                .filter(Boolean);
+            const selectedComparisonIds = (asset.selectedComparisons || []).map(comp => comp.realEstateId).filter(Boolean);
 
             const apiAssetData = {
                 ...asset,
@@ -573,15 +545,7 @@ function AppraisalWorksheet() {
             const apiComparisons = apiAsset?.selectedComparisons || [];
 
             for (const compId of comparisonIds) {
-                const comparisonExtraData = apiComparisons.find(comp => {
-                    const realEstateId = comp.realEstateId;
-                    if (typeof realEstateId === 'string') {
-                        return realEstateId === compId;
-                    } else if (realEstateId?.id) {
-                        return realEstateId.id === compId;
-                    }
-                    return false;
-                });
+                const comparisonExtraData = apiComparisons.find(comp => comp.realEstateId === compId);
 
                 let existingComp = await indexedDBService.getPropertyById(compId);
 

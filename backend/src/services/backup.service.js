@@ -151,13 +151,13 @@ export const backupMongoDB = async (source = "manual") => {
     }
 };
 
-export const restoreMongoDB = async (path) => {
+export const restoreMongoDB = async (storagePath) => {
     const timestamp = getTimestamp();
     const archivePath = path.join(BACKUP_DIR, `restore_mongo_${timestamp}.tar.gz`);
     const extractDir = path.join(BACKUP_DIR, `restore_mongo_${timestamp}`);
 
     try {
-        await downloadFile(path, archivePath);
+        await downloadFile(storagePath, archivePath);
         await extractTarGz(archivePath, extractDir);
 
         const restoreCommand = `mongorestore --uri="${MONGO_URI}" --drop --gzip "${extractDir}/${process.env.MONGO_DB_NAME}"`;

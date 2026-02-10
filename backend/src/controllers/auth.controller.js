@@ -180,7 +180,7 @@ export const login = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ email }).select({ email: 1, role: 1, fullName: 1, address: 1, avatar: 1, provider: 1 });
+        const user = await User.findOne({ email }).select({ email: 1, password: 1, role: 1, fullName: 1, address: 1, avatar: 1, provider: 1 });
         if (!user) {
             return res.status(401).json({
                 success: false,
@@ -189,8 +189,8 @@ export const login = async (req, res) => {
             });
         }
 
-        const validPassword = user.provider !== "local" ? false : await user.comparePassword(password);
-        if (!validPassword) {
+        const isMatch = user.provider !== "local" ? false : await user.comparePassword(password);
+        if (!isMatch) {
             return res.status(401).json({
                 success: false,
                 code: "INVALID_CREDENTIALS",
@@ -255,7 +255,22 @@ export const login = async (req, res) => {
             secure: process.env.APP_MODE === "production"
         });
 
-        const processedData = transformIds(user);
+        let avatarUrl = user.avatar;
+
+        if (user.avatar && !user.avatar.startsWith("http")) {
+            avatarUrl = await getCachedImageUrl(user.avatar);
+        }
+
+        const processedData = transformIds({
+            id: user._id,
+            sessionId: session._id,
+            email: user.email,
+            role: user.role,
+            fullName: user.fullName,
+            address: user.address,
+            avatar: avatarUrl,
+            provider: user.provider
+        });
 
         if (processedData.avatar && !processedData.avatar.startsWith("http")) {
             processedData.avatar = await getCachedImageUrl(user.avatar);
@@ -265,7 +280,7 @@ export const login = async (req, res) => {
             success: true,
             code: "LOGIN_OK",
             message: "Đăng nhập thành công",
-            data: { ...processedData, sessionId: session._id.toString() }
+            data: processedData
         });
     } catch (error) {
         console.error("Login error:", error);
@@ -309,7 +324,7 @@ export const register = async (req, res) => {
         const count = await User.countDocuments();
         const role = (count === 0) ? "Admin" : "User";
         const user = new User({ fullName, email: email.trim().toLowerCase(), role });
-        await user.setPassword(password);
+        user.password = await User.hashPassword(password);
         await user.save();
 
         io.to("Admin").emit("newUserRegistered", { id: user._id.toString(), email: user.email, role: user.role });

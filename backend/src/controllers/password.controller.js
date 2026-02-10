@@ -9,6 +9,7 @@ export const changePassword = async (req, res) => {
     try {
         const { email } = req.user;
         const { oldPassword, newPassword, confirm } = req.body;
+
         if (!newPassword || !confirm) {
             return res.status(400).json({
                 success: false,
@@ -25,9 +26,9 @@ export const changePassword = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ email }, { _id: 1, fullName: 1, provider: 1, password: 1 });
+        const user = await User.findOne({ email }).select({ fullName: 1, password: 1, provider: 1 });
         if (!user) {
-            return res.status(404).json({
+            return res.status(400).json({
                 success: false,
                 code: "INVALID_CREDENTIALS",
                 message: "Thông tin đăng nhập không hợp lệ",
@@ -51,18 +52,19 @@ export const changePassword = async (req, res) => {
                     message: "Thông tin đăng nhập không hợp lệ",
                 });
             }
-        } else {
-            user.provider = "local";
         }
 
-        await user.setPassword(newPassword);
+        user.password = await User.hashPassword(newPassword);
+        user.provider = "local";
         await user.save();
+
         const deviceId = req.session.deviceId;
+        const id = req.user.id;
 
-        const sessions = await Token.find({ userId: user._id, deviceId: { $ne: deviceId } }, { _id: 1 }).lean();
-        await Token.deleteMany({ userId: user._id, deviceId: { $ne: deviceId } });
+        const sessions = await Token.find({ userId: id, deviceId: { $ne: deviceId } }, { _id: 1 }).lean();
+        await Token.deleteMany({ userId: id, deviceId: { $ne: deviceId } });
 
-        io.to(user._id.toString()).emit("loggedOut", sessions.map(s => s._id.toString()));
+        io.to(id).emit("loggedOut", sessions.map(s => s._id.toString()));
 
         await sendPasswordChangedEmail(email, user.fullName);
 
@@ -213,7 +215,7 @@ export const resetPassword = async (req, res) => {
             });
         }
 
-        await user.setPassword(newPassword);
+        user.password = await User.hashPassword(newPassword);
         if (user.provider !== "local") {
             user.provider = "local";
         }
