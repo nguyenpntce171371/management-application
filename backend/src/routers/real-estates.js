@@ -14,7 +14,7 @@ router.get("/deleted", verify("Admin"), getDeletedRealEstates);
 router.post("/restore/:id", verify("Admin"), restoreRealEstate);
 router.delete("/deleted/:id", verify("Admin"), permanentDeleteRealEstate);
 router.get("/:id", verify("User"), getRealEstateById);
-router.post("/:id", verify("User"), modifyRealEstateById);
+router.post("/:id", verify("User"), upload.array("images", 10), modifyRealEstateById);
 router.delete("/:id", verify("User"), deleteRealEstateById);
 
 export default router;

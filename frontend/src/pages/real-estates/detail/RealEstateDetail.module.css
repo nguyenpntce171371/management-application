@@ -187,7 +187,7 @@
 
 .thumbnails {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(10, 1fr);
     gap: 1rem;
 }
 
@@ -228,6 +228,7 @@
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 1.5rem;
+    gap: 2rem;
 }
 
 .propertyTitle {
@@ -345,6 +346,7 @@
     padding: 1rem;
     background: #f8fafc;
     border-radius: 10px;
+    gap: 1rem;
 }
 
 .detailLabel {
@@ -353,6 +355,7 @@
     gap: 0.5rem;
     color: #64748b;
     font-size: 0.95rem;
+    white-space: nowrap;
 }
 
 .detailLabel svg {
@@ -655,6 +658,68 @@
     box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
 }
 
+.uploadThumbnail {
+    width: 100px;
+    height: 100px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    gap: 4px;
+}
+
+.uploadThumbnail:hover {
+    border-color: #4CAF50;
+    background-color: #f0f9f0;
+}
+
+.uploadThumbnail span {
+    font-size: 12px;
+    color: #666;
+}
+
+.uploadThumbnail:hover span {
+    color: #4CAF50;
+}
+
+.deleteImageBtn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(244, 67, 54, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.deleteImageBtn:hover {
+    background: rgba(244, 67, 54, 1);
+    transform: scale(1.1);
+}
+
+.thumbnail {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
 @media (max-width: 1024px) {
     .detailsGrid {
         grid-template-columns: 1fr;
@@ -665,7 +730,7 @@
     }
 
     .thumbnails {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(6, 1fr);
     }
 
     .modalThumbnails {
@@ -694,6 +759,6 @@
     }
 
     .thumbnails {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(4, 1fr);
     }
 }

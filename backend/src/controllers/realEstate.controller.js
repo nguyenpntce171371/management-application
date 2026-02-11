@@ -1,6 +1,6 @@
 import RealEstate from "../models/RealEstate.js";
 import { io } from "../index.js";
-import { uploadMultipleImages } from "../services/storage.service.js";
+import { uploadMultipleImages, verifyTempToken } from "../services/storage.service.js";
 import { normalize, removePrefix } from "../utils/string.js";
 import { getCachedImageUrl } from "../utils/cachedImage.js";
 import { executeCursorPaginatedQuery, parseSort } from "../utils/query.js";
@@ -391,7 +391,6 @@ export const createComparisonRealEstate = async (req, res) => {
         }
 
         const item = await RealEstate.create({
-            propertyType: "Tài sản so sánh",
             province: province,
             district: district,
             ward: ward,
@@ -403,7 +402,8 @@ export const createComparisonRealEstate = async (req, res) => {
                 lng: null
             },
             status: "Chờ duyệt",
-            postedBy: req.user.id
+            postedBy: req.user.id,
+            contacts: {}
         });
 
         return res.status(201).json({
@@ -603,6 +603,20 @@ export const modifyRealEstateById = async (req, res) => {
         const currentUser = req.user;
         const updateData = req.body;
 
+        const filter = { _id: id };
+        if (currentUser.role === "User") {
+            filter.postedBy = currentUser.id;
+        }
+
+        const existingProperty = await RealEstate.findOne(filter);
+        if (!existingProperty) {
+            return res.status(404).json({
+                success: false,
+                code: "REAL_ESTATE_NOT_FOUND_OR_FORBIDDEN",
+                message: "Không tìm thấy hoặc không có quyền cập nhật",
+            });
+        }
+
         const ALLOWED_STATUS = ["Chờ duyệt", "Đang bán", "Đã bán"];
         if (updateData.status !== undefined && !ALLOWED_STATUS.includes(updateData.status)) {
             return res.status(400).json({
@@ -621,24 +635,61 @@ export const modifyRealEstateById = async (req, res) => {
             }
         }
 
-        const filter = { _id: id };
-        if (currentUser.role === "User") {
-            filter.postedBy = currentUser.id;
+        let finalImages = [...(existingProperty.images || [])];
+
+        if (typeof updateData.contacts === "string") {
+            try {
+                sanitizedData.contacts = JSON.parse(updateData.contacts);
+            } catch (e) {
+                console.error("Error parsing contacts:", e);
+            }
         }
+
+        if (updateData.deletedImages) {
+            let deletedImages = [];
+
+            try {
+                deletedImages =
+                    typeof updateData.deletedImages === "string" ? JSON.parse(updateData.deletedImages) : updateData.deletedImages;
+            } catch (e) {
+                console.error("Error parsing deletedImages:", e);
+            }
+
+            const realFilePathsToDelete = [];
+
+            for (const img of deletedImages) {
+                if (!img) continue;
+
+                if (img.startsWith("http")) {
+                    const token = img.split("/api/files/temp/")[1];
+                    if (!token) continue;
+
+                    const filePath = verifyTempToken(token);
+                    if (filePath) {
+                        realFilePathsToDelete.push(filePath);
+                    }
+                } else {
+                    realFilePathsToDelete.push(img);
+                }
+            }
+
+            finalImages = finalImages.filter(
+                img => !realFilePathsToDelete.includes(img)
+            );
+        }
+
+        if (req.files?.length) {
+            const newImagePaths = await uploadMultipleImages(req.files, "real-estates");
+            finalImages = [...finalImages, ...newImagePaths];
+        }
+
+        sanitizedData.images = finalImages;
 
         const item = await RealEstate.findOneAndUpdate(
             filter,
             { $set: sanitizedData },
             { new: true }
         ).lean();
-
-        if (!item) {
-            return res.status(404).json({
-                success: false,
-                code: "REAL_ESTATE_NOT_FOUND_OR_FORBIDDEN",
-                message: "Không tìm thấy hoặc không có quyền cập nhật",
-            });
-        }
 
         const processedItem = {
             ...item,

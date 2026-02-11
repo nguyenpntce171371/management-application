@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
-import { Check, MapPin, Bed, Bath, Maximize, Ruler, Layers, Compass, FileText, Calendar, Edit, Save, X, Phone, Info, CheckCircle, Trash } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Check, MapPin, Bed, Bath, Maximize, Ruler, Layers, Compass, FileText, Calendar, Edit, Save, X, Phone, Info, CheckCircle, Trash, Upload, XCircle } from "lucide-react";
 import styles from "./RealEstateDetail.module.css";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import axiosInstance from "../../../services/axiosInstance";
 import { Role } from "../../../config/role";
+import { notify } from "../../../context/NotificationContext";
 
 function RealEstateDetail() {
     const { id } = useParams();
@@ -17,7 +18,13 @@ function RealEstateDetail() {
     const [selectedImage, setSelectedImage] = useState(0);
     const [showImageModal, setShowImageModal] = useState(false);
     const [formData, setFormData] = useState(property);
+    const [newImages, setNewImages] = useState([]);
+    const [deletedImages, setDeletedImages] = useState([]);
+    const [previewImages, setPreviewImages] = useState([]);
+    const fileInputRef = useRef(null);
     const { user } = useAuth();
+
+    const MAX_IMAGES = 10;
 
     useEffect(() => {
         loadDetail();
@@ -27,6 +34,7 @@ function RealEstateDetail() {
         const res = await axiosInstance.get(`/api/real-estates/${id}`);
         setProperty(res.data.data);
         setFormData(res.data.data);
+        setPreviewImages(res.data.data.images || []);
     };
 
     useEffect(() => {
@@ -51,14 +59,105 @@ function RealEstateDetail() {
         setFormData((prev) => ({ ...prev, contacts: newContacts }));
     };
 
+    const handleImageUpload = (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+
+        const currentCount = previewImages.length;
+        const remainSlots = MAX_IMAGES - currentCount;
+
+        if (remainSlots <= 0) {
+            notify({
+                type: "error",
+                title: "Quá số lượng",
+                message: "Chỉ được upload tối đa 10 ảnh",
+            });
+            return;
+        }
+
+        const acceptedFiles = files.slice(0, remainSlots);
+
+        if (files.length > remainSlots) {
+            notify({
+                type: "error",
+                title: "Quá số lượng",
+                message: "Chỉ được upload tối đa 10 ảnh",
+            });
+        }
+
+        setNewImages(prev => [...prev, ...acceptedFiles]);
+
+        const newPreviews = acceptedFiles.map(file =>
+            URL.createObjectURL(file)
+        );
+
+        setPreviewImages(prev => [...prev, ...newPreviews]);
+
+        e.target.value = "";
+    };
+
+    const handleDeleteImage = (index) => {
+        const imageToDelete = previewImages[index];
+
+        if (property.images.includes(imageToDelete)) {
+            setDeletedImages(prev => [...prev, imageToDelete]);
+        } else {
+            const newImageIndex = previewImages.slice(0, index).filter(img => !property.images.includes(img)).length;
+            setNewImages(prev => prev.filter((_, i) => i !== newImageIndex));
+        }
+
+        setPreviewImages(prev => prev.filter((_, i) => i !== index));
+
+        if (selectedImage >= index && selectedImage > 0) {
+            setSelectedImage(selectedImage - 1);
+        }
+    };
+
     const handleSave = async () => {
-        await axiosInstance.post(`/api/real-estates/${id}`, formData);
+        if (previewImages.length > MAX_IMAGES) {
+            notify({
+                type: "error",
+                title: "Quá số lượng",
+                message: "Chỉ được upload tối đa 10 ảnh",
+            });
+            return;
+        }
+
+        const formDataToSend = new FormData();
+
+        Object.keys(formData).forEach(key => {
+            if (key !== "images" && key !== "contacts") {
+                formDataToSend.append(key, formData[key]);
+            }
+        });
+
+        formDataToSend.append("contacts", JSON.stringify(formData.contacts));
+
+        if (deletedImages.length > 0) {
+            formDataToSend.append("deletedImages", JSON.stringify(deletedImages));
+        }
+
+        newImages.forEach((file) => {
+            formDataToSend.append("images", file);
+        });
+
+        await axiosInstance.post(`/api/real-estates/${id}`, formDataToSend, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        });
+
+        setNewImages([]);
+        setDeletedImages([]);
         await loadDetail();
         setIsEditMode(false);
     };
 
     const handleCancel = () => {
         setFormData(property);
+        setPreviewImages(property.images || []);
+        setNewImages([]);
+        setDeletedImages([]);
         setIsEditMode(false);
     };
 
@@ -141,20 +240,36 @@ function RealEstateDetail() {
                 </div>
 
                 <div className={styles.gallery}>
-                    <div className={styles.mainImage} onClick={() => setShowImageModal(true)}>
-                        <img src={property.images[selectedImage]} alt="Property" />
-                        <div className={styles.imageOverlay}>
-                            <span>
-                                Xem tất cả {property.images.length} ảnh
-                            </span>
-                        </div>
+                    <div className={styles.mainImage} onClick={() => !isEditMode && setShowImageModal(true)}>
+                        <>
+                            <img src={previewImages[selectedImage]} alt="Property" />
+                            {!isEditMode && (
+                                <div className={styles.imageOverlay}>
+                                    <span>
+                                        Xem tất cả {previewImages.length} ảnh
+                                    </span>
+                                </div>
+                            )}
+                        </>
                     </div>
                     <div className={styles.thumbnails}>
-                        {property.images.map((img, idx) => (
-                            <div key={idx} className={`${styles.thumbnail} ${selectedImage === idx ? styles.thumbnailActive : ""}`} onClick={() => setSelectedImage(idx)}>
-                                <img src={img} alt={`Thumbnail ${idx + 1}`} />
+                        {previewImages.map((img, idx) => (
+                            <div key={idx} className={`${styles.thumbnail} ${selectedImage === idx ? styles.thumbnailActive : ""}`}>
+                                <img src={img} alt={`Thumbnail ${idx + 1}`} onClick={() => setSelectedImage(idx)} />
+                                {isEditMode && (
+                                    <button className={styles.deleteImageBtn} onClick={() => handleDeleteImage(idx)} title="Xóa ảnh">
+                                        <XCircle size={20} />
+                                    </button>
+                                )}
                             </div>
                         ))}
+                        {isEditMode && previewImages.length < MAX_IMAGES && (
+                            <div className={styles.uploadThumbnail} onClick={() => fileInputRef.current?.click()}>
+                                <Upload size={24} />
+                                <span>Thêm ảnh</span>
+                                <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleImageUpload} style={{ display: "none" }} />
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -356,7 +471,7 @@ function RealEstateDetail() {
                                         Ngày đăng
                                     </div>
                                     <div className={styles.detailValue}>
-                                        {formatDate(property.listedAt)}
+                                        {formatDate(property.createdAt)}
                                     </div>
                                 </div>
                             )}
