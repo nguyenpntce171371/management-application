@@ -462,7 +462,7 @@ function Build-Frontend {
         
         Print-Info "Installing dependencies..."
         $env:APP_MODE = "development"
-        $npmInstall = Start-Process -FilePath "npm" -ArgumentList "install" -NoNewWindow -Wait -PassThru
+        $npmInstall = Start-Process -FilePath "npm.cmd" -ArgumentList "install" -NoNewWindow -Wait -PassThru
         
         if ($npmInstall.ExitCode -ne 0) {
             Print-Error "npm install failed with code $($npmInstall.ExitCode)"
@@ -473,7 +473,7 @@ function Build-Frontend {
         
         Print-Info "Building production bundle..."
         $env:APP_MODE = "production"
-        $npmBuild = Start-Process -FilePath "npm" -ArgumentList "run", "build" -NoNewWindow -Wait -PassThru
+        $npmBuild = Start-Process -FilePath "npm.cmd" -ArgumentList "run", "build" -NoNewWindow -Wait -PassThru
         
         if ($npmBuild.ExitCode -ne 0) {
             Print-Error "npm build failed with code $($npmBuild.ExitCode)"
@@ -695,7 +695,7 @@ function Show-DeploymentSummary {
     Write-ColorOutput Cyan "   http://localhost (local access)"
     Write-Host ""
     
-    Write-ColorOutput Yellow "ðŸ“‹ Useful Commands:"
+    Write-ColorOutput Yellow "Useful Commands:"
     Write-Host ""
     Write-Host "   View All Logs:" -ForegroundColor White
     Write-Host "   docker compose -f $script:COMPOSE_FILE logs -f" -ForegroundColor Gray

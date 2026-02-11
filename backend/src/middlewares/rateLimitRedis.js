@@ -9,11 +9,11 @@ export const rateLimitRedis = (maxRequests, windowSeconds, identityType = "ip") 
         try {
             const identity = resolveIdentity(req, identityType);
             if (!identity)
-                return res.status(400).json({ 
-            success: false, 
-            code: "IDENTITY_NOT_FOUND",
-            message: "Không thể xác định danh tính người dùng." 
-        });
+                return res.status(400).json({
+                    success: false,
+                    code: "IDENTITY_NOT_FOUND",
+                    message: "Không thể xác định danh tính người dùng."
+                });
 
             const key = `ratelimit:${identity}`;
             const pipeline = redis.pipeline();

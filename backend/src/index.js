@@ -11,6 +11,7 @@ import { initializeSocket } from "./sockets/index.js";
 import { prototypePollutionMiddleware } from "./middlewares/prototypePollution.js";
 import { sanitizeInputMiddleware } from "./middlewares/sanitizeInput.js";
 import { initializeCronJobs } from "./utils/cronScheduler.js";
+import { singleFlightLock } from "./middlewares/singleFlightLock.js";
 
 const { MONGO_INITDB_ROOT_USERNAME, MONGO_INITDB_ROOT_PASSWORD, MONGO_DB_NAME, PORT = 3000, APP_MODE = "development" } = process.env;
 const app = express();
