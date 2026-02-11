@@ -7,9 +7,13 @@ function MultiSelectLandType({ value = [], list, onChange, onBlur, disabled = fa
     const [searchBuffer, setSearchBuffer] = useState("");
     const searchTimer = useRef(null);
     const dropdownRef = useRef(null);
-    const sortedList = [...list].sort((a, b) =>
-        a.code.localeCompare(b.code, "en", { sensitivity: "base" })
-    );
+    const [landTypes, setLandTypes] = useState(() => list.map(item => ({ ...item })));
+    const sortedList = [...landTypes].sort((a, b) => {
+        if (b.frequency !== a.frequency) {
+            return b.frequency - a.frequency;
+        }
+        return a.code.localeCompare(b.code, "en", { sensitivity: "base" });
+    });
 
     useEffect(() => {
         if (!isOpen) return;
@@ -60,7 +64,20 @@ function MultiSelectLandType({ value = [], list, onChange, onBlur, disabled = fa
     }, [isOpen]);
 
     const handleToggle = (code) => {
-        const newSelected = selectedCodes.includes(code) ? selectedCodes.filter(c => c !== code) : [...selectedCodes, code];
+        let newSelected;
+
+        if (selectedCodes.includes(code)) {
+            newSelected = selectedCodes.filter(c => c !== code);
+        } else {
+            newSelected = [...selectedCodes, code];
+
+            setLandTypes(prev =>
+                prev.map(item =>
+                    item.code === code ? { ...item, frequency: item.frequency + 1 } : item
+                )
+            );
+        }
+
         setSelectedCodes(newSelected);
         onChange(newSelected);
     };
@@ -77,7 +94,7 @@ function MultiSelectLandType({ value = [], list, onChange, onBlur, disabled = fa
                 <div className={styles.multiSelectDropdown} ref={dropdownRef}>
                     {sortedList.map(landType => (
                         <label key={landType.code} className={styles.multiSelectOption}>
-                            <input type="checkbox" checked={selectedCodes.includes(landType.code)} onChange={() => handleToggle(landType.code)} onBlur={onBlur}/>
+                            <input type="checkbox" checked={selectedCodes.includes(landType.code)} onChange={() => handleToggle(landType.code)} onBlur={onBlur} />
                             <span className={styles.multiSelectOptionText}>
                                 {landType.code} - {landType.name}
                             </span>
