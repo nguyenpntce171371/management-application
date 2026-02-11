@@ -378,6 +378,49 @@ export const permanentDeleteRealEstate = async (req, res) => {
     }
 };
 
+export const createComparisonRealEstate = async (req, res) => {
+    try {
+        const { province, district, ward, street, location } = req.body;
+
+        if (!province || !district || !ward || !street) {
+            return res.status(400).json({
+                success: false,
+                code: "MISSING_FIELDS",
+                message: "Thiếu thông tin địa chỉ"
+            });
+        }
+
+        const item = await RealEstate.create({
+            propertyType: "Tài sản so sánh",
+            province: province,
+            district: district,
+            ward: ward,
+            street: street,
+            location: {
+                description: location?.description || "",
+                landParcel: location?.landParcel || "",
+                lat: null,
+                lng: null
+            },
+            status: "Chờ duyệt",
+            postedBy: req.user.id
+        });
+
+        return res.status(201).json({
+            success: true,
+            code: "COMPARISON_REAL_ESTATE_CREATED",
+            data: item._id.toString()
+        });
+    } catch (error) {
+        console.error("Create Comparison Real Estate Error:", error);
+        return res.status(500).json({
+            success: false,
+            code: "SERVER_ERROR",
+            message: process.env.APP_MODE === "development" ? error.message : "Lỗi máy chủ"
+        });
+    }
+};
+
 export const createRealEstate = async (req, res) => {
     try {
         const {

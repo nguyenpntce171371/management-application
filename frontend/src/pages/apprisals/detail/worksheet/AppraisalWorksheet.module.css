@@ -186,6 +186,10 @@
     font-size: 14px;
 }
 
+.searchBar {
+    display: flex;
+}
+
 .tabsWrapper {
     background: var(--color-bg-white);
     border: 1px solid var(--color-border);
@@ -389,7 +393,6 @@ textarea.cellInput {
     overflow-y: auto;
 }
 
-/* Tối ưu select dropdown - loại bỏ lag */
 .cellSelect,
 .formSelect {
     width: 100%;
@@ -399,12 +402,8 @@ textarea.cellInput {
     background: white;
     color: #374151;
     cursor: pointer;
-
-    /* Tối ưu quan trọng cho select */
     will-change: border-color;
     contain: layout style;
-
-    /* Chỉ transition border-color */
     transition: border-color 0.12s ease-out;
 }
 
@@ -427,7 +426,6 @@ textarea.cellInput {
     border-color: #e5e7eb;
 }
 
-/* Tối ưu rendering của options */
 .cellSelect option,
 .formSelect option {
     padding: 8px;
@@ -586,8 +584,6 @@ textarea.cellInput {
     padding: 28px;
     overflow-y: auto;
     max-height: calc(90vh - 180px);
-
-    /* Smooth scrolling */
     -webkit-overflow-scrolling: touch;
 }
 
@@ -682,7 +678,6 @@ textarea.cellInput {
     transform: translateY(0);
 }
 
-/* Tối ưu cho mobile */
 @media (hover: none) and (pointer: coarse) {
 
     .formSelect,

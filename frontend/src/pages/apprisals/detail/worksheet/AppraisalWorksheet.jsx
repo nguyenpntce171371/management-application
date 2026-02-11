@@ -677,6 +677,7 @@ function AppraisalWorksheet() {
     const handleStreetChange = useCallback((e) => {
         setStreet(e.target.value);
     }, []);
+    
     return (
         <div className={styles.container}>
             <div className={styles.header}>

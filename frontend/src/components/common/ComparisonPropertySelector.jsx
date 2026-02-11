@@ -1,14 +1,22 @@
 import { useEffect, useState, useCallback, useMemo, useLayoutEffect, useRef } from "react";
-import { Search } from "lucide-react";
+import { Search, Plus, X } from "lucide-react";
 import axiosInstance from "../../services/axiosInstance";
 import styles from "./ComparisonPropertySelector.module.css";
+import provinces from "../../data/vietnam-provinces.json";
+import { notify } from "../../context/NotificationContext";
 
 function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleComparison, allCachedProperties }) {
     const [searchTerm, setSearchTerm] = useState("");
     const [nearbyProperties, setNearbyProperties] = useState([]);
     const [searchResults, setSearchResults] = useState([]);
     const [hoveredProperty, setHoveredProperty] = useState(null);
-    const [tooltipAlignment, setTooltipAlignment] = useState({});
+
+    const [province, setProvince] = useState("");
+    const [district, setDistrict] = useState("");
+    const [ward, setWard] = useState("");
+    const [street, setStreet] = useState("");
+
+    const [showAddDialog, setShowAddDialog] = useState(false);
 
     const tooltipRefs = useRef({});
     const containerRef = useRef(null);
@@ -24,8 +32,6 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
             let alignment = "center";
             if (tooltipRect.right > containerRect.right - 8) alignment = "right";
             else if (tooltipRect.left < containerRect.left + 8) alignment = "left";
-
-            setTooltipAlignment(prev => ({ ...prev, [hoveredProperty]: alignment }));
         }
     }, [hoveredProperty]);
 
@@ -113,21 +119,109 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
         [appraisal.id, onToggleComparison]
     );
 
+    const handleAddEmptyComparison = useCallback(async () => {
+        setShowAddDialog(true);
+    }, []);
+
+    const handleCloseDialog = useCallback(() => {
+        setShowAddDialog(false);
+    }, []);
+
+    const convertAddress = async (address) => {
+        try {
+            const response = await axiosInstance.post("/api/addresses/convert", { address });
+            return response.data.data.new;
+        } finally {
+            return address;
+        }
+    };
+
+    const handleConfirmAdd = useCallback(async () => {
+        if (!province || !district || !ward || !street) {
+            notify({
+                type: "error",
+                title: "Thiếu thông tin",
+                message: "Vui lòng điền đầy đủ thông tin",
+            });
+            return;
+        }
+
+        const address = `${ward}, ${district}, ${province}`;
+        const newAddress = await convertAddress(address);
+        const empty = {
+            province: province,
+            district: district,
+            ward: ward,
+            street: street,
+            location: {
+                landParcel: `${address} (nay ${newAddress})`,
+                description: `TSTĐ tiếp giáp đường ${street}`
+            }
+        };
+
+        const res = await axiosInstance.post("/api/real-estates/comparison", empty);
+
+        handleToggle(res.data.data);
+
+        handleCloseDialog();
+    }, [province, district, ward, street, handleCloseDialog]);
+
+    const selectedProvinceData = useMemo(() => (
+        provinces.find(p => p.name === province)
+    ), [provinces, province]);
+
+    const districtOptions = useMemo(() => (
+        selectedProvinceData?.districts || []
+    ), [selectedProvinceData]);
+
+    const selectedDistrictData = useMemo(() => (
+        districtOptions.find(d => d.name === district)
+    ), [districtOptions, district]);
+
+    const wardOptions = useMemo(() => (
+        selectedDistrictData?.wards || []
+    ), [selectedDistrictData]);
+
+    const handleProvinceChange = useCallback((e) => {
+        setProvince(e.target.value);
+        setDistrict("");
+        setWard("");
+    }, []);
+
+    const handleDistrictChange = useCallback((e) => {
+        setDistrict(e.target.value);
+        setWard("");
+    }, []);
+
+    const handleWardChange = useCallback((e) => {
+        setWard(e.target.value);
+    }, []);
+
+    const handleStreetChange = useCallback((e) => {
+        setStreet(e.target.value);
+    }, []);
+
     return (
         <div className={styles.container}>
             <div className={styles.header}>
                 <span className={styles.title}>
                     Tài sản so sánh cho {appraisal.name || "Chưa xác định"}
                 </span>
-                <div className={styles.searchBox}>
-                    <Search className={styles.searchIcon} size={18} />
-                    <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className={styles.searchInput}
-                        placeholder="Tìm kiếm tài sản..."
-                    />
+                <div className={styles.searchWrapper}>
+                    <div className={styles.searchBox}>
+                        <Search className={styles.searchIcon} size={18} />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className={styles.searchInput}
+                            placeholder="Tìm kiếm tài sản..."
+                        />
+                    </div>
+                    <button className={styles.button} onClick={handleAddEmptyComparison} title="Thêm tài sản so sánh">
+                        <Plus size={20} />
+                        <span>Thêm TSSS</span>
+                    </button>
                 </div>
             </div>
 
@@ -135,7 +229,6 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
                 {displayProperties.map(property => {
                     const isSelected = (selectedComparisons[appraisal.id] || []).includes(property.id);
                     const selectionIndex = isSelected ? selectedComparisons[appraisal.id].indexOf(property.id) + 1 : null;
-                    const alignment = tooltipAlignment[property.id] || "center";
 
                     return (
                         <div
@@ -167,6 +260,64 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
                     );
                 })}
             </div>
+            {showAddDialog && (
+                <div className={styles.dialogOverlay} onClick={handleCloseDialog}>
+                    <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.dialogHeader}>
+                            <h3 className={styles.dialogTitle}>Thêm tài sản thẩm định</h3>
+                            <button className={styles.dialogCloseButton} onClick={handleCloseDialog}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className={styles.dialogBody}>
+                            <div className={styles.formGroup}>
+                                <label className={styles.formLabel}>Tỉnh/Thành phố</label>
+                                <select className={styles.formSelect} value={province} onChange={handleProvinceChange}>
+                                    <option value="">-- Chọn tỉnh/thành phố --</option>
+                                    {provinces.map((p) => (
+                                        <option key={p.name} value={p.name}>{p.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {province && (<div className={styles.formGroup}>
+                                <label className={styles.formLabel}>Quận/Huyện</label>
+                                <select className={styles.formSelect} value={district} onChange={handleDistrictChange}>
+                                    <option value="">-- Chọn quận/huyện --</option>
+                                    {districtOptions.map((d) => (
+                                        <option key={d.name} value={d.name}>{d.name}</option>
+                                    ))}
+                                </select>
+                            </div>)}
+
+                            {district && (<div className={styles.formGroup}>
+                                <label className={styles.formLabel}>Phường/Xã</label>
+                                <select className={styles.formSelect} value={ward} onChange={handleWardChange}>
+                                    <option value="">-- Chọn phường/xã --</option>
+                                    {wardOptions.map((w) => (
+                                        <option key={w.name} value={w.name}>{w.name}</option>
+                                    ))}
+                                </select>
+                            </div>)}
+
+                            <div className={styles.formGroup}>
+                                <label className={styles.formLabel}>Tên đường</label>
+                                <input type="text" className={styles.formInput} value={street} onChange={handleStreetChange} />
+                            </div>
+                        </div>
+
+                        <div className={styles.dialogFooter}>
+                            <button className={styles.cancelButton} onClick={handleCloseDialog}>
+                                Hủy
+                            </button>
+                            <button className={styles.confirmButton} onClick={handleConfirmAdd}>
+                                Xác nhận
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -1,12 +1,13 @@
 import express from "express";
 import { verify } from "../middlewares/authMiddleware.js";
 import { upload } from "../middlewares/upload.js";
-import { createRealEstate, deleteRealEstateById, getDeletedRealEstates, getNearbyRealEstate, getRealEstate, getRealEstateById, getRealEstateStats, modifyRealEstateById, permanentDeleteRealEstate, restoreRealEstate } from "../controllers/realEstate.controller.js";
+import { createComparisonRealEstate, createRealEstate, deleteRealEstateById, getDeletedRealEstates, getNearbyRealEstate, getRealEstate, getRealEstateById, getRealEstateStats, modifyRealEstateById, permanentDeleteRealEstate, restoreRealEstate } from "../controllers/realEstate.controller.js";
 
 const router = express.Router();
 
 router.get("/", verify("User"), getRealEstate);
 router.post("/", verify("User"), upload.array("images", 10), createRealEstate);
+router.post("/comparison", verify("Staff"), createComparisonRealEstate);
 router.get("/stats", verify("Staff"), getRealEstateStats);
 router.get("/nearby", verify("Staff"), getNearbyRealEstate);
 router.get("/deleted", verify("Admin"), getDeletedRealEstates);
