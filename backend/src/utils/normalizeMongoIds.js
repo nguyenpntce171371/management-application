@@ -1,27 +1,31 @@
 import mongoose from "mongoose";
 
-export function transformIds(value) {
+export function transformIds(value, seen = new WeakSet()) {
     if (value instanceof Date) {
         return value;
     }
 
-    // 👈 QUAN TRỌNG: bắt ObjectId trước
     if (value instanceof mongoose.Types.ObjectId) {
         return value.toString();
     }
 
     if (Array.isArray(value)) {
-        return value.map(transformIds);
+        return value.map(item => transformIds(item, seen));
     }
 
     if (value && typeof value === "object") {
+        if (seen.has(value)) {
+            return "[Circular]";
+        }
+        
+        seen.add(value);
         const transformed = {};
 
         for (const key in value) {
             if (key === "_id") {
-                transformed.id = transformIds(value[key]);
+                transformed.id = transformIds(value[key], seen);
             } else {
-                transformed[key] = transformIds(value[key]);
+                transformed[key] = transformIds(value[key], seen);
             }
         }
 

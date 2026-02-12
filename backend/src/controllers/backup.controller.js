@@ -128,11 +128,14 @@ export const getBackupById = async (req, res) => {
 export const createBackup = async (req, res) => {
     try {
         const mongoResult = await backupMongoDB("manual");
+
+        const plainResult = mongoResult?.toObject ? mongoResult.toObject() : mongoResult;
+
         return res.status(200).json({
             success: true,
             code: "BACKUP_CREATED",
             message: "Backup đã được tạo thành công",
-            data: transformIds(mongoResult)
+            data: transformIds(plainResult)
         });
     } catch (error) {
         console.error("Error creating backup:", error);

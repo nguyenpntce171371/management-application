@@ -619,13 +619,15 @@ export const createRealEstate = async (req, res) => {
             })
         };
 
+        const plainItem = processedItem?.toObject ? processedItem.toObject() : processedItem;
+
         io.to("User").emit("realEstateCreated");
 
         return res.status(201).json({
             success: true,
             code: "REAL_ESTATE_CREATED",
             message: "Tạo bất động sản thành công",
-            data: transformIds(processedItem)
+            data: transformIds(plainItem)
         });
     } catch (error) {
         console.error("Create Real Estate Error:", error);
