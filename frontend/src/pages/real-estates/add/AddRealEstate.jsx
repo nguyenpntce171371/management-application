@@ -149,35 +149,35 @@ function AddRealEstate() {
                                 </label>
                                 <input id="propertyType" type="text" className={styles.input} placeholder="VD: Căn hộ Vinhomes Central Park" value={formData.propertyType} onChange={(e) => setFormData({ ...formData, propertyType: e.target.value })} required />
                             </div>
-                            <div className={styles.field}>
+                            <div className={styles.fieldFull}>
                                 <label htmlFor="price" className={styles.label}>
                                     Giá (VNĐ)
                                 </label>
                                 <input id="price" type="text" inputMode="numeric" className={styles.input} placeholder="VD: 4500000000 hoặc bỏ trống" value={formData.price} onChange={(e) => handleNumberInput(e, "price")} />
                             </div>
                             <div className={styles.field}>
-                                <label htmlFor="length" className={styles.label}>
-                                    Dài (m) <span className={styles.required}>*</span>
-                                </label>
-                                <input id="length" type="text" inputMode="decimal" className={styles.input} placeholder="VD: 13" value={formData.length} onChange={(e) => handleDecimalInput(e, "length")} required />
-                            </div>
-                            <div className={styles.field}>
                                 <label htmlFor="width" className={styles.label}>
                                     Rộng (m²) <span className={styles.required}>*</span>
                                 </label>
-                                <input id="width" type="text" inputMode="decimal" className={styles.input} placeholder="VD: 15" value={formData.width} onChange={(e) => handleDecimalInput(e, "width")} required />
+                                <input id="width" type="text" inputMode="decimal" className={styles.input} placeholder="VD: 4.2" value={formData.width} onChange={(e) => handleDecimalInput(e, "width")} required />
+                            </div>
+                            <div className={styles.field}>
+                                <label htmlFor="length" className={styles.label}>
+                                    Dài (m) <span className={styles.required}>*</span>
+                                </label>
+                                <input id="length" type="text" inputMode="decimal" className={styles.input} placeholder="VD: 18.7" value={formData.length} onChange={(e) => handleDecimalInput(e, "length")} required />
                             </div>
                             <div className={styles.field}>
                                 <label htmlFor="area" className={styles.label}>
                                     Diện tích sàn (m²)
                                 </label>
-                                <input id="area" type="text" inputMode="decimal" className={styles.input} placeholder="VD: 85" value={formData.area} onChange={(e) => handleDecimalInput(e, "area")} />
+                                <input id="area" type="text" inputMode="decimal" className={styles.input} placeholder="VD: 78.5" value={formData.area} onChange={(e) => handleDecimalInput(e, "area")} />
                             </div>
                             <div className={styles.field}>
                                 <label htmlFor="usableArea" className={styles.label}>
                                     Diện tích sử dụng (m²)
                                 </label>
-                                <input id="usableArea" type="text" inputMode="decimal" className={styles.input} placeholder="VD: 85" value={formData.usableArea} onChange={(e) => handleDecimalInput(e, "usableArea")} />
+                                <input id="usableArea" type="text" inputMode="decimal" className={styles.input} placeholder="VD: 78.5" value={formData.usableArea} onChange={(e) => handleDecimalInput(e, "usableArea")} />
                             </div>
                             <div className={styles.field}>
                                 <label htmlFor="bedrooms" className={styles.label}>
