@@ -124,27 +124,46 @@ function RealEstateDetail() {
         }
 
         const formDataToSend = new FormData();
+        let hasChanges = false;
 
         Object.keys(formData).forEach(key => {
             if (key !== "images" && key !== "contacts") {
-                formDataToSend.append(key, formData[key]);
+                if (formData[key] !== property[key]) {
+                    formDataToSend.append(key, formData[key]);
+                    hasChanges = true;
+                }
             }
         });
 
-        formDataToSend.append("contacts", JSON.stringify(formData.contacts));
+        const contactsChanged = JSON.stringify(formData.contacts) !== JSON.stringify(property.contacts);
+        if (contactsChanged) {
+            formDataToSend.append("contacts", JSON.stringify(formData.contacts));
+            hasChanges = true;
+        }
 
         if (deletedImages.length > 0) {
             formDataToSend.append("deletedImages", JSON.stringify(deletedImages));
+            hasChanges = true;
         }
 
-        newImages.forEach((file) => {
-            formDataToSend.append("images", file);
-        });
+        if (newImages.length > 0) {
+            newImages.forEach((file) => {
+                formDataToSend.append("images", file);
+            });
+            hasChanges = true;
+        }
 
-        await axiosInstance.post(`/api/real-estates/${id}`, formDataToSend, {
-            headers: {
-                "Content-Type": "multipart/form-data",
-            },
+        if (!hasChanges) {
+            setIsEditMode(false);
+            return;
+        }
+
+        await axiosInstance.post(`/api/real-estates/${id}`, formDataToSend, { headers: { "Content-Type": "multipart/form-data" } });
+
+        notify({
+            type: "success",
+            title: "Thành công",
+            message: "Cập nhật bất động sản thành công",
         });
 
         setNewImages([]);
@@ -478,19 +497,21 @@ function RealEstateDetail() {
                         </div>
                     </div>
 
-                    <div className={styles.sectionCard}>
-                        <h2 className={styles.sectionTitle}>
-                            <FileText />
-                            Mô tả
-                        </h2>
-                        {isEditMode ? (
-                            <textarea value={formData.description} onChange={(e) => handleInputChange("description", e.target.value,)} className={styles.editTextarea} rows={6} />
-                        ) : (
-                            <p className={styles.description}>
-                                {property.description}
-                            </p>
-                        )}
-                    </div>
+                    {(property.description || isEditMode) && (
+                        <div className={styles.sectionCard}>
+                            <h2 className={styles.sectionTitle}>
+                                <FileText />
+                                Mô tả
+                            </h2>
+                            {isEditMode ? (
+                                <textarea value={formData.description} onChange={(e) => handleInputChange("description", e.target.value,)} className={styles.editTextarea} rows={6} />
+                            ) : (
+                                <p className={styles.description}>
+                                    {property.description}
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     <div className={styles.sectionCard}>
                         <h2 className={styles.sectionTitle}>
