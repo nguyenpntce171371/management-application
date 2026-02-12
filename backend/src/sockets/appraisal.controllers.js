@@ -25,8 +25,8 @@ export const setupAppraisalSocketHandlers = (io, socket) => {
                 "propertyType",
                 "status",
                 "appraiser",
-                "createdDate",
-                "completedDate",
+                "createdAt",
+                "completedAt",
                 "notes"
             ];
 

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance";
-import { Search, Trash2, Plus } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import styles from "./PropertyValuation.module.css";
 import { useSocket } from "../../context/SocketContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -27,6 +27,8 @@ function PropertyValuation() {
     const [hasMore, setHasMore] = useState(false);
     const [hasPrev, setHasPrev] = useState(false);
     const limit = 21;
+
+    const debounceTimers = useRef({});
 
     useEffect(() => {
         setSearchTerm(searchFromUrl);

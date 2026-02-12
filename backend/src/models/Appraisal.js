@@ -76,14 +76,12 @@ AppraisalSchema.pre("findOneAndUpdate", function (next) {
         searchText += normalize(fields.propertyType) + " ";
     }
 
-    if (fields.assets.length) {
-        if (Array.isArray(fields.assets)) {
-            fields.assets.forEach((asset) => {
-                if (asset.name) {
-                    searchText += normalize(asset.name) + " ";
-                }
-            });
-        }
+    if (Array.isArray(fields.assets) && fields.assets.length) {
+        fields.assets.forEach((asset) => {
+            if (asset.name) {
+                searchText += normalize(asset.name) + " ";
+            }
+        });
     }
 
     fields.searchText = searchText.trim();
@@ -121,14 +119,12 @@ AppraisalSchema.pre("updateOne", function (next) {
         searchText += normalize(fields.propertyType) + " ";
     }
 
-    if (fields.assets.length) {
-        if (Array.isArray(fields.assets)) {
-            fields.assets.forEach((asset) => {
-                if (asset.name) {
-                    searchText += normalize(asset.name) + " ";
-                }
-            });
-        }
+    if (Array.isArray(fields.assets) && fields.assets.length) {
+        fields.assets.forEach((asset) => {
+            if (asset.name) {
+                searchText += normalize(asset.name) + " ";
+            }
+        });
     }
 
     fields.searchText = searchText.trim();

@@ -355,7 +355,7 @@ export const updateUserRole = async (req, res) => {
 
         await Token.deleteMany({ userId: id });
 
-        io.to(id).emit("usergedOut");
+        io.to(id).emit("loggedOut", { id });
         io.to("Admin").emit("userUpdated");
 
         return res.status(200).json({

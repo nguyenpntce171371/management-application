@@ -264,7 +264,7 @@ function ComparisonPropertySelector({ appraisal, selectedComparisons, onToggleCo
                 <div className={styles.dialogOverlay} onClick={handleCloseDialog}>
                     <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
                         <div className={styles.dialogHeader}>
-                            <h3 className={styles.dialogTitle}>Thêm tài sản thẩm định</h3>
+                            <h3 className={styles.dialogTitle}>Thêm tài sản so sánh</h3>
                             <button className={styles.dialogCloseButton} onClick={handleCloseDialog}>
                                 <X size={20} />
                             </button>

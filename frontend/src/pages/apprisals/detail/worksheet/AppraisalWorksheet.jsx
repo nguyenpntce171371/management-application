@@ -48,12 +48,8 @@ function AppraisalWorksheet() {
     }, [provinces]);
 
     const convertAddress = async (address) => {
-        try {
-            const response = await axiosInstance.post("/api/addresses/convert", { address });
-            return response.data.data.new;
-        } finally {
-            return address;
-        }
+        const response = await axiosInstance.post("/api/addresses/convert", { address });
+        return response.data.data.new;
     };
 
     const loadAppraisalFromAPI = useCallback(async () => {
@@ -677,7 +673,7 @@ function AppraisalWorksheet() {
     const handleStreetChange = useCallback((e) => {
         setStreet(e.target.value);
     }, []);
-    
+
     return (
         <div className={styles.container}>
             <div className={styles.header}>

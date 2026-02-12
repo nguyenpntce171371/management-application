@@ -127,7 +127,7 @@ export const googleCallback = async (req, res) => {
             setDefaultsOnInsert: true,
         });
 
-        io.to(id).emit("loggedInElsewhere", { id: session._id.toString() });
+        io.to(id).emit("loggedInElsewhere");
 
         res.cookie("deviceId", rawDeviceId, {
             httpOnly: true,
@@ -637,7 +637,7 @@ export const logoutSession = async (req, res) => {
             });
         }
 
-        io.to(req.user.id).emit("loggedOut", [id]);
+        io.to(req.user.id).emit("loggedOut", {id});
         io.to(req.user.id).emit("sessionLoggedOut", [id]);
 
         return res.status(200).json({
@@ -658,12 +658,9 @@ export const logoutSession = async (req, res) => {
 export const logoutAll = async (req, res) => {
     try {
         const id = req.user.id;
-        const deviceId = req.session.deviceId;
-
-        const sessions = await Token.find({ userId: id, deviceId: { $ne: deviceId } }, { _id: 1 }).lean();
         await Token.deleteMany({ userId: id });
 
-        io.to(id).emit("loggedOut", sessions.map(s => s._id.toString()));
+        io.to(id).emit("loggedOut");
 
         res.clearCookie("deviceId");
         res.clearCookie("accessToken", { path: "/" });

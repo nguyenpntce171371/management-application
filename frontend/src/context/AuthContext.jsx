@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     useEffect(() => {
-        setAuthFailHandler(() => handleAuthFail);
+        setAuthFailHandler(handleAuthFail);
     }, []);
 
     useEffect(() => {
