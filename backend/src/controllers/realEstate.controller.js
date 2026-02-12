@@ -612,14 +612,16 @@ export const createRealEstate = async (req, res) => {
             listedAt: new Date()
         });
 
+        const plainItem = item.toObject();
+
         const processedItem = {
-            ...item,
-            ...(item.images?.length && {
-                images: await Promise.all(item.images.map(img => img && !img.startsWith("http") ? getCachedImageUrl(img) : img))
+            ...plainItem,
+            ...(plainItem.images?.length && {
+                images: await Promise.all(plainItem.images.map(img =>
+                    img && !img.startsWith("http") ? getCachedImageUrl(img) : img
+                ))
             })
         };
-
-        const plainItem = processedItem?.toObject ? processedItem.toObject() : processedItem;
 
         io.to("User").emit("realEstateCreated");
 
@@ -627,7 +629,7 @@ export const createRealEstate = async (req, res) => {
             success: true,
             code: "REAL_ESTATE_CREATED",
             message: "Tạo bất động sản thành công",
-            data: transformIds(plainItem)
+            data: transformIds(processedItem)
         });
     } catch (error) {
         console.error("Create Real Estate Error:", error);
