@@ -5,6 +5,7 @@ import { normalize, removePrefix } from "../utils/string.js";
 import { getCachedImageUrl } from "../utils/cachedImage.js";
 import { executeCursorPaginatedQuery, parseSort } from "../utils/query.js";
 import { transformIds } from "../utils/normalizeMongoIds.js";
+import { Role } from "../config/role.js";
 
 export const getRealEstate = async (req, res) => {
     try {
@@ -20,8 +21,14 @@ export const getRealEstate = async (req, res) => {
         }
 
         const { sortBy, sortOrder } = parseSort(req.query, ["price", "createdAt"]);
+
+        const userLevel = Role[req.user.role] ?? 0;
+        const requiredLevel = Role["STAFF"] ?? 999;
+
+        const select = userLevel < requiredLevel ? "propertyType price images address width length status" : "propertyType price images address width length status location area usableArea constructionValue landUseRightUnitPrice";
+
         const options = {
-            select: "propertyType price address images status",
+            select,
             sortBy,
             sortOrder,
             cursor: req.query.cursor,
@@ -81,8 +88,13 @@ export const getNearbyRealEstate = async (req, res) => {
         baseQuery.wardSearch = normalize(ward);
         const streetSearch = normalize(street);
 
+        const userLevel = Role[req.user.role] ?? 0;
+        const requiredLevel = Role["STAFF"] ?? 999;
+
+        const select = userLevel < requiredLevel ? "propertyType price images address width length status" : "propertyType price images address width length status location area usableArea constructionValue landUseRightUnitPrice";
+
         const options = {
-            select: "propertyType name address area usableArea price images location",
+            select,
             sortBy: "priority",
             sortOrder: -1,
             cursor: req.query.cursor,
@@ -107,6 +119,15 @@ export const getNearbyRealEstate = async (req, res) => {
 
         const { data, hasMore, hasPrev, nextCursor, prevCursor } = await executeCursorPaginatedQuery(RealEstate, baseQuery, options);
 
+        const processedData = await Promise.all(
+            data.map(async ({ images, ...rest }) => ({
+                ...rest,
+                ...(images?.length && {
+                    images: (await Promise.all(images.map(img => img && !img.startsWith("http") ? getCachedImageUrl(img) : img))).filter(Boolean)
+                })
+            }))
+        );
+
         return res.status(200).json({
             success: true,
             code: "NEARBY_REAL_ESTATE_LIST",
@@ -116,7 +137,7 @@ export const getNearbyRealEstate = async (req, res) => {
                 nextCursor,
                 prevCursor
             },
-            data: transformIds(data)
+            data: transformIds(processedData)
         });
     } catch (error) {
         console.error("Get Nearby Real Estate Error:", error);
@@ -384,9 +405,9 @@ export const permanentDeleteRealEstate = async (req, res) => {
 
 export const createComparisonRealEstate = async (req, res) => {
     try {
-        const { province, district, ward, street, location } = req.body;
+        const { propertyType, province, district, ward, street, location } = req.body;
 
-        if (!province || !district || !ward || !street) {
+        if (!propertyType || !province || !district || !ward || !street) {
             return res.status(400).json({
                 success: false,
                 code: "MISSING_FIELDS",
@@ -394,16 +415,39 @@ export const createComparisonRealEstate = async (req, res) => {
             });
         }
 
+        if (location.lat !== undefined) {
+            const latNum = parseFloat(location.lat);
+            if (isNaN(latNum) || latNum < -90 || latNum > 90) {
+                return res.status(400).json({
+                    success: false,
+                    code: "VALIDATION_ERROR",
+                    message: "Tọa độ không hợp lệ",
+                });
+            }
+        }
+
+        if (location.lng !== undefined) {
+            const lngNum = parseFloat(location.lng);
+            if (isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
+                return res.status(400).json({
+                    success: false,
+                    code: "VALIDATION_ERROR",
+                    message: "Tọa độ không hợp lệ",
+                });
+            }
+        }
+
         const item = await RealEstate.create({
-            province: province,
-            district: district,
-            ward: ward,
-            street: street,
+            propertyType,
+            province,
+            district,
+            ward,
+            street,
             location: {
                 description: location?.description || "",
                 landParcel: location?.landParcel || "",
-                lat: null,
-                lng: null
+                lat: location?.lat || "",
+                lng: location?.lng || ""
             },
             status: "Chờ duyệt",
             postedBy: req.user.id,

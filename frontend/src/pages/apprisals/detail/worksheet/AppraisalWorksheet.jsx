@@ -370,12 +370,10 @@ function AppraisalWorksheet() {
         if (appraisalProperty) {
             const updatedAppraisal = { ...appraisalProperty, selectedComparisons: updatedList };
             await indexedDBService.saveProperty(updatedAppraisal);
-
             setAppraisalProperties(prev => prev.map(ap => ap.id === appraisalId ? updatedAppraisal : ap));
         }
 
         setSelectedComparisons(prev => ({ ...prev, [appraisalId]: updatedList }));
-
     }, [selectedComparisons, normalizeProperty]);
 
     const handleSaveName = useCallback(async (ap, newName) => {
@@ -799,10 +797,10 @@ function AppraisalWorksheet() {
                                 </select>
                             </div>)}
 
-                            <div className={styles.formGroup}>
+                            {ward && (<div className={styles.formGroup}>
                                 <label className={styles.formLabel}>Tên đường</label>
                                 <input type="text" className={styles.formInput} value={street} onChange={handleStreetChange} />
-                            </div>
+                            </div>)}
                         </div>
 
                         <div className={styles.dialogFooter}>
