@@ -159,25 +159,25 @@ function AddRealEstate() {
                                 <label htmlFor="length" className={styles.label}>
                                     Dài (m) <span className={styles.required}>*</span>
                                 </label>
-                                <input id="length" type="text" inputMode="numeric" className={styles.input} placeholder="VD: 13" value={formData.length} onChange={(e) => handleNumberInput(e, "length")} required />
+                                <input id="length" type="text" inputMode="decimal" className={styles.input} placeholder="VD: 13" value={formData.length} onChange={(e) => handleDecimalInput(e, "length")} required />
                             </div>
                             <div className={styles.field}>
                                 <label htmlFor="width" className={styles.label}>
                                     Rộng (m²) <span className={styles.required}>*</span>
                                 </label>
-                                <input id="width" type="text" inputMode="numeric" className={styles.input} placeholder="VD: 15" value={formData.width} onChange={(e) => handleNumberInput(e, "width")} required />
+                                <input id="width" type="text" inputMode="decimal" className={styles.input} placeholder="VD: 15" value={formData.width} onChange={(e) => handleDecimalInput(e, "width")} required />
                             </div>
                             <div className={styles.field}>
                                 <label htmlFor="area" className={styles.label}>
                                     Diện tích sàn (m²)
                                 </label>
-                                <input id="area" type="text" inputMode="numeric" className={styles.input} placeholder="VD: 85" value={formData.area} onChange={(e) => handleNumberInput(e, "area")} />
+                                <input id="area" type="text" inputMode="decimal" className={styles.input} placeholder="VD: 85" value={formData.area} onChange={(e) => handleDecimalInput(e, "area")} />
                             </div>
                             <div className={styles.field}>
                                 <label htmlFor="usableArea" className={styles.label}>
                                     Diện tích sử dụng (m²)
                                 </label>
-                                <input id="usableArea" type="text" inputMode="numeric" className={styles.input} placeholder="VD: 85" value={formData.usableArea} onChange={(e) => handleNumberInput(e, "usableArea")} />
+                                <input id="usableArea" type="text" inputMode="decimal" className={styles.input} placeholder="VD: 85" value={formData.usableArea} onChange={(e) => handleDecimalInput(e, "usableArea")} />
                             </div>
                             <div className={styles.field}>
                                 <label htmlFor="bedrooms" className={styles.label}>
