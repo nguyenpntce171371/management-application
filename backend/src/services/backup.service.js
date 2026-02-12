@@ -86,7 +86,6 @@ export const backupMongoDB = async (source = "manual") => {
 
         const dumpCommand = `mongodump --uri="${MONGO_URI}" --out="${dumpDir}" --gzip ${excludeParams}`;
 
-        console.log(`Creating MongoDB backup (excluding: ${EXCLUDED_COLLECTIONS.join(", ")})`);
         await execPromise(dumpCommand);
 
         const { size } = await compressDirectory(dumpDir, archivePath);
@@ -106,8 +105,8 @@ export const backupMongoDB = async (source = "manual") => {
             try {
                 const count = await db.collection(col.name).countDocuments();
                 totalDocuments += count;
-            } catch (err) {
-                console.warn(`Could not count documents in ${col.name}:`, err.message);
+            } catch (error) {
+                console.warn(`Could not count documents in ${col.name}:`, error.message);
             }
         }
 
@@ -128,7 +127,6 @@ export const backupMongoDB = async (source = "manual") => {
         fs.unlinkSync(archivePath);
 
         io.to("Admin").emit("backupCreated");
-        console.log(`MongoDB backup completed: ${includedCollections.length} collections, ${totalDocuments} documents`);
 
         return backupRecord;
     } catch (error) {
@@ -162,13 +160,10 @@ export const restoreMongoDB = async (storagePath) => {
 
         const restoreCommand = `mongorestore --uri="${MONGO_URI}" --drop --gzip "${extractDir}/${process.env.MONGO_DB_NAME}"`;
 
-        console.log(`Restoring MongoDB backup (excluded collections will be preserved)`);
         await execPromise(restoreCommand);
 
         fs.rmSync(extractDir, { recursive: true, force: true });
         fs.unlinkSync(archivePath);
-
-        console.log(`MongoDB restored successfully (${EXCLUDED_COLLECTIONS.join(", ")} preserved)`);
 
         return {
             success: true,

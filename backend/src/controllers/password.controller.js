@@ -1,9 +1,9 @@
 import User from "../models/User.js";
 import { sendOTPResetPasswordEmail, sendPasswordChangedEmail } from "../services/email.service.js";
-import { OTPService } from "../services/otp.service.js";
 import { io } from "../index.js";
 import Token from "../models/Token.js";
 import { normalizeEmail } from "../utils/string.js";
+import { create, verify, isVerified, clearVerified } from "../services/otp.service.js";
 
 export const changePassword = async (req, res) => {
     try {
@@ -105,7 +105,7 @@ export const sendOtpForgot = async (req, res) => {
             });
         }
 
-        const { code, expiresIn } = await OTPService.create(email, "reset_password");
+        const { code, expiresIn } = await create(email, "reset_password");
         await sendOTPResetPasswordEmail(email, code, expiresIn);
 
         return res.status(200).json({
@@ -144,7 +144,7 @@ export const verifyOTP = async (req, res) => {
             });
         }
 
-        const resetToken = await OTPService.verify(email, otp, "reset_password");
+        const resetToken = await verify(email, otp, "reset_password");
 
         return res.status(200).json({
             success: true,
@@ -196,7 +196,7 @@ export const resetPassword = async (req, res) => {
             });
         }
 
-        const verified = await OTPService.isVerified(email, resetToken, "reset_password");
+        const verified = await isVerified(email, resetToken, "reset_password");
         if (!verified) {
             return res.status(400).json({
                 success: false,
@@ -204,7 +204,7 @@ export const resetPassword = async (req, res) => {
                 message: "Vui lòng xác minh OTP trước",
             });
         }
-        await OTPService.clearVerified(email, "reset_password");
+        await clearVerified(email, "reset_password");
 
         const user = await User.findOne({ email }, { _id: 1, provider: 1 });
         if (!user) {

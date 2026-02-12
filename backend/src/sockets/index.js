@@ -1,7 +1,7 @@
 import { Server } from "socket.io";
-import { setupAppraisalSocketHandlers } from "./realEstate.controllers.js";
 import { socketAuthMiddleware } from "./auth.middlewares.js";
 import { joinBaseRooms } from "./rooms.utils.js";
+import { setupAppraisalSocketHandlers } from "./appraisal.controllers.js";
 
 export const initializeSocket = (server) => {
   const io = new Server(server, {

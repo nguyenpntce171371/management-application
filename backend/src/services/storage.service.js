@@ -23,10 +23,10 @@ export const STORAGE_CONFIG = {
     DEFAULT_EXPIRY: 3600
 };
 
-const generateTempToken = (filePath, expirySeconds = 3600) => {
+function generateTempToken(filePath, expirySeconds = 3600) {
     const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = Date.now() + (expirySeconds * 1000);
-    
+
     let tempLinks = {};
     if (fs.existsSync(TEMP_LINKS_FILE)) {
         try {
@@ -35,36 +35,36 @@ const generateTempToken = (filePath, expirySeconds = 3600) => {
             console.error("Error reading temp links file:", err);
         }
     }
-    
+
     tempLinks[token] = {
         filePath,
         expiresAt
     };
-    
+
     fs.writeFileSync(TEMP_LINKS_FILE, JSON.stringify(tempLinks, null, 2));
-    
+
     return token;
 };
 
-export const verifyTempToken = (token) => {
+export function verifyTempToken(token) {
     if (!fs.existsSync(TEMP_LINKS_FILE)) {
         return null;
     }
-    
+
     try {
         const tempLinks = JSON.parse(fs.readFileSync(TEMP_LINKS_FILE, "utf-8"));
         const link = tempLinks[token];
-        
+
         if (!link) {
             return null;
         }
-        
+
         if (Date.now() > link.expiresAt) {
             delete tempLinks[token];
             fs.writeFileSync(TEMP_LINKS_FILE, JSON.stringify(tempLinks, null, 2));
             return null;
         }
-        
+
         return link.filePath;
     } catch (err) {
         console.error("Error verifying temp token:", err);
@@ -72,19 +72,19 @@ export const verifyTempToken = (token) => {
     }
 };
 
-export const isTokenExpired = (token) => {
+export function isTokenExpired(token) {
     if (!fs.existsSync(TEMP_LINKS_FILE)) {
         return true;
     }
-    
+
     try {
         const tempLinks = JSON.parse(fs.readFileSync(TEMP_LINKS_FILE, "utf-8"));
         const link = tempLinks[token];
-        
+
         if (!link) {
             return true;
         }
-        
+
         return Date.now() > link.expiresAt;
     } catch (err) {
         console.error("Error checking token expiry:", err);
@@ -92,21 +92,21 @@ export const isTokenExpired = (token) => {
     }
 };
 
-export const findValidTokenForFile = (fileName) => {
+export function findValidTokenForFile(fileName) {
     if (!fs.existsSync(TEMP_LINKS_FILE)) {
         return null;
     }
-    
+
     try {
         const tempLinks = JSON.parse(fs.readFileSync(TEMP_LINKS_FILE, "utf-8"));
         const now = Date.now();
-        
+
         for (const [token, link] of Object.entries(tempLinks)) {
             if (link.filePath === fileName && now <= link.expiresAt) {
                 return token;
             }
         }
-        
+
         return null;
     } catch (err) {
         console.error("Error finding valid token:", err);
@@ -114,30 +114,28 @@ export const findValidTokenForFile = (fileName) => {
     }
 };
 
-export const cleanupExpiredTokens = () => {
+export function cleanupExpiredTokens() {
     if (!fs.existsSync(TEMP_LINKS_FILE)) {
         return { cleaned: 0, remaining: 0 };
     }
-    
+
     try {
         const tempLinks = JSON.parse(fs.readFileSync(TEMP_LINKS_FILE, "utf-8"));
         const now = Date.now();
-        
+
         const totalBefore = Object.keys(tempLinks).length;
-        
+
         const validLinks = Object.fromEntries(
             Object.entries(tempLinks).filter(([_, link]) => now <= link.expiresAt)
         );
-        
+
         const cleaned = totalBefore - Object.keys(validLinks).length;
-        
+
         fs.writeFileSync(TEMP_LINKS_FILE, JSON.stringify(validLinks, null, 2));
-        
-        console.log(`Cleaned ${cleaned} expired tokens, ${Object.keys(validLinks).length} remaining`);
-        
-        return { 
-            cleaned, 
-            remaining: Object.keys(validLinks).length 
+
+        return {
+            cleaned,
+            remaining: Object.keys(validLinks).length
         };
     } catch (err) {
         console.error("Error cleaning up expired tokens:", err);
@@ -145,7 +143,7 @@ export const cleanupExpiredTokens = () => {
     }
 };
 
-export const uploadImage = async (buffer, folder = "real-estates") => {
+export async function uploadImage(buffer, folder = "real-estates") {
     const SOFT_TARGET_SIZE = 35 * 1024;
     const MAX_ITERATIONS = 10;
     let quality = 88;
@@ -178,18 +176,18 @@ export const uploadImage = async (buffer, folder = "real-estates") => {
 
     const fileName = `${folder}/${Date.now()}-${crypto.randomBytes(8).toString("hex")}.webp`;
     const filePath = path.join(UPLOADS_DIR, fileName);
-    
+
     const folderPath = path.dirname(filePath);
     if (!fs.existsSync(folderPath)) {
         fs.mkdirSync(folderPath, { recursive: true });
     }
 
     fs.writeFileSync(filePath, optimized);
-    
+
     return fileName;
 };
 
-export const uploadMultipleImages = async (files, folder) => {
+export async function uploadMultipleImages(files, folder) {
     const objectNames = [];
     for (const file of files) {
         const name = await uploadImage(file.buffer, folder);
@@ -199,7 +197,7 @@ export const uploadMultipleImages = async (files, folder) => {
     return objectNames;
 };
 
-export const deleteImage = async (fileName) => {
+export async function deleteImage(fileName) {
     if (fileName.startsWith("http://") || fileName.startsWith("https://")) {
         return;
     }
@@ -214,30 +212,26 @@ export const deleteImage = async (fileName) => {
     }
 };
 
-export const deleteMultipleImages = async (fileNames = []) => {
+export async function deleteMultipleImages(fileNames = []) {
     for (const name of fileNames) {
         await deleteImage(name);
     }
 };
 
-export const createImageFingerprint = async (buffer) => {
-    const resized = await sharp(buffer)
-        .resize(8, 8, { fit: "fill", kernel: sharp.kernel.nearest })
-        .grayscale()
-        .raw()
-        .toBuffer();
+export async function createImageFingerprint(buffer) {
+    const resized = await sharp(buffer).resize(8, 8, { fit: "fill", kernel: sharp.kernel.nearest }).grayscale().raw().toBuffer();
     return crypto.createHash("sha256").update(resized).digest("hex");
 };
 
-export const generatePresignedUrl = async (fileName, expirySeconds = 3600) => {
+export async function generatePresignedUrl(fileName, expirySeconds = 3600) {
     const filePath = path.join(UPLOADS_DIR, fileName);
-    
+
     if (!fs.existsSync(filePath)) {
         throw new Error(`File not found: ${fileName}`);
     }
 
     const existingToken = findValidTokenForFile(fileName);
-    
+
     if (existingToken) {
         return `https://${process.env.DOMAIN}/api/files/temp/${existingToken}`;
     }
@@ -248,11 +242,11 @@ export const generatePresignedUrl = async (fileName, expirySeconds = 3600) => {
     return url;
 };
 
-export const uploadFile = async (filePath, fileName) => {
+export async function uploadFile(filePath, fileName) {
     try {
         const stats = fs.statSync(filePath);
         const destinationPath = path.join(UPLOADS_DIR, fileName);
-        
+
         const dir = path.dirname(destinationPath);
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
@@ -271,10 +265,10 @@ export const uploadFile = async (filePath, fileName) => {
     }
 };
 
-export const downloadFile = async (fileName, destinationPath) => {
+export async function downloadFile(fileName, destinationPath) {
     try {
         const sourcePath = path.join(UPLOADS_DIR, fileName);
-        
+
         if (!fs.existsSync(sourcePath)) {
             throw new Error(`File not found: ${fileName}`);
         }
@@ -300,10 +294,10 @@ export const downloadFile = async (fileName, destinationPath) => {
     }
 };
 
-export const deleteFile = async (fileName) => {
+export async function deleteFile(fileName) {
     try {
         const filePath = path.join(UPLOADS_DIR, fileName);
-        
+
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         }
@@ -318,10 +312,10 @@ export const deleteFile = async (fileName) => {
     }
 };
 
-export const listFiles = async (prefix = "") => {
+export async function listFiles(prefix = "") {
     try {
         const dirPath = path.join(UPLOADS_DIR, prefix);
-        
+
         if (!fs.existsSync(dirPath)) {
             return [];
         }
@@ -334,7 +328,7 @@ export const listFiles = async (prefix = "") => {
                 const filePath = path.join(dirPath, item.name);
                 const stats = fs.statSync(filePath);
                 const relativePath = path.relative(UPLOADS_DIR, filePath);
-                
+
                 files.push({
                     name: relativePath.replace(/\\/g, "/"),
                     size: stats.size,
@@ -350,7 +344,7 @@ export const listFiles = async (prefix = "") => {
     }
 };
 
-export const fileExists = async (fileName) => {
+export async function fileExists(fileName) {
     try {
         const filePath = path.join(UPLOADS_DIR, fileName);
         return fs.existsSync(filePath);
@@ -359,16 +353,16 @@ export const fileExists = async (fileName) => {
     }
 };
 
-export const getFileMetadata = async (fileName) => {
+export async function getFileMetadata(fileName) {
     try {
         const filePath = path.join(UPLOADS_DIR, fileName);
-        
+
         if (!fs.existsSync(filePath)) {
             throw new Error(`File not found: ${fileName}`);
         }
 
         const stats = fs.statSync(filePath);
-        
+
         return {
             size: stats.size,
             lastModified: stats.mtime,
@@ -380,7 +374,7 @@ export const getFileMetadata = async (fileName) => {
     }
 };
 
-export const copyFile = async (sourceFileName, destinationFileName) => {
+export async function copyFile(sourceFileName, destinationFileName) {
     try {
         const sourcePath = path.join(UPLOADS_DIR, sourceFileName);
         const destPath = path.join(UPLOADS_DIR, destinationFileName);

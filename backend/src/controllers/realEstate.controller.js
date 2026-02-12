@@ -344,13 +344,17 @@ export const permanentDeleteRealEstate = async (req, res) => {
             });
         }
 
-        const result = await RealEstate.deleteOne({ _id: id, deletedAt: { $ne: null } });
-        if (!result.deletedCount) {
+        const item = await RealEstate.findOneAndDelete({ _id: id, deletedAt: { $ne: null } }).select({ images: 1 }).lean();
+        if (!item) {
             return res.status(404).json({
                 success: false,
                 code: "REAL_ESTATE_NOT_FOUND",
                 message: "Không tìm thấy bất động sản đã xóa",
             });
+        }
+
+        if (item.images?.length) {
+            await deleteMultipleImages(item.images);
         }
 
         io.to("Admin").emit("realEstatePermanentlyDeleted");

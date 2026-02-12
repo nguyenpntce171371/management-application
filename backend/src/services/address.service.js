@@ -1,7 +1,14 @@
-import { createRequire } from "module";
 import { normalize } from "../utils/string.js";
-const require = createRequire(import.meta.url);
-const addressDB = require("../data/address.json");
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const addressDB = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "../data/address.json"), "utf-8")
+);
 
 let provinces = [];
 let wards = [];

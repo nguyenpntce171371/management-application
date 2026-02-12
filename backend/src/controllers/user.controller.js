@@ -296,10 +296,8 @@ export const deleteUserAvatar = async (req, res) => {
             });
         }
 
-        const avatarPath = user.avatar;
-
-        if (avatarPath && !avatarPath.startsWith("http")) {
-            await deleteImage([avatarPath]);
+        if (user.avatar) {
+            await deleteImage(user.avatar);
         }
 
         user.avatar = null;
@@ -507,13 +505,17 @@ export const permanentDeleteUser = async (req, res) => {
             });
         }
 
-        const result = await User.deleteOne({ _id: id, deletedAt: { $ne: null } });
-        if (!result.deletedCount) {
+        const item = await User.findOneAndDelete({ _id: id, deletedAt: { $ne: null } }).select({ avatar: 1 }).lean();
+        if (!item) {
             return res.status(404).json({
                 success: false,
                 code: "USER_NOT_FOUND",
                 message: "Không tìm thấy người dùng đã xóa",
             });
+        }
+
+        if (item.avatar) {
+            await deleteImage(item.avatar);
         }
 
         io.to("Admin").emit("userPermanentlyDeleted");

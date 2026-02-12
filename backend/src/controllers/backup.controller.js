@@ -102,7 +102,7 @@ export const getBackupById = async (req, res) => {
                 message: "Không tìm thấy bản ghi"
             });
         }
-        
+
         return res.status(200).json({
             success: true,
             code: "BACKUP_FOUND",
@@ -330,12 +330,8 @@ export const permanentDeleteBackup = async (req, res) => {
             });
         }
 
-        const backup = await Backup.findOneAndDelete({
-            _id: id,
-            deletedAt: { $ne: null }
-        }).select({ path: 1 }).lean();
-
-        if (!backup) {
+        const item = await Backup.findOneAndDelete({ _id: id, deletedAt: { $ne: null } }).select({ path: 1 }).lean();
+        if (!item) {
             return res.status(404).json({
                 success: false,
                 code: "BACKUP_NOT_FOUND",
@@ -343,7 +339,9 @@ export const permanentDeleteBackup = async (req, res) => {
             });
         };
 
-        await deleteFile(backup.path);
+        if (item.path) {
+            await deleteFile(item.path);
+        }
 
         io.to("Admin").emit("backupPermanentlyDeleted");
 

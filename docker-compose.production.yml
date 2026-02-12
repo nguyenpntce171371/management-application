@@ -2,7 +2,7 @@ services:
   mongo-production:
     image: mongo:7
     container_name: mongo-production
-    restart: always
+    restart: unless-stopped
     networks:
       - web
     environment:

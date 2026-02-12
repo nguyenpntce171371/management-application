@@ -378,7 +378,6 @@ export const sendPasswordChangedEmail = async (email, fullName) => {
             <body>
                 <div class="email-container">
                     <div class="header">
-                        <div class="header-icon">✓</div>
                         <h1>Mật khẩu đã được cập nhật</h1>
                     </div>
                     

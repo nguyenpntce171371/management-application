@@ -6,9 +6,9 @@ import { sendOTPRegisterEmail } from "../services/email.service.js";
 import axios from "axios";
 import { io } from "../index.js";
 import { OAuth2Client } from "google-auth-library";
-import { OTPService } from "../services/otp.service.js";
 import { getCachedImageUrl } from "../utils/cachedImage.js";
 import { transformIds } from "../utils/normalizeMongoIds.js";
+import { clearVerified, create, verify, isVerified } from "../services/otp.service.js";
 
 export const googleCallback = async (req, res) => {
     const DOMAIN = `https://${process.env.DOMAIN}`;
@@ -312,7 +312,7 @@ export const register = async (req, res) => {
             });
         }
 
-        const verified = await OTPService.isVerified(email, "register");
+        const verified = await isVerified(email, "register");
         if (!verified) {
             return res.status(400).json({
                 success: false,
@@ -320,7 +320,7 @@ export const register = async (req, res) => {
                 message: "Hãy xác minh mã OTP trước khi đăng ký",
             });
         }
-        OTPService.clearVerified(email, "register");
+        clearVerified(email, "register");
         const count = await User.countDocuments();
         const role = (count === 0) ? "Admin" : "User";
         const user = new User({ fullName, email: email.trim().toLowerCase(), role });
@@ -373,7 +373,7 @@ export const sendOtpRegister = async (req, res) => {
             });
         }
 
-        const { code, expiresIn } = await OTPService.create(email, "register");
+        const { code, expiresIn } = await create(email, "register");
 
         await sendOTPRegisterEmail(email, code, expiresIn);
 
@@ -412,7 +412,7 @@ export const verifyOtpRegister = async (req, res) => {
             });
         }
 
-        await OTPService.verify(email, otp, "register");
+        await verify(email, otp, "register");
 
         return res.status(200).json({
             success: true,
