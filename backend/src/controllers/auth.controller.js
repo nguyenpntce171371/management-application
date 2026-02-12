@@ -152,7 +152,7 @@ export const googleCallback = async (req, res) => {
 
         return res.redirect(DOMAIN);
     } catch (error) {
-        console.log("Google login error:", error);
+        console.error("Google login error:", error);
         return res.redirect(
             `${DOMAIN}/?login=google_failed`
         );

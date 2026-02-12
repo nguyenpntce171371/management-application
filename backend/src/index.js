@@ -31,12 +31,7 @@ app.use(loggingMiddleware);
 app.use("/api", router);
 
 mongoose.connect(`mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-${APP_MODE}:27017/${MONGO_DB_NAME}?authSource=admin`)
-    .then(() => {
-        console.log("MongoDB connected");
-        initializeCronJobs().catch(err => console.error("Failed to initialize backup scheduler:", err));
-    })
-    .catch(err => console.error("MongoDB connection error:", err.message));
+    .then(() => { initializeCronJobs().catch(error => console.error("Failed to initialize backup scheduler:", error)) })
+    .catch(error => console.error("MongoDB connection error:", error.message));
 
-server.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT}`);
-});
+server.listen(PORT, "0.0.0.0");

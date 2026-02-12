@@ -24,7 +24,6 @@ export async function getCachedImageUrl(imagePath) {
             }
 
             imageUrlCache.del(imagePath);
-            console.log(`Token expired for ${imagePath}, regenerating...`);
         }
     }
 

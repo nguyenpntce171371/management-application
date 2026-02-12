@@ -30,7 +30,6 @@ export async function initializeBackupCronJob() {
         );
 
         if (!config.enabled) {
-            console.log("Auto backup is disabled");
             return;
         }
 
@@ -40,8 +39,6 @@ export async function initializeBackupCronJob() {
         }
 
         backupJob = cron.schedule(config.schedule, async () => {
-            console.log("Starting scheduled backup...");
-
             try {
                 config.lastBackupAt = new Date();
                 config.lastBackupStatus = "in_progress";
@@ -53,8 +50,6 @@ export async function initializeBackupCronJob() {
                 config.lastBackupStatus = "success";
                 config.lastBackupError = null;
                 await config.save();
-
-                console.log("Scheduled backup completed successfully");
             } catch (error) {
                 console.error("Scheduled backup failed:", error);
 
@@ -68,9 +63,6 @@ export async function initializeBackupCronJob() {
         const nextRun = interval.next().toDate();
         config.nextBackupAt = nextRun;
         await config.save();
-
-        console.log("Backup scheduler initialized");
-        console.log(`Next backup scheduled for: ${nextRun.toLocaleString("vi-VN")}`);
     } catch (error) {
         console.error("Failed to initialize backup cron job:", error);
     }
@@ -83,18 +75,12 @@ export async function initializeSoftDeleteCleanupJob() {
         }
 
         cleanupJob = cron.schedule("0 0 * * *", async () => {
-            console.log("Starting soft delete cleanup...");
-
             try {
                 await runSoftDeleteCleanup();
-                console.log("Soft delete cleanup completed");
             } catch (error) {
                 console.error("Soft delete cleanup failed:", error);
             }
         }, { timezone: "Asia/Ho_Chi_Minh" });
-
-        console.log("Soft delete cleanup scheduler initialized");
-        console.log("Cleanup runs daily at 00:00 (Vietnam time)");
     } catch (error) {
         console.error("Failed to initialize soft delete cleanup job:", error);
     }
@@ -107,23 +93,15 @@ export function initializeTempTokenCleanupJob() {
         }
 
         tokenCleanupJob = cron.schedule("*/30 * * * *", () => {
-            console.log("Starting expired temp tokens cleanup...");
-
             try {
                 const result = cleanupExpiredTokens();
-                console.log(`Temp tokens cleanup completed - Cleaned: ${result.cleaned}, Remaining: ${result.remaining}`);
             } catch (error) {
                 console.error("Temp tokens cleanup failed:", error);
             }
         }, { timezone: "Asia/Ho_Chi_Minh" });
 
-        console.log("Temp token cleanup scheduler initialized");
-        console.log("Cleanup runs every 30 minutes");
-
-        console.log("Running initial temp tokens cleanup...");
         try {
             const result = cleanupExpiredTokens();
-            console.log(`Initial cleanup completed - Cleaned: ${result.cleaned}, Remaining: ${result.remaining}`);
         } catch (error) {
             console.error("Initial temp tokens cleanup failed:", error);
         }
@@ -133,15 +111,12 @@ export function initializeTempTokenCleanupJob() {
 };
 
 export async function initializeCronJobs() {
-    console.log("Initializing cron jobs...");
     await initializeBackupCronJob();
     initializeSoftDeleteCleanupJob();
     initializeTempTokenCleanupJob();
-    console.log("All cron jobs initialized");
 };
 
 export async function updateBackupCronJob() {
-    console.log("Updating backup cron job...");
     await initializeBackupCronJob();
 };
 
@@ -149,18 +124,15 @@ export function stopCronJobs() {
     if (backupJob) {
         backupJob.stop();
         backupJob = null;
-        console.log("Backup scheduler stopped");
     }
 
     if (cleanupJob) {
         cleanupJob.stop();
         cleanupJob = null;
-        console.log("Cleanup scheduler stopped");
     }
 
     if (tokenCleanupJob) {
         tokenCleanupJob.stop();
         tokenCleanupJob = null;
-        console.log("Token cleanup scheduler stopped");
     }
 };

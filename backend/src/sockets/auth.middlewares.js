@@ -61,7 +61,7 @@ export const socketAuthMiddleware = () => {
 
             next();
         } catch (error) {
-            console.log(error);
+            console.error(error);
             return next(new Error("SERVER_ERROR"));
         }
     };
