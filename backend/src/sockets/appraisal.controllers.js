@@ -37,7 +37,7 @@ export const setupAppraisalSocketHandlers = (io, socket) => {
             }
 
             let parsedValue = value;
-            if (field === "createdDate" || field === "completedDate") {
+            if (field === "createdAt" || field === "completedAt") {
                 parsedValue = value ? new Date(value) : null;
             }
 
@@ -58,7 +58,7 @@ export const setupAppraisalSocketHandlers = (io, socket) => {
                 });
             }
 
-            io.to("Staff").emit("appraisalUpdated", JSON.parse(JSON.stringify(appraisal)));
+            io.to("Staff").emit("appraisalUpdated");
         } catch (error) {
             console.error("Socket update error:", error);
             socket.emit("appraisal:error", { message: error.message });
