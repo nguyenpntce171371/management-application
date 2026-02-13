@@ -9,6 +9,7 @@ import { OAuth2Client } from "google-auth-library";
 import { getCachedImageUrl } from "../utils/cachedImage.js";
 import { transformIds } from "../utils/normalizeMongoIds.js";
 import { clearVerified, create, verify, isVerified } from "../services/otp.service.js";
+import { normalizeEmail } from "../utils/string.js";
 
 export const googleCallback = async (req, res) => {
     const DOMAIN = `https://${process.env.DOMAIN}`;
@@ -294,7 +295,7 @@ export const login = async (req, res) => {
 
 export const register = async (req, res) => {
     try {
-        const { fullName, email, password } = req.body;
+        const { resetToken, fullName, email, password } = req.body;
         if (!fullName || !email || !password) {
             return res.status(400).json({
                 success: false,
@@ -312,7 +313,7 @@ export const register = async (req, res) => {
             });
         }
 
-        const verified = await isVerified(email, "register");
+        const verified = await isVerified(email, resetToken, "register");
         if (!verified) {
             return res.status(400).json({
                 success: false,
@@ -412,11 +413,12 @@ export const verifyOtpRegister = async (req, res) => {
             });
         }
 
-        await verify(email, otp, "register");
+        const resetToken= await verify(email, otp, "register");
 
         return res.status(200).json({
             success: true,
             code: "OTP_VERIFIED",
+            data: resetToken,
             message: "Xác minh OTP thành công",
         });
     } catch (error) {
@@ -637,7 +639,7 @@ export const logoutSession = async (req, res) => {
             });
         }
 
-        io.to(req.user.id).emit("loggedOut", {id});
+        io.to(req.user.id).emit("loggedOut", { id });
         io.to(req.user.id).emit("sessionLoggedOut", [id]);
 
         return res.status(200).json({

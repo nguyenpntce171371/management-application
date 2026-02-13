@@ -142,8 +142,8 @@ function Register() {
 
         setIsLoading(true);
         try {
-            await axiosInstance.post("/api/auth/verify-otp-register", { email: formData.email, otp: otp.join("") });
-            await axiosInstance.post("/api/auth/register", { fullName: formData.fullName, email: formData.email, password: formData.password });
+            const res = await axiosInstance.post("/api/auth/verify-otp-register", { email: formData.email, otp: otp.join("") });
+            await axiosInstance.post("/api/auth/register", { fullName: formData.fullName, resetToken: res.data.data, email: formData.email, password: formData.password });
             notify({
                 type: "success",
                 title: "Thành công",
