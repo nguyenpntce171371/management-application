@@ -12,15 +12,17 @@ export async function executeCursorPaginatedQuery(Model, baseQuery, options = {}
     if (select) findQuery = findQuery.select(select);
     findQuery = findQuery.sort(sort);
     findQuery = findQuery.limit(limit + 1);
+
     if (populate) {
         if (Array.isArray(populate)) {
             populate.forEach(p => {
-                findQuery = findQuery.populate({ ...p, options: { lean: true } });
+                findQuery = findQuery.populate(p);
             });
         } else {
-            findQuery = findQuery.populate({ ...populate, options: { lean: true } });
+            findQuery = findQuery.populate(populate);
         }
     }
+
     if (lean) findQuery = findQuery.lean();
 
     let data = await findQuery;

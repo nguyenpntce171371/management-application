@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-export function transformIds(value, seen = new WeakSet()) {
+export function transformIds(value, seen = new WeakMap()) {
     if (value instanceof Date) {
         return value;
     }
@@ -15,11 +15,12 @@ export function transformIds(value, seen = new WeakSet()) {
 
     if (value && typeof value === "object") {
         if (seen.has(value)) {
-            return "[Circular]";
+            return seen.get(value);
         }
-        
-        seen.add(value);
+
         const transformed = {};
+
+        seen.set(value, transformed);
 
         for (const key in value) {
             if (key === "_id") {

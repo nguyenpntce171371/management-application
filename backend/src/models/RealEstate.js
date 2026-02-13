@@ -66,128 +66,141 @@ realEstateSchema.index({ status: 1, deletedAt: 1, createdAt: -1, _id: -1 });
 realEstateSchema.index({ deletedAt: 1, createdAt: -1, _id: -1 });
 realEstateSchema.index({ searchText: "text" });
 
-realEstateSchema.pre("save", function (next) {
+function buildSearchText(doc) {
     let searchText = "";
 
-    if (this.propertyType) {
-        searchText += normalize(this.propertyType) + " ";
+    if (doc.propertyType) {
+        searchText += normalize(doc.propertyType) + " ";
     }
 
+    if (doc.province) {
+        searchText += normalize(doc.province) + " ";
+    }
+
+    if (doc.district) {
+        searchText += normalize(doc.district) + " ";
+    }
+
+    if (doc.ward) {
+        searchText += normalize(doc.ward) + " ";
+    }
+
+    if (doc.street) {
+        searchText += normalize(doc.street);
+    }
+
+    return searchText.trim();
+}
+
+realEstateSchema.pre("save", function (next) {
     if (this.province) {
         this.provinceSearch = normalize(this.province);
-        searchText += this.provinceSearch + " ";
     }
 
     if (this.district) {
         this.districtSearch = normalize(this.district);
-        searchText += this.districtSearch + " ";
     }
 
     if (this.ward) {
         this.wardSearch = normalize(this.ward);
-        searchText += this.wardSearch + " ";
     }
 
     if (this.street) {
         this.streetSearch = normalize(this.street);
-        searchText += this.streetSearch + " ";
     }
 
-    this.address = `${this.street}, ${this.ward}, ${this.district}, ${this.province}`;
-
-    this.searchText = searchText.trim();
+    this.address = `${this.street || ""}, ${this.ward || ""}, ${this.district || ""}, ${this.province || ""}`;
+    this.searchText = buildSearchText(this);
     next();
 });
 
-realEstateSchema.pre("findOneAndUpdate", function (next) {
+realEstateSchema.pre("findOneAndUpdate", async function (next) {
     const update = this.getUpdate();
     const fields = update.$set || update;
 
-    if (!(fields.propertyType || fields.street || fields.ward || fields.district || fields.province)) return next();
+    if (fields.propertyType || fields.street || fields.ward || fields.district || fields.province) {
+        const docToUpdate = await this.model.findOne(this.getQuery());
 
-    let searchText = "";
+        if (docToUpdate) {
+            const mergedDoc = {
+                propertyType: fields.propertyType !== undefined ? fields.propertyType : docToUpdate.propertyType,
+                province: fields.province !== undefined ? fields.province : docToUpdate.province,
+                district: fields.district !== undefined ? fields.district : docToUpdate.district,
+                ward: fields.ward !== undefined ? fields.ward : docToUpdate.ward,
+                street: fields.street !== undefined ? fields.street : docToUpdate.street
+            };
 
-    if (fields.propertyType) {
-        searchText += normalize(fields.propertyType) + " ";
-    }
+            if (mergedDoc.province) {
+                fields.provinceSearch = normalize(mergedDoc.province);
+            }
 
-    if (fields.province) {
-        fields.provinceSearch = normalize(fields.province);
-        searchText += fields.provinceSearch + " ";
-    }
+            if (mergedDoc.district) {
+                fields.districtSearch = normalize(mergedDoc.district);
+            }
 
-    if (fields.district) {
-        fields.districtSearch = normalize(fields.district);
-        searchText += fields.districtSearch + " ";
-    }
+            if (mergedDoc.ward) {
+                fields.wardSearch = normalize(mergedDoc.ward);
+            }
 
-    if (fields.ward) {
-        fields.wardSearch = normalize(fields.ward);
-        searchText += fields.wardSearch + " ";
-    }
+            if (mergedDoc.street) {
+                fields.streetSearch = normalize(mergedDoc.street);
+            }
 
-    if (fields.street) {
-        fields.streetSearch = normalize(fields.street);
-        searchText += fields.streetSearch + " ";
-    }
+            fields.address = `${mergedDoc.street || ""}, ${mergedDoc.ward || ""}, ${mergedDoc.district || ""}, ${mergedDoc.province || ""}`;
+            fields.searchText = buildSearchText(mergedDoc);
 
-    if (fields.street || fields.ward || fields.district || fields.province) {
-        fields.address = `${fields.street || ""}, ${fields.ward || ""}, ${fields.district || ""}, ${fields.province || ""}`;
-    }
-
-    fields.searchText = searchText.trim();
-
-    if (update.$set) {
-        update.$set = fields;
-    } else {
-        this.setUpdate(fields);
+            if (update.$set) {
+                update.$set = fields;
+            } else {
+                this.setUpdate(fields);
+            }
+        }
     }
 
     next();
 });
 
-realEstateSchema.pre("updateOne", function (next) {
+realEstateSchema.pre("updateOne", async function (next) {
     const update = this.getUpdate();
     const fields = update.$set || update;
 
-    if (!(fields.propertyType || fields.street || fields.ward || fields.district || fields.province)) return next();
+    if (fields.propertyType || fields.street || fields.ward || fields.district || fields.province) {
+        const docToUpdate = await this.model.findOne(this.getQuery());
 
-    let searchText = "";
+        if (docToUpdate) {
+            const mergedDoc = {
+                propertyType: fields.propertyType !== undefined ? fields.propertyType : docToUpdate.propertyType,
+                province: fields.province !== undefined ? fields.province : docToUpdate.province,
+                district: fields.district !== undefined ? fields.district : docToUpdate.district,
+                ward: fields.ward !== undefined ? fields.ward : docToUpdate.ward,
+                street: fields.street !== undefined ? fields.street : docToUpdate.street
+            };
 
-    if (fields.propertyType) {
-        searchText += normalize(fields.propertyType) + " ";
-    }
+            if (mergedDoc.province) {
+                fields.provinceSearch = normalize(mergedDoc.province);
+            }
 
-    if (fields.province) {
-        fields.provinceSearch = normalize(fields.province);
-        searchText += fields.provinceSearch + " ";
-    }
+            if (mergedDoc.district) {
+                fields.districtSearch = normalize(mergedDoc.district);
+            }
 
-    if (fields.district) {
-        fields.districtSearch = normalize(fields.district);
-        searchText += fields.districtSearch + " ";
-    }
+            if (mergedDoc.ward) {
+                fields.wardSearch = normalize(mergedDoc.ward);
+            }
 
-    if (fields.ward) {
-        fields.wardSearch = normalize(fields.ward);
-        searchText += fields.wardSearch + " ";
-    }
+            if (mergedDoc.street) {
+                fields.streetSearch = normalize(mergedDoc.street);
+            }
 
-    if (fields.street) {
-        fields.streetSearch = normalize(fields.street);
-        searchText += fields.streetSearch + " ";
-    }
+            fields.address = `${mergedDoc.street || ""}, ${mergedDoc.ward || ""}, ${mergedDoc.district || ""}, ${mergedDoc.province || ""}`;
+            fields.searchText = buildSearchText(mergedDoc);
 
-    if (fields.street || fields.ward || fields.district || fields.province) {
-        fields.address = `${fields.street || ""}, ${fields.ward || ""}, ${fields.district || ""}, ${fields.province || ""}`;
-    }
-
-    fields.searchText = searchText.trim();
-
-    if (update.$set) {
-        update.$set = fields;
-    } else {
-        this.setUpdate(fields);
+            if (update.$set) {
+                update.$set = fields;
+            } else {
+                this.setUpdate(fields);
+            }
+        }
     }
 
     next();

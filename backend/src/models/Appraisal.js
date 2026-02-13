@@ -21,118 +21,78 @@ const AppraisalSchema = new mongoose.Schema({
 AppraisalSchema.index({ deletedAt: 1, createdAt: -1, _id: -1 });
 AppraisalSchema.index({ searchText: "text" });
 
+function buildSearchText(doc) {
+    let searchText = "";
+
+    if (doc.code) {
+        searchText += normalize(doc.code).replace(/-/g, " ") + " ";
+    }
+
+    if (doc.customerName) {
+        searchText += normalize(doc.customerName) + " ";
+    }
+
+    if (doc.appraiser) {
+        searchText += normalize(doc.appraiser);
+    }
+
+    return searchText.trim();
+}
+
 AppraisalSchema.pre("save", function (next) {
-    let searchText = "";
-
-    if (this.code) {
-        searchText += normalize(this.code).replace("-", " ") + " ";
-    }
-
-    if (this.customerName) {
-        searchText += normalize(this.customerName) + " ";
-    }
-
-    if (this.notes) {
-        searchText += normalize(this.notes) + " ";
-    }
-
-    if (this.propertyType) {
-        searchText += normalize(this.propertyType) + " ";
-    }
-
-    if (this.assets.length) {
-        this.assets.forEach((asset) => {
-            if (asset.name) {
-                searchText += normalize(asset.name) + " ";
-            }
-        });
-    }
-
-    this.searchText = searchText.trim();
+    this.searchText = buildSearchText(this);
     next();
 });
 
-AppraisalSchema.pre("findOneAndUpdate", function (next) {
+AppraisalSchema.pre("findOneAndUpdate", async function (next) {
     const update = this.getUpdate();
     const fields = update.$set || update;
 
-    if (!(fields.code || fields.customerName || fields.notes || fields.propertyType || fields.assets)) return next();
+    if (fields.code || fields.customerName || fields.appraiser) {
+        const docToUpdate = await this.model.findOne(this.getQuery());
 
-    let searchText = "";
+        if (docToUpdate) {
+            const mergedDoc = {
+                code: fields.code !== undefined ? fields.code : docToUpdate.code,
+                customerName: fields.customerName !== undefined ? fields.customerName : docToUpdate.customerName,
+                appraiser: fields.appraiser !== undefined ? fields.appraiser : docToUpdate.appraiser
+            };
 
-    if (fields.code) {
-        searchText += normalize(fields.code).replace("-", " ") + " ";
-    }
+            fields.searchText = buildSearchText(mergedDoc);
 
-    if (fields.customerName) {
-        searchText += normalize(fields.customerName) + " ";
-    }
-
-    if (fields.notes) {
-        searchText += normalize(fields.notes) + " ";
-    }
-
-    if (fields.propertyType) {
-        searchText += normalize(fields.propertyType) + " ";
-    }
-
-    if (Array.isArray(fields.assets) && fields.assets.length) {
-        fields.assets.forEach((asset) => {
-            if (asset.name) {
-                searchText += normalize(asset.name) + " ";
+            if (update.$set) {
+                update.$set = fields;
+            } else {
+                this.setUpdate(fields);
             }
-        });
-    }
-
-    fields.searchText = searchText.trim();
-
-    if (update.$set) {
-        update.$set = fields;
-    } else {
-        this.setUpdate(fields);
+        }
     }
 
     next();
 });
 
-AppraisalSchema.pre("updateOne", function (next) {
+AppraisalSchema.pre("updateOne", async function (next) {
     const update = this.getUpdate();
     const fields = update.$set || update;
 
-    if (!(fields.code || fields.customerName || fields.notes || fields.propertyType || fields.assets)) return next();
+    if (fields.code || fields.customerName || fields.appraiser) {
+        const docToUpdate = await this.model.findOne(this.getQuery());
 
-    let searchText = "";
+        if (docToUpdate) {
+            const mergedDoc = {
+                code: fields.code !== undefined ? fields.code : docToUpdate.code,
+                customerName: fields.customerName !== undefined ? fields.customerName : docToUpdate.customerName,
+                appraiser: fields.appraiser !== undefined ? fields.appraiser : docToUpdate.appraiser
+            };
 
-    if (fields.code) {
-        searchText += normalize(fields.code).replace("-", " ") + " ";
-    }
+            fields.searchText = buildSearchText(mergedDoc);
 
-    if (fields.customerName) {
-        searchText += normalize(fields.customerName) + " ";
-    }
-
-    if (fields.notes) {
-        searchText += normalize(fields.notes) + " ";
-    }
-
-    if (fields.propertyType) {
-        searchText += normalize(fields.propertyType) + " ";
-    }
-
-    if (Array.isArray(fields.assets) && fields.assets.length) {
-        fields.assets.forEach((asset) => {
-            if (asset.name) {
-                searchText += normalize(asset.name) + " ";
+            if (update.$set) {
+                update.$set = fields;
+            } else {
+                this.setUpdate(fields);
             }
-        });
-    }
-
-    fields.searchText = searchText.trim();
-
-    if (update.$set) {
-        update.$set = fields;
-    } else {
-        this.setUpdate(fields);
+        }
     }
 
     next();

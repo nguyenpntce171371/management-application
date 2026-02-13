@@ -20,19 +20,34 @@ logSchema.index({ statusCode: 1, deletedAt: 1, createdAt: -1, _id: -1 });
 logSchema.index({ deletedAt: 1, createdAt: -1, _id: -1 });
 logSchema.index({ searchText: 1, createdAt: -1, _id: -1 });
 
+function buildSearchText(doc) {
+    let searchText = "";
+
+    if (doc.email) {
+        searchText += normalize(doc.email) + " ";
+    }
+
+    if (doc.userAgent) {
+        searchText += normalize(doc.userAgent) + " ";
+    }
+
+    if (doc.ipAddress) {
+        searchText += normalize(doc.ipAddress) + " ";
+    }
+
+    if (doc.endpoint) {
+        searchText += normalize(doc.endpoint) + " ";
+    }
+
+    if (doc.message) {
+        searchText += normalize(doc.message);
+    }
+
+    return searchText.trim();
+}
+
 logSchema.pre("save", function (next) {
-    if (!this.isNew && !this.isModified()) return next();
-
-    const parts = [
-        this.email,
-        this.userAgent,
-        this.ipAddress,
-        this.endpoint,
-        this.message
-    ];
-
-    this.searchText = normalize(parts.filter(Boolean).join(" "));
-
+    this.searchText = buildSearchText(this);
     next();
 });
 

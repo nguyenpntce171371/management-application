@@ -21,7 +21,7 @@ export const getAppraisals = async (req, res) => {
         const { sortBy, sortOrder } = parseSort(req.query, ["createdAt"]);
 
         const options = {
-            select: "code customerName propertyType appraiser createdAt completedAt status notes",
+            select: "code customerName propertyType appraiser createdAt completedAt status notes searchText",
             sortBy,
             sortOrder,
             cursor: req.query.cursor,

@@ -25,71 +25,78 @@ userSchema.index({ role: 1, deletedAt: 1, createdAt: -1, _id: -1 });
 userSchema.index({ deletedAt: 1, createdAt: -1, _id: -1 });
 userSchema.index({ searchText: "text" });
 
+function buildSearchText(doc) {
+    let searchText = "";
+
+    if (doc.fullName) {
+        searchText += normalize(doc.fullName) + " ";
+    }
+
+    if (doc.address) {
+        searchText += normalize(doc.address) + " ";
+    }
+
+    if (doc.email) {
+        searchText += normalizeEmail(doc.email);
+    }
+
+    return searchText.trim();
+}
+
 userSchema.pre("save", async function (next) {
-    if (this.isModified("fullName") || this.isModified("address") || this.isModified("email") || this.isNew) {
-        this.searchText = normalize(this.fullName) + " " + normalize(this.address) + " " + normalizeEmail(this.email);
+    this.searchText = buildSearchText(this);
+    next();
+});
+
+userSchema.pre("findOneAndUpdate", async function (next) {
+    const update = this.getUpdate();
+    const fields = update.$set || update;
+
+    if (fields.fullName || fields.address || fields.email) {
+        const docToUpdate = await this.model.findOne(this.getQuery());
+
+        if (docToUpdate) {
+            const mergedDoc = {
+                fullName: fields.fullName !== undefined ? fields.fullName : docToUpdate.fullName,
+                address: fields.address !== undefined ? fields.address : docToUpdate.address,
+                email: fields.email !== undefined ? fields.email : docToUpdate.email
+            };
+
+            fields.searchText = buildSearchText(mergedDoc);
+
+            if (update.$set) {
+                update.$set = fields;
+            } else {
+                this.setUpdate(fields);
+            }
+        }
     }
 
     next();
 });
 
-userSchema.pre("findOneAndUpdate", function (next) {
+userSchema.pre("updateOne", async function (next) {
     const update = this.getUpdate();
     const fields = update.$set || update;
 
-    if (!(fields.fullName || fields.address || fields.email)) return next();
+    if (fields.fullName || fields.address || fields.email) {
+        const docToUpdate = await this.model.findOne(this.getQuery());
 
-    let searchText = "";
+        if (docToUpdate) {
+            const mergedDoc = {
+                fullName: fields.fullName !== undefined ? fields.fullName : docToUpdate.fullName,
+                address: fields.address !== undefined ? fields.address : docToUpdate.address,
+                email: fields.email !== undefined ? fields.email : docToUpdate.email
+            };
 
-    if (fields.fullName) {
-        searchText += normalize(fields.fullName) + " ";
-    }
+            fields.searchText = buildSearchText(mergedDoc);
 
-    if (fields.address) {
-        searchText += normalize(fields.address) + " ";
-    }
-
-    if (fields.email) {
-        searchText += normalizeEmail(fields.email);
-    }
-
-    fields.searchText = searchText.trim();
-
-    if (update.$set) {
-        update.$set = fields;
-    } else {
-        this.setUpdate(fields);
-    }
-
-    next();
-});
-
-userSchema.pre("updateOne", function (next) {
-    const update = this.getUpdate();
-    const fields = update.$set || update;
-
-    if (!(fields.fullName || fields.address || fields.email)) return next();
-
-    let searchText = "";
-
-    if (fields.fullName) {
-        searchText += normalize(fields.fullName) + " ";
-    }
-
-    if (fields.address) {
-        searchText += normalize(fields.address) + " ";
-    }
-
-    if (fields.email) {
-        searchText += normalizeEmail(fields.email);
-    }
-
-    fields.searchText = searchText.trim();
-
-    if (update.$set) {
-        update.$set = fields;
-    } else {
-        this.setUpdate(fields);
+            if (update.$set) {
+                update.$set = fields;
+            } else {
+                this.setUpdate(fields);
+            }
+        }
     }
 
     next();
