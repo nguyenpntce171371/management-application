@@ -101,18 +101,16 @@ function PropertyValuation() {
             appraisal.map(a => a.id === id ? { ...a, [field]: value } : a)
         );
 
-        if (!socket) return;
-
         const timerKey = `${id}-${field}`;
         if (debounceTimers.current[timerKey]) {
             clearTimeout(debounceTimers.current[timerKey]);
         }
 
-        debounceTimers.current[timerKey] = setTimeout(() => {
-            socket.emit("appraisal:update", { id, field, value });
+        debounceTimers.current[timerKey] = setTimeout(async () => {
+            await axiosInstance.post(`/api/appraisals/${id}`, { [field]: value });
             delete debounceTimers.current[timerKey];
         }, 500);
-    }, [socket]);
+    }, []);
 
     const handleCreate = async () => {
         await axiosInstance.post("/api/appraisals");

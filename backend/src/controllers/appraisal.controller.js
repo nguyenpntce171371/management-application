@@ -210,24 +210,26 @@ export const updateAppraisal = async (req, res) => {
             });
         }
 
-        const { customerName, propertyType, status, appraiser } = req.body;
+        const allowedFields = [
+            "customerName",
+            "propertyType",
+            "status",
+            "appraiser",
+            "createdAt",
+            "completedAt",
+            "notes"
+        ];
 
         const update = {};
 
-        if (customerName) {
-            update.customerName = customerName;
-        }
-
-        if (propertyType) {
-            update.propertyType = propertyType;
-        }
-
-        if (status) {
-            update.status = status;
-        }
-
-        if (appraiser) {
-            update.appraiser = appraiser;
+        for (const field of allowedFields) {
+            if (field in req.body) {
+                if (field === "createdAt" || field === "completedAt") {
+                    update[field] = req.body[field] ? new Date(req.body[field]) : null;
+                } else {
+                    update[field] = req.body[field];
+                }
+            }
         }
 
         if (!Object.keys(update).length) {
@@ -238,12 +240,13 @@ export const updateAppraisal = async (req, res) => {
             });
         }
 
-        const result = await Appraisal.updateOne(
-            { _id: id },
-            { $set: update }
-        );
+        const result = await Appraisal.findByIdAndUpdate(
+            id,
+            { $set: update },
+            { new: true, runValidators: true }
+        ).lean();
 
-        if (!result.matchedCount) {
+        if (!result) {
             return res.status(404).json({
                 success: false,
                 code: "APPRAISAL_NOT_FOUND",
@@ -255,12 +258,12 @@ export const updateAppraisal = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            code: "APPRAISAL_UPDATED",
+            code: "APPRAISAL_PATCHED",
             message: "Cập nhật hồ sơ thành công",
             data: { id }
         });
     } catch (error) {
-        console.error("Error updating appraisal:", error);
+        console.error("Error patching appraisal:", error);
         if (error.name === "CastError") {
             return res.status(404).json({
                 success: false,
